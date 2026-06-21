@@ -1,0 +1,10 @@
+---
+description: "Use the Portless web project setup skill when configuring stable local dev-server URLs for web projects"
+alwaysApply: false
+---
+
+# Portless Web Project Setup
+
+When asked to add or configure Portless for a web project, follow `@skills/portless-web-project-setup/SKILL.md`.
+
+Load the linked skill first, then load any references it asks for. Do not duplicate the skill content in this Cursor rule.

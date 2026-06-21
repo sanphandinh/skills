@@ -7,7 +7,9 @@ This repository is the source of truth for reusable personal AI-agent skills.
 - `skills/<skill-name>/SKILL.md`: canonical skill instructions.
 - `skills/<skill-name>/references/`: optional details loaded only when a skill asks for them.
 - `skills/<skill-name>/agents/openai.yaml`: Codex/OpenAI UI metadata.
-- `.agents/skills/<skill-name>/SKILL.md`: thin discovery shims for agents that scan `.agents/skills`.
+- `.claude-plugin/plugin.json`: Claude Code plugin manifest; the root `skills/` directory is the plugin skill source.
+- `.claude/skills/`, `.opencode/skills/`, `.github/skills/`, `.agents/skills/`: symlink adapters for agents that discover project-local skills from tool-specific directories.
+- `.cursor/rules/`: thin Cursor rules that reference canonical skill files.
 - `docs/superpowers/specs/`: design specs for approved skills.
 
 ## Agent Workflow
@@ -24,10 +26,10 @@ python3 /Users/sanphan/.codex/skills/.system/skill-creator/scripts/quick_validat
 ## Supported Agents
 
 - Codex: read this file and the canonical skill folder under `skills/`.
-- Claude Code: `CLAUDE.md` imports this file; keep Claude-specific behavior there only when needed.
-- opencode: `opencode.json` loads this file as project instructions; `.agents/skills` exposes thin skill shims that point back to canonical files under `skills/`.
-- Cursor: `.cursor/rules/personal-skills.mdc` points Cursor Agent at this repository layout.
-- GitHub Copilot: `.github/copilot-instructions.md` and `.github/instructions/skills.instructions.md` point Copilot at this repository layout.
+- Claude Code: load this repo as a plugin with `--plugin-dir`; `.claude/skills` also exposes symlinked project skills.
+- opencode: use `AGENTS.md` plus the `skill` tool; `.opencode/skills` and `.agents/skills` expose symlinked skills for discovery.
+- Cursor: `.cursor/rules/personal-skills.mdc` describes the repo and focused rules such as `portless-web-project-setup.mdc` point to canonical skill files.
+- GitHub Copilot: `.github/skills` exposes native project skills; `.github/copilot-instructions.md` and `.github/instructions/skills.instructions.md` provide repository instructions.
 - Pi: use this `AGENTS.md` as the portable instruction layer until a verified Pi plugin or skill format exists.
 
 ## Current Skills

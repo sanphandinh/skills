@@ -1,0 +1,6 @@
+{
+  "name": "personal-skills",
+  "description": "Personal reusable skills for project setup and development workflows.",
+  "version": "0.1.0",
+  "skills": "./skills"
+}
