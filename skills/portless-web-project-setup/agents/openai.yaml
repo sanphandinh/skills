@@ -1,0 +1,4 @@
+interface:
+  display_name: "Portless Web Project Setup"
+  short_description: "Set up Portless for web dev servers"
+  default_prompt: "Use $portless-web-project-setup to add Portless dev-server conventions to this web project."
