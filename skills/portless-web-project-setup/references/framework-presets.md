@@ -1,6 +1,6 @@
 # Framework Presets
 
-Use these presets after inspecting `package.json` and the project files. Preserve existing scripts unless the user explicitly asks to replace them.
+Use these presets after inspecting `package.json` and the project files. Preserve the raw dev command as `dev:raw`, but make Portless the default `dev` command unless the user explicitly asks for opt-in Portless.
 
 ## Detection
 
@@ -12,24 +12,12 @@ Prefer dependency and file evidence over project names.
 | Vite | `vite` dependency, `vite.config.*`, `index.html` | `vite dev` |
 | Next.js | `next` dependency, `next.config.*`, `app/` or `pages/` | `next dev` |
 | Astro | `astro` dependency, `astro.config.*`, `src/pages/` | `astro dev` |
-| React Router | `@react-router/dev`, `react-router.config.*` | `react-router dev` |
 
-If multiple signals exist, prefer the existing `dev` script as the raw command and wrap it through a Portless script.
+If multiple signals exist, prefer the existing `dev` script as the raw command and wrap it through Portless.
 
 ## Script Patterns
 
-Prefer adding a Portless-specific script instead of replacing `dev`:
-
-```json
-{
-  "scripts": {
-    "dev": "<existing raw command>",
-    "dev:portless": "portless run <existing raw command>"
-  }
-}
-```
-
-If the repo already uses `dev` as its canonical agent command and the user wants Portless by default, use:
+Prefer making Portless the default `dev` script and preserving the raw command:
 
 ```json
 {
@@ -40,12 +28,24 @@ If the repo already uses `dev` as its canonical agent command and the user wants
 }
 ```
 
-Use explicit names only when the user gives one or the repo has multiple web apps:
+Use `portless.json` for the stable app name instead of relying on inferred directory names:
 
 ```json
 {
-  "scripts": {
-    "dev:portless": "portless run --name <app-name> <raw command>"
+  "name": "<app-name>"
+}
+```
+
+Use explicit `--name` only for temporary one-off commands. Prefer `portless.json` for committed project setup.
+
+For monorepos, configure each web app explicitly:
+
+```json
+{
+  "apps": {
+    "apps/web": {
+      "name": "<app-name>"
+    }
   }
 }
 ```
@@ -68,10 +68,6 @@ Use `next dev` as the raw command when no existing custom script exists. For LAN
 
 Use `astro dev` as the raw command. Let Portless inject port flags.
 
-### React Router
-
-Use `react-router dev` as the raw command. Let Portless inject port flags.
-
 ## Agent Documentation Snippet
 
 Add a concise section to `AGENTS.md` or `CLAUDE.md`:
@@ -79,10 +75,11 @@ Add a concise section to `AGENTS.md` or `CLAUDE.md`:
 ```markdown
 ## Local Development With Portless
 
-- Use `npm run dev:portless` for the web dev server unless this file says otherwise.
-- Expect the app at `https://<project>.localhost`; use `portless list` to confirm the active route.
+- Use `npm run dev` for the web dev server. It runs through Portless by default.
+- Expect the app at `https://<app-name>.localhost`; use `portless list` to confirm the active route.
+- Do not accept `https://<app-name>.localhost:1355` as the normal setup. That means the clean HTTPS proxy on port 443 is not active.
 - Do not guess or hardcode `localhost:<port>` for browser checks.
-- If Portless is blocked by proxy, TLS, sudo, no-TTY, or route-lock issues, run the raw fallback with `PORTLESS=0 npm run dev` or `npm run dev:raw` when available, then report that Portless runtime verification is still pending.
+- If Portless is blocked by proxy, TLS, sudo, no-TTY, or route-lock issues, run `npm run dev:raw` only as a temporary verification fallback, then report that Portless runtime verification is still pending.
 ```
 
 Adjust `npm` to the detected package manager.
