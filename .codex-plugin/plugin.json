@@ -1,0 +1,22 @@
+{
+  "name": "personal-skills",
+  "version": "0.1.0",
+  "description": "Reusable personal skills for project setup and development workflows.",
+  "author": {
+    "name": "San Phan"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Personal Skills",
+    "shortDescription": "Reusable setup and development skills.",
+    "longDescription": "Personal Skills provides reusable local skills for setting up and developing projects across repositories. It currently includes a Portless web project setup skill for stable local dev-server URLs.",
+    "developerName": "San Phan",
+    "category": "Productivity",
+    "capabilities": [
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Use my personal skills for this project setup."
+    ]
+  }
+}

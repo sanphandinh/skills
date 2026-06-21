@@ -1,15 +1,14 @@
-# Personal Skills Repository
+# Personal Skills Plugin
 
-This repository is the source of truth for reusable personal AI-agent skills.
+This repository is a reusable local plugin for Claude Code and Codex.
 
 ## Repository Layout
 
 - `skills/<skill-name>/SKILL.md`: canonical skill instructions.
 - `skills/<skill-name>/references/`: optional details loaded only when a skill asks for them.
 - `skills/<skill-name>/agents/openai.yaml`: Codex/OpenAI UI metadata.
-- `.claude-plugin/plugin.json`: Claude Code plugin manifest; the root `skills/` directory is the plugin skill source.
-- `.claude/skills/`, `.opencode/skills/`, `.github/skills/`, `.agents/skills/`: symlink adapters for agents that discover project-local skills from tool-specific directories.
-- `.cursor/rules/`: thin Cursor rules that reference canonical skill files.
+- `.claude-plugin/plugin.json`: Claude Code plugin manifest.
+- `.codex-plugin/plugin.json`: Codex plugin manifest.
 - `docs/superpowers/specs/`: design specs for approved skills.
 
 ## Agent Workflow
@@ -23,14 +22,10 @@ This repository is the source of truth for reusable personal AI-agent skills.
 python3 /Users/sanphan/.codex/skills/.system/skill-creator/scripts/quick_validate.py /Users/sanphan/Documents/skills/skills/<skill-name>
 ```
 
-## Supported Agents
+## Supported Plugin Targets
 
-- Codex: read this file and the canonical skill folder under `skills/`.
-- Claude Code: load this repo as a plugin with `--plugin-dir`; `.claude/skills` also exposes symlinked project skills.
-- opencode: use `AGENTS.md` plus the `skill` tool; `.opencode/skills` and `.agents/skills` expose symlinked skills for discovery.
-- Cursor: `.cursor/rules/personal-skills.mdc` describes the repo and focused rules such as `portless-web-project-setup.mdc` point to canonical skill files.
-- GitHub Copilot: `.github/skills` exposes native project skills; `.github/copilot-instructions.md` and `.github/instructions/skills.instructions.md` provide repository instructions.
-- Pi: use this `AGENTS.md` as the portable instruction layer until a verified Pi plugin or skill format exists.
+- Claude Code: load the repository as a plugin with `claude --plugin-dir /Users/sanphan/Documents/skills`. Claude Code discovers skills from the root `skills/` directory and namespaces them under `personal-skills`.
+- Codex: install or load this repository as a Codex plugin using `.codex-plugin/plugin.json`; Codex reads `skills` from `./skills/`.
 
 ## Current Skills
 
