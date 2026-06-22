@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Repo Setup"
+  short_description: "Set up repo rules and security"
+  default_prompt: "Use $github-repo-setup to configure this repository's GitHub branch rules, security settings, and Dependabot updates."

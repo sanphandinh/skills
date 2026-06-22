@@ -1,0 +1,4 @@
+interface:
+  display_name: "Frontend Web Project Setup"
+  short_description: "Choose and scaffold frontend web stacks."
+  default_prompt: "Use $frontend-web-project-setup to choose the right frontend stack and scaffold this web project."

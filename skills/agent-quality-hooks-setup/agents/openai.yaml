@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Quality Hooks Setup"
+  short_description: "Wire type, lint, and format hooks"
+  default_prompt: "Use $agent-quality-hooks-setup to wire this project's typecheck, lint, and format commands into coding-agent hooks."

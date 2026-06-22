@@ -30,3 +30,6 @@ python3 /Users/sanphan/.codex/skills/.system/skill-creator/scripts/quick_validat
 ## Current Skills
 
 - `portless-web-project-setup`: integrate Portless into new or early-stage web projects, update package scripts, and add local-development instructions to `AGENTS.md` or `CLAUDE.md`.
+- `agent-quality-hooks-setup`: detect existing typecheck, lint, and formatting commands, then wire them into Claude Code, Codex, OpenCode, or generic coding-agent hooks through a shared quality runner plus thin adapters.
+- `github-repo-setup`: set up GitHub branch rules, repository security features, and Dependabot config/verification for new or existing repositories.
+- `frontend-web-project-setup`: choose and scaffold frontend web stacks, defaulting landing/content sites to Astro, normal React/full-stack apps to TanStack Start, and high-performance non-React apps to SvelteKit or SolidStart.
