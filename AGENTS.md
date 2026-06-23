@@ -4,11 +4,13 @@ This repository is a reusable local plugin for Claude Code and Codex.
 
 ## Repository Layout
 
-- `skills/<skill-name>/SKILL.md`: canonical skill instructions.
-- `skills/<skill-name>/references/`: optional details loaded only when a skill asks for them.
-- `skills/<skill-name>/agents/openai.yaml`: Codex/OpenAI UI metadata.
-- `.claude-plugin/plugin.json`: Claude Code plugin manifest.
-- `.codex-plugin/plugin.json`: Codex plugin manifest.
+- `plugins/personal-skills/skills/<skill-name>/SKILL.md`: canonical skill instructions.
+- `plugins/personal-skills/skills/<skill-name>/references/`: optional details loaded only when a skill asks for them.
+- `plugins/personal-skills/skills/<skill-name>/agents/openai.yaml`: Codex/OpenAI UI metadata.
+- `plugins/personal-skills/.claude-plugin/plugin.json`: Claude Code plugin manifest.
+- `plugins/personal-skills/.codex-plugin/plugin.json`: Codex plugin manifest.
+- `.agents/plugins/marketplace.json`: repo-local Codex marketplace manifest for `codex plugin marketplace add /Users/sanphan/Documents/skills`.
+- `plugins/personal-skills`: the actual plugin root referenced by the Codex marketplace entry.
 - `docs/superpowers/specs/`: design specs for approved skills.
 
 ## Agent Workflow
@@ -19,13 +21,13 @@ This repository is a reusable local plugin for Claude Code and Codex.
 - Validate changed skills with:
 
 ```bash
-python3 /Users/sanphan/.codex/skills/.system/skill-creator/scripts/quick_validate.py /Users/sanphan/Documents/skills/skills/<skill-name>
+python3 /Users/sanphan/.codex/skills/.system/skill-creator/scripts/quick_validate.py /Users/sanphan/Documents/skills/plugins/personal-skills/skills/<skill-name>
 ```
 
 ## Supported Plugin Targets
 
-- Claude Code: load the repository as a plugin with `claude --plugin-dir /Users/sanphan/Documents/skills`. Claude Code discovers skills from the root `skills/` directory and namespaces them under `personal-skills`.
-- Codex: install or load this repository as a Codex plugin using `.codex-plugin/plugin.json`; Codex reads `skills` from `./skills/`.
+- Claude Code: load the plugin with `claude --plugin-dir /Users/sanphan/Documents/skills/plugins/personal-skills`. Claude Code discovers skills from that plugin's `skills/` directory and namespaces them under `personal-skills`.
+- Codex: add the repository root as a local marketplace with `codex plugin marketplace add /Users/sanphan/Documents/skills`, then install the plugin with `codex plugin add personal-skills@personal-skills`. Codex reads the plugin from `plugins/personal-skills`.
 
 ## Current Skills
 

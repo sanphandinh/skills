@@ -1,0 +1,20 @@
+{
+  "name": "personal-skills",
+  "interface": {
+    "displayName": "Personal Skills"
+  },
+  "plugins": [
+    {
+      "name": "personal-skills",
+      "source": {
+        "source": "local",
+        "path": "./plugins/personal-skills"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
