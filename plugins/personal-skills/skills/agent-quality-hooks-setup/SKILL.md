@@ -1,68 +1,55 @@
 ---
 name: agent-quality-hooks-setup
-description: Set up repository quality gates for AI coding agents by discovering existing typecheck, lint, and formatting commands, creating a small shared quality-runner contract, and wiring it into Claude Code, Codex, OpenCode, or other agent hook/plugin surfaces. Use when a project needs agent-enforced TypeScript checks, linting, format-on-edit, final quality checks, or cross-agent hook setup for frontend, backend, Go, Rust, Python, Java, or mixed-language repositories.
+description: Use when a repository needs consistent AI-agent quality hooks, especially when several coding agents are configured, existing hooks run different commands, project quality commands are ambiguous, or tests and builds may be expensive.
 ---
 
 # Agent Quality Hooks Setup
 
 ## Overview
 
-Install or document AI-agent hooks that keep generated code aligned with the repository's real quality commands. Prefer a repo-owned quality contract plus thin adapters for each agent runtime, so Claude Code, Codex, OpenCode, and future tools share the same command list instead of duplicating policy.
+Build one evidence-backed quality contract and translate it into each detected coding agent's native hook protocol.
+
+**Core principle:** AI analyzes project semantics; deterministic code collects evidence, enforces safety, and validates consistency. Agent adapters never choose project commands.
 
 ## Workflow
 
-1. Inspect the project before editing:
-   - read root instructions such as `AGENTS.md`, `CLAUDE.md`, `.cursorrules`, or tool-specific docs;
-   - identify languages, package managers, monorepo layout, and existing quality commands;
-   - run `scripts/detect_quality_commands.py <repo>` for a first-pass command inventory, then verify against real files.
-2. Load `references/quality-command-detection.md` before choosing or inventing commands.
-3. Load `references/agent-hook-adapters.md` before writing Claude Code, Codex, OpenCode, or generic agent hook config.
-4. Reuse existing scripts first. Do not add TypeScript, ESLint, Prettier, golangci-lint, clippy, ruff, or similar tooling unless the user asked for toolchain installation.
-5. Create a shared quality runner when multiple agents need the same checks:
-   - put it under a repo-owned path such as `.agents/hooks/quality-gate.sh`, `.agents/hooks/quality-gate.py`, or an existing scripts directory;
-   - keep commands explicit, static, and reviewable;
-   - separate write-format commands from check-only commands.
-6. Wire thin adapters:
-   - format-on-edit hooks should run only targeted safe formatters when the agent edits files;
-   - final/idle hooks should run check-only commands such as typecheck, lint, format check, and compile checks;
-   - destructive or slow commands should require user confirmation or be documented as opt-in.
-7. Update root agent documentation with the quality contract and exact commands.
-8. Verify by running lightweight parser checks, the changed hook script with a dry run when available, and at least one representative quality command when safe.
+1. Run `scripts/collect_project_evidence.py <repo>`.
+2. Read the evidence and `references/quality-analysis-guide.md`. Trace docs, scripts, CI, working directories, and monorepo boundaries. Do not infer commands from language markers.
+3. Write `.agents/quality/contract.json` using `references/quality-contract.md`, then run `scripts/validate_quality_contract.py`.
+4. Present the command profiles and request explicit confirmation before automatically running tests or builds.
+5. Run `scripts/detect_agents.py <repo>`. Treat `configured` agents as implementation targets; ask before adding hooks for agents marked only `possible`.
+6. For each target, load only its file under `references/agents/` and verify the linked official documentation before editing.
+7. Inventory existing hook sources. Preserve unrelated hooks, replace stale quality entries, and prevent duplicate registrations.
+8. Create one repo-owned runner, normally `.agents/quality/run`, with profiles:
+   - `after-edit`: confirmed, file-scoped formatter;
+   - `turn-complete`: confirmed lightweight read-only checks;
+   - `full`: tests/builds, manual until approved.
+9. Write `.agents/quality/adapter-plan.json` from `references/adapter-plan.md`; validate it with `scripts/validate_adapter_plan.py`.
+10. Implement thin native adapters. Every adapter calls the same runner profile; no adapter contains `npm`, `pnpm`, `bun`, `go`, `cargo`, Gradle, or other project quality commands.
+11. Parse changed configs, test adapters with representative payloads, and report capability differences such as block, retry, or notification-only behavior.
 
-## Command Policy
+The contract, runner, and adapter plan are mandatory deliverables unless equivalent repo-owned artifacts already exist and are updated in place. Deadlines do not justify skipping them or putting project commands back into adapters.
 
-- Treat `typecheck`, `lint`, and `format` as roles, not fixed command names.
-- Prefer package scripts or repo docs over language defaults.
-- For final gates, use check-only format commands (`prettier --check`, `cargo fmt --check`, `gofmt -l`, `ruff format --check`) rather than write-format commands.
-- For edit hooks, only run write-format commands that can be safely scoped to edited files. If a formatter is project-wide, prefer running it at `Stop`/idle or documenting it as manual.
-- Avoid shell interpolation of hook input. Parse hook JSON with a structured parser and pass paths as arguments.
-- If existing quality commands fail before your changes, report that as pre-existing drift and keep hook wiring separate from cleanup.
-- Keep hook timeouts realistic. Put quick targeted formatters on edit hooks; put slower typecheck/lint/build checks on final hooks.
+## Supported Agents
 
-## Adapter Policy
+| Agent | Edit lifecycle | Turn-complete lifecycle |
+|---|---|---|
+| Codex | `PostToolUse` | `Stop` |
+| Claude Code | `PostToolUse` | `Stop` |
+| OpenCode | `file.edited` | `session.idle` |
+| Gemini CLI | `AfterTool` | `AfterAgent` |
+| GitHub Copilot | `postToolUse` | `agentStop` |
 
-Use the agent's native hook/plugin surface when it exists:
+These events are semantic mappings, not interchangeable protocols. Never copy one agent's configuration shape, payload parser, decision fields, or failure semantics into another.
 
-- Claude Code: project `.claude/settings.json` command hooks, normally `PostToolUse` for `Edit|Write` and `Stop` for final checks.
-- Codex: project or plugin hook config, normally `PostToolUse` for `apply_patch`/`Edit|Write` and `Stop` for final checks.
-- OpenCode: project `.opencode/plugins/*` plugin events such as `file.edited`, `tool.execute.after`, and `session.idle`.
-- Other agents: if no hook surface exists, document the same quality runner in `AGENTS.md`/tool docs and add package manager scripts or pre-commit/CI integration only when appropriate.
+## Red Flags
 
-Do not duplicate the full command matrix into each adapter. Each adapter should call the shared runner or a narrowly scoped formatter.
+- A collector recommends commands instead of returning source evidence.
+- A manifest such as `go.mod`, `tsconfig.json`, or `pyproject.toml` is treated as the quality contract.
+- Codex and OpenCode adapters run different project commands.
+- Test/build commands enter automatic profiles without documented approval.
+- A new hook is appended without checking existing project, user, plugin, or policy sources.
+- An adapter claims blocking or retry behavior that its native lifecycle does not support.
+- “Only two agents” or “the deadline is short” is used to skip the contract or adapter plan.
 
-## Verification
-
-After editing, run checks appropriate to the repo:
-
-- parse JSON/TOML/YAML files that changed;
-- run `bash -n` or `python -m py_compile` for hook scripts;
-- run the detector script and compare output to the configured runner;
-- run at least one representative quality command, or state why it was skipped;
-- for Claude Code and Codex, tell the user hooks may need review/trust in the agent UI before they execute.
-
-## Failure Handling
-
-- If no quality commands exist, propose commands and docs, but do not silently install new toolchains.
-- If the repo is a monorepo, configure per-package commands or workspace scripts instead of one misleading root command.
-- If a hook API is unknown or unsupported, preserve the shared runner and document exact manual invocation until the tool-specific adapter is researched.
-- If hook execution needs network, credentials, or write access outside the repo, ask or escalate according to the current environment rules.
+If evidence is ambiguous or an agent protocol cannot be verified, leave the item unresolved and preserve manual runner invocation.

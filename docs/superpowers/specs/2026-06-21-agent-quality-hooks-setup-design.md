@@ -2,43 +2,45 @@
 
 ## Purpose
 
-Create a reusable skill for installing AI-agent quality gates across projects. The skill should help agents discover existing typecheck, lint, and formatting commands, then wire those commands into agent hook/plugin systems so generated code follows the repository's quality contract.
-
-## Scope
-
-The skill supports frontend and backend repositories, including TypeScript/JavaScript, Go, Rust, Python, JVM projects, and mixed-language monorepos. It should help an agent:
-
-- inspect repo docs, scripts, package managers, CI, and tool configs;
-- classify commands into typecheck, lint, format-write, format-check, and build-check roles;
-- create a repo-owned quality runner when multiple agent adapters need the same commands;
-- configure Claude Code, Codex, OpenCode, or generic agent surfaces with thin adapters;
-- document exact commands and verification expectations in root agent docs.
+Create consistent quality hooks across the coding agents actually configured in a repository. AI understands project semantics; deterministic tooling collects evidence and validates safety and cross-agent consistency.
 
 ## Architecture
 
-Keep `SKILL.md` as the workflow entry point. Put ecosystem command discovery in `references/quality-command-detection.md`, and put hook API patterns in `references/agent-hook-adapters.md`. Include a read-only detector script for first-pass command inventory, but require agents to verify script output against repo files before editing hooks.
+```text
+repository evidence
+  → AI quality analysis
+  → .agents/quality/contract.json
+  → coding-agent detection
+  → .agents/quality/adapter-plan.json
+  → native adapters
+  → one shared runner
+```
 
-The skill must keep command ownership in the target repository. Agent-specific configs should call a shared runner or narrow formatter wrapper instead of duplicating a full command matrix.
+The evidence collector must not recommend language commands. The AI traces repository docs, task scripts, CI, working directories, and monorepo boundaries to produce an evidence-backed quality contract.
 
-## Error Handling
+The agent detector identifies configured or possible Codex, Claude Code, OpenCode, Gemini CLI, and GitHub Copilot usage. Only configured agents are automatic implementation targets.
 
-The skill must distinguish hook setup from unrelated project drift:
+Each native adapter translates its lifecycle and payload into one of three shared profiles:
 
-- do not install new lint/type/format tools unless requested;
-- report pre-existing quality command failures separately from hook wiring;
-- use check-only commands for final hooks unless the user asks for write-format behavior;
-- ask for confirmation before adding slow, networked, destructive, or toolchain-changing commands.
+- `after-edit`: confirmed file-scoped formatter;
+- `turn-complete`: confirmed lightweight read-only checks;
+- `full`: tests/builds, manual until explicitly approved.
+
+Adapters never embed project quality commands. Codex and OpenCode, for example, use different native events but call the same runner profile.
+
+## Safety
+
+- Every command requires repository evidence.
+- Language manifests and tool configs are context, not command authority.
+- Tests and builds require explicit approval before automatic execution.
+- Existing hooks must be inventoried to prevent duplicate registrations.
+- Adapter-specific blocking, retry, and notification semantics must remain explicit.
+- Unknown or unverifiable behavior stays unresolved with manual runner fallback.
 
 ## Verification
 
-After setup, the agent should verify:
-
-- changed JSON/TOML/YAML parses;
-- hook scripts pass shell or Python syntax checks;
-- the detector output matches the configured runner;
-- at least one representative quality command runs, or the skip reason is explicit;
-- Claude Code and Codex hook trust/review steps are mentioned when relevant.
-
-## Out Of Scope
-
-The first version does not provide a full project generator, CI migration, pre-commit rollout, or automatic installation of language-specific lint/type/format tooling.
+- Unit-test evidence collection, agent detection, quality-contract validation, and adapter-plan validation.
+- Validate changed JSON, TOML, YAML, scripts, and agent payload handling.
+- Confirm each detected agent has exactly one intended adapter.
+- Confirm all adapters call the same shared runner profiles.
+- Verify official agent documentation immediately before implementation.
