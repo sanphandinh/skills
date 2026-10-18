@@ -1,0 +1,22 @@
+{
+  "name": "core",
+  "version": "0.2.0",
+  "description": "Cross-domain process skills: grilling, research, handoff, and writing for agents.",
+  "author": {
+    "name": "San Phan"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Core Skills",
+    "shortDescription": "Grilling, research, handoff, writing for agents.",
+    "longDescription": "Process skills shared by every domain: stress-test a plan through grilling, research from primary sources, hand off a session to a fresh agent, and write documents agents consume.",
+    "developerName": "San Phan",
+    "category": "Productivity",
+    "capabilities": [
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Grill me on this plan."
+    ]
+  }
+}

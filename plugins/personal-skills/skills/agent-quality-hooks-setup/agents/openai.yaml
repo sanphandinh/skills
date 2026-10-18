@@ -1,4 +1,0 @@
-interface:
-  display_name: "Agent Quality Hooks Setup"
-  short_description: "Unify quality hooks across coding agents"
-  default_prompt: "Use $agent-quality-hooks-setup to analyze this project's quality contract, detect configured coding agents, and wire native adapters to one shared runner."
