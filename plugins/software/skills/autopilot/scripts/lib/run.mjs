@@ -179,6 +179,7 @@ async function work(ctx, ticket) {
   let prBody = "";
   let findings = [];
   let gate;
+  let lastPushed = "";
   const agent = budgeted(ctx, ticket);
   const st = ctx.state.ticket(ticket.id);
   try {
@@ -198,7 +199,11 @@ async function work(ctx, ticket) {
         continue;
       }
       if (getField(fs.readFileSync(path.join(wt.dir, ticket.rel), "utf8"), "Status") !== "closed") close(wt.dir, ticket);
-      git(wt.dir, ["push", "-q", "--force-with-lease", ctx.remote, `HEAD:${branch}`]);
+      // Force only over what this run pushed last; anyone else's push wins.
+      if (!gitOk(wt.dir, ["push", "-q", `--force-with-lease=refs/heads/${branch}:${lastPushed}`, ctx.remote, `HEAD:refs/heads/${branch}`])) {
+        return handToHuman(ctx, ticket, pr, `someone else pushed to ${branch}; autopilot will not overwrite it`, done);
+      }
+      lastPushed = git(wt.dir, ["rev-parse", "HEAD"]);
       fetch(ctx);
       prBody = out.prBody ?? prBody;
       pr ??= await ctx.forge.openPr({ branch, base: ctx.trunk, title: `${ticket.id}: ${ticket.title}`, body: prBody });

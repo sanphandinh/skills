@@ -11,6 +11,12 @@ Issues and specs for this repo live as markdown files in `.scratch/`.
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
 - `.scratch/` is committed with the repo, so claims and handoffs reach everyone who pulls
 
+## Pull requests
+
+**Pull requests:** github <owner>/<repo>
+
+Code for a ticket still goes through a pull request on this repository, even though tickets live here. Every pull request operation names this repository explicitly; never let a tool infer it from git remotes, because a second remote (such as `upstream`) may point somewhere else.
+
 ## Claiming and closing tickets
 
 - **Claim**: add `Claimed-by: <who>` (a person, or `autopilot@<host>`) near the top, commit only that change, and push it to trunk before any other work. A rejected push means someone claimed first: pull and pick another ticket.

@@ -326,3 +326,27 @@ test("an implementer that leaves no handoff, or reports failure, gets a fix roun
   assert.equal(harness.calls.filter((c) => c.role === "verifier").length, 1, "review waits for a complete attempt");
   assert.equal(report.tickets[0].outcome, "merged");
 });
+
+// ---------- 09: pushes only with a lease on the run's own branch ----------
+
+test("a push by someone else to the ticket branch stops the run instead of being overwritten", async () => {
+  const fx = oneTicket();
+  const harness = fakeHarness(
+    happyRoles({
+      verifier: ({ cwd, call }) => {
+        if (call === 1) {
+          fs.writeFileSync(path.join(cwd, "src/theirs.js"), "theirs\n");
+          sh(cwd, "add", "-A");
+          sh(cwd, "commit", "-qm", "someone else");
+          sh(cwd, "push", "-q", "origin", "HEAD:autopilot/demo/01");
+          return { verdict: "FAIL", evidence: "needs a fix" };
+        }
+        return PASS();
+      },
+    }),
+  );
+  const report = await run(fx, harness, fakeForge(fx));
+  assert.equal(report.tickets[0].outcome, "ready-for-human");
+  assert.match(report.tickets[0].reason, /someone else pushed/);
+  assert.equal(sh(fx.remote, "show", "autopilot/demo/01:src/theirs.js"), "theirs", "their commit survives");
+});
