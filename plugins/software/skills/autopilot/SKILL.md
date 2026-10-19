@@ -24,6 +24,8 @@ From the repository root, run:
 node <this skill's folder>/scripts/autopilot.mjs run <spec path> --harness <omp|claude>
 ```
 
+To take over tickets a dead run had claimed, pass `--as <name>` with the name on their `Claimed-by:` line; a run resumes its own claims and continues their branches.
+
 Use the harness the user named; otherwise the one this session runs on. Pass `--concurrency <n>` when the user asks for parallel tickets, `--max-tokens <n>` or `--max-minutes <n>` to change the per-ticket budget, and `--dry-run` to show the frontier without changing anything.
 
 ## Report

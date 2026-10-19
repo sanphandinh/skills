@@ -28,14 +28,25 @@ export async function runAutopilot(opts) {
     return { status: "dry-run", tickets: ready.map((t) => ({ id: t.id, title: t.title, outcome: "ready" })) };
   }
 
+  // Keep up to `concurrency` tickets in flight; after each finishes, re-read
+  // trunk, because a merge may have unblocked more.
   const outcomes = new Map();
+  const running = new Map();
   for (;;) {
     fetch(ctx);
-    const next = frontier(ctx, readTickets(ctx), outcomes);
-    if (!next.length) break;
-    const ticket = next[0];
-    if (!claim(ctx, ticket)) continue;
-    outcomes.set(ticket.id, await work(ctx, ticket));
+    for (const ticket of frontier(ctx, readTickets(ctx), outcomes)) {
+      if (running.size >= ctx.concurrency) break;
+      if (running.has(ticket.id) || !claim(ctx, ticket)) continue;
+      running.set(
+        ticket.id,
+        work(ctx, ticket).then((outcome) => {
+          outcomes.set(ticket.id, outcome);
+          running.delete(ticket.id);
+        }),
+      );
+    }
+    if (!running.size) break;
+    await Promise.race(running.values());
   }
   return { status: "done", tickets: [...outcomes.values(), ...blocked(readTickets(ctx), outcomes)] };
 }
@@ -63,6 +74,7 @@ function context({
   stateDir,
   dryRun = false,
   maxFixRounds = 2,
+  concurrency = 1,
   ciTimeoutMs = 30 * 60_000,
   ciPollMs = 30_000,
   budget = {},
@@ -85,6 +97,7 @@ function context({
     who,
     dryRun,
     maxFixRounds,
+    concurrency: Math.max(1, concurrency),
     ciTimeoutMs,
     ciPollMs,
   };
@@ -104,9 +117,17 @@ function readTickets(ctx) {
     });
 }
 
+// Open tickets whose blockers are all closed on trunk, unclaimed or claimed
+// under this run's own name (a run that died is resumed by the next one).
 function frontier(ctx, tickets, outcomes) {
   const closed = new Set(tickets.filter((t) => t.status === "closed").map((t) => t.id));
-  return tickets.filter((t) => t.status === "ready-for-agent" && !t.claimedBy && !outcomes.has(t.id) && t.blockedBy.every((b) => closed.has(b)));
+  return tickets.filter(
+    (t) =>
+      t.status === "ready-for-agent" &&
+      (!t.claimedBy || t.claimedBy === ctx.who) &&
+      !outcomes.has(t.id) &&
+      t.blockedBy.every((b) => closed.has(b)),
+  );
 }
 
 // Commit a tracker-only edit straight to trunk. A rejected push means trunk
@@ -119,6 +140,7 @@ function editTrunk(ctx, rel, edit, message, { retry = true } = {}) {
       const before = fs.readFileSync(file, "utf8");
       const after = edit(before);
       if (after === null) return false;
+      if (after === "resume") return true;
       fs.writeFileSync(file, after);
       git(wt.dir, ["add", rel]);
       git(wt.dir, ["commit", "-qm", message]);
@@ -137,7 +159,11 @@ function claim(ctx, ticket) {
   return editTrunk(
     ctx,
     ticket.rel,
-    (text) => (getField(text, "Claimed-by") ? null : setField(setField(text, "Claimed-by", ctx.who), "Autopilot", "implementing")),
+    (text) => {
+      const holder = getField(text, "Claimed-by");
+      if (holder === ctx.who) return "resume";
+      return holder ? null : setField(setField(text, "Claimed-by", ctx.who), "Autopilot", "implementing");
+    },
     `autopilot: claim ${ticket.id}`,
     { retry: false },
   );
@@ -191,13 +217,15 @@ function budgeted(ctx, ticket) {
 async function work(ctx, ticket) {
   const branch = `autopilot/${ctx.slug}/${ticket.id}`;
   const head = `${ctx.remote}/${branch}`;
-  const wt = worktree(ctx.repo, ctx.trunkRef, { branch });
+  // Continue a branch an earlier run pushed; otherwise cut it from trunk.
+  const resumed = gitOk(ctx.repo, ["rev-parse", "--verify", "-q", head]);
+  const wt = worktree(ctx.repo, resumed ? head : ctx.trunkRef, { branch });
   const done = (outcome, extra = {}) => ({ id: ticket.id, title: ticket.title, outcome, ...extra });
-  let pr = null;
+  let pr = resumed && ctx.forge.findPr ? await ctx.forge.findPr(branch) : null;
   let prBody = "";
   let findings = [];
   let gate;
-  let lastPushed = "";
+  let lastPushed = resumed ? git(ctx.repo, ["rev-parse", head]) : "";
   const agent = budgeted(ctx, ticket);
   const st = ctx.state.ticket(ticket.id);
   try {

@@ -115,6 +115,10 @@ export function fakeForge(fx, { ci = () => "pass" } = {}) {
       prs.push(pr);
       return { number: pr.number, url: `https://example.test/pr/${pr.number}` };
     },
+    async findPr(branch) {
+      const pr = prs.find((p) => p.branch === branch && p.state === "open");
+      return pr ? { number: pr.number, url: `https://example.test/pr/${pr.number}` } : null;
+    },
     async comment(number, body) {
       prs[number - 1].comments.push(body);
     },

@@ -1,4 +1,4 @@
-// Forge port: openPr, comment, ciStatus, merge, isMerged. The adapter and the
+// Forge port: openPr, findPr, comment, ciStatus, merge, isMerged. The adapter and the
 // repository come from the tracker doc's `Pull requests:` line, and every call
 // names that repository explicitly, so a second remote (such as `upstream`)
 // can never receive a pull request or a merge.
@@ -37,6 +37,10 @@ function github({ repo, command, cwd }) {
     async openPr({ branch, base, title, body }) {
       const url = must(["pr", "create", "--head", branch, "--base", base, "--title", title, "--body-file", "-"], body).trim().split("\n").at(-1);
       return { number: Number(url.match(/\/pull\/(\d+)/)?.[1]), url };
+    },
+    async findPr(branch) {
+      const [pr] = JSON.parse(must(["pr", "list", "--head", branch, "--state", "open", "--json", "number,url"]) || "[]");
+      return pr ?? null;
     },
     async comment(number, body) {
       must(["pr", "comment", String(number), "--body-file", "-"], body);

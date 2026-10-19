@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Command line entry: `autopilot.mjs run <spec> --harness <name> [options]`.
+import os from "node:os";
 import { parseArgs } from "node:util";
 import { createForge } from "./lib/forge.mjs";
 import { createHarness } from "./lib/harness.mjs";
@@ -14,6 +15,7 @@ const { positionals, values } = parseArgs({
     remote: { type: "string", default: "origin" },
     trunk: { type: "string", default: "main" },
     concurrency: { type: "string", default: "1" },
+    as: { type: "string", default: `autopilot@${os.hostname()}` },
     "max-tokens": { type: "string" },
     "max-minutes": { type: "string" },
     "dry-run": { type: "boolean", default: false },
@@ -23,7 +25,7 @@ const { positionals, values } = parseArgs({
 
 const [command, spec] = positionals;
 if (values.help || command !== "run" || !spec || !values.harness) {
-  console.log("usage: autopilot.mjs run <spec path> --harness <omp|claude> [--repo dir] [--remote origin] [--trunk main] [--concurrency n] [--max-tokens n] [--max-minutes n] [--dry-run]");
+  console.log("usage: autopilot.mjs run <spec path> --harness <omp|claude> [--repo dir] [--remote origin] [--trunk main] [--concurrency n] [--as name] [--max-tokens n] [--max-minutes n] [--dry-run]");
   process.exit(values.help ? 0 : 1);
 }
 
@@ -35,6 +37,7 @@ const report = await runAutopilot({
   remote: values.remote,
   trunk: values.trunk,
   concurrency: Number(values.concurrency),
+  who: values.as,
   budget: {
     ...(values["max-tokens"] ? { tokens: Number(values["max-tokens"]) } : {}),
     ...(values["max-minutes"] ? { timeMs: Number(values["max-minutes"]) * 60_000 } : {}),

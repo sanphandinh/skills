@@ -10,12 +10,14 @@ import {
   SPEC_OK,
   STANDARDS_OK,
   TICKET,
+  anotherClone,
   fakeForge,
   fakeHarness,
   implementer,
   onTrunk,
   repoFixture,
   sh,
+  write,
 } from "./test-helpers.mjs";
 
 const SPEC_PATH = ".scratch/demo/spec.md";
@@ -404,4 +406,67 @@ test("a ticket whose blocker went to the human stays blocked and is reported", a
   assert.equal(harness.calls.filter((c) => c.role === "implementer").length, 1, "02 never started");
   assert.deepEqual(report.tickets.map((t) => [t.id, t.outcome]), [["01", "ready-for-human"], ["02", "blocked"]]);
   assert.match(report.tickets[1].reason, /01 \(ready-for-human\)/);
+});
+
+// ---------- 11: claim lock, parallel frontier, resume ----------
+
+test("when another claimant's push lands first, the run backs off and leaves the ticket to them", async () => {
+  const fx = oneTicket();
+  const rival = anotherClone(fx, "rival");
+  const file = path.join(rival, T("01"));
+  fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace("# 01: First thing\n", "# 01: First thing\n\nClaimed-by: rival@elsewhere\n"));
+  sh(rival, "commit", "-qam", "rival claims 01");
+  // The rival's claim reaches the remote just before ours does.
+  const marker = path.join(fx.base, "rival-pushed");
+  write(fx.clone, {
+    ".git/hooks/pre-push": `#!/bin/sh\n[ -f "${marker}" ] && exit 0\ntouch "${marker}"\nenv -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE git -C "${rival}" push -q origin HEAD:main\n`,
+  });
+  fs.chmodSync(path.join(fx.clone, ".git/hooks/pre-push"), 0o755);
+
+  const harness = fakeHarness(happyRoles());
+  const report = await run(fx, harness, fakeForge(fx));
+  assert.equal(harness.calls.length, 0, "no work on a ticket someone else holds");
+  assert.deepEqual(report.tickets, []);
+  assert.match(onTrunk(fx, T("01")), /Claimed-by: rival@elsewhere/);
+  assert.doesNotMatch(onTrunk(fx, T("01")), /autopilot@test/);
+});
+
+test("independent tickets on the frontier run at the same time, up to the concurrency limit", async () => {
+  const fx = repoFixture({ [SPEC_PATH]: SPEC(), [T2("01", "a")]: TICKET("01", "A"), [T2("02", "b")]: TICKET("02", "B"), [T2("03", "c")]: TICKET("03", "C") });
+  let running = 0;
+  let peak = 0;
+  const harness = fakeHarness(
+    happyRoles({
+      implementer: async (ctx) => {
+        running++;
+        peak = Math.max(peak, running);
+        await new Promise((r) => setTimeout(r, 50));
+        running--;
+        return implementer()(ctx);
+      },
+    }),
+  );
+  const report = await run(fx, harness, fakeForge(fx), { concurrency: 2 });
+  assert.equal(peak, 2);
+  assert.deepEqual(report.tickets.map((t) => t.outcome).sort(), ["merged", "merged", "merged"]);
+});
+
+test("a run on another machine picks up a ticket claimed under its name from the tracker and branch alone", async () => {
+  const fx = oneTicket();
+  // Machine A claimed the ticket and pushed a partial branch, then died.
+  const a = anotherClone(fx, "machine-a");
+  const file = path.join(a, T("01"));
+  fs.writeFileSync(file, fs.readFileSync(file, "utf8").replace("# 01: First thing\n", "# 01: First thing\n\nClaimed-by: autopilot@test\nAutopilot: implementing\n"));
+  sh(a, "commit", "-qam", "autopilot: claim 01");
+  sh(a, "push", "-q", "origin", "HEAD:main");
+  write(a, { "src/partial.js": "partial\n" });
+  sh(a, "add", "-A");
+  sh(a, "commit", "-qm", "partial work");
+  sh(a, "push", "-q", "origin", "HEAD:refs/heads/autopilot/demo/01");
+
+  const harness = fakeHarness(happyRoles());
+  const forge = fakeForge(fx);
+  const report = await run(fx, harness, forge);
+  assert.deepEqual(report.tickets.map((t) => [t.id, t.outcome]), [["01", "merged"]]);
+  assert.equal(onTrunk(fx, "src/partial.js"), "partial", "the earlier branch was continued, not discarded");
 });
