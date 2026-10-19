@@ -1,24 +1,28 @@
-// Forge port: openPr, findPr, comment, ciStatus, merge, isMerged. The adapter and the
-// repository come from the tracker doc's `Pull requests:` line, and every call
+// Forge port: openPr, findPr, comment, ciStatus, merge, isMerged. The host and
+// the repository come from the tracker doc's `Pull requests:` line (else its
+// `Tracker:` line when that names GitHub or GitLab), and every call
 // names that repository explicitly, so a second remote (such as `upstream`)
 // can never receive a pull request or a merge.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { gitlabForge, glabApi } from "./trackers/gitlab.mjs";
 
 const TRACKER_DOC = "docs/agents/issue-tracker.md";
 
 export function forgeConfig(repoDir) {
   const file = path.join(repoDir, TRACKER_DOC);
   const text = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "";
-  const m = text.match(/^(?:\*\*)?Pull requests:(?:\*\*)?\s*(\w+)\s+([\w.-]+\/[\w.-]+)\s*$/m);
-  if (!m) throw new Error(`${TRACKER_DOC} has no "Pull requests: github <owner>/<repo>" line, so autopilot does not know where pull requests go`);
+  const m =
+    text.match(/^(?:\*\*)?Pull requests:(?:\*\*)?\s*(github|gitlab)\s+([\w.-]+(?:\/[\w.-]+)+)\s*$/im) ??
+    text.match(/^(?:\*\*)?Tracker:(?:\*\*)?\s*(github|gitlab)\s+([\w.-]+(?:\/[\w.-]+)+)\s*$/im);
+  if (!m) throw new Error(`${TRACKER_DOC} has no "Pull requests: github|gitlab <owner>/<repo>" line, so autopilot does not know where pull requests go`);
   return { kind: m[1].toLowerCase(), repo: m[2] };
 }
 
-export function createForge({ repoDir, command }) {
+export function createForge({ repoDir, command, transport }) {
   const cfg = forgeConfig(repoDir);
-  if (cfg.kind !== "github") throw new Error(`unsupported pull request host "${cfg.kind}"`);
+  if (cfg.kind === "gitlab") return gitlabForge({ repo: cfg.repo, api: transport ?? glabApi({ cwd: repoDir, ...(command ? { command } : {}) }) });
   return github({ repo: cfg.repo, command: command ?? "gh", cwd: repoDir });
 }
 

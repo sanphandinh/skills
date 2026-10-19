@@ -87,3 +87,11 @@ test("smoke: gh reads the configured repository", { skip: !process.env.AUTOPILOT
   const forge = createForge({ repoDir: path.resolve(new URL("../../../../..", import.meta.url).pathname) });
   assert.equal(typeof (await forge.isMerged(1).catch(() => false)), "boolean");
 });
+
+test("the forge host comes from the Pull requests line, else from a GitHub or GitLab Tracker line", async () => {
+  const { forgeConfig } = await import("./lib/forge.mjs");
+  assert.deepEqual(forgeConfig(repoWithTracker("Pull requests: gitlab acme/sub/app")), { kind: "gitlab", repo: "acme/sub/app" });
+  assert.deepEqual(forgeConfig(repoWithTracker("Tracker: github acme/app")), { kind: "github", repo: "acme/app" });
+  assert.deepEqual(forgeConfig(repoWithTracker("Tracker: jira https://acme.atlassian.net APP\nPull requests: github acme/app")), { kind: "github", repo: "acme/app" });
+  assert.throws(() => forgeConfig(repoWithTracker("Tracker: jira https://acme.atlassian.net APP")), /Pull requests:/);
+});

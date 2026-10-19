@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { githubTracker, ghApi } from "./github.mjs";
+import { gitlabTracker, glabApi } from "./gitlab.mjs";
 import { labelMap } from "./labels.mjs";
 import { localTracker } from "./local.mjs";
 
@@ -28,6 +29,10 @@ export const factories = {
   github: ({ repoDir, spec, cfg, transport }) => {
     if (!cfg.repo) throw new Error(`${TRACKER_DOC}: "Tracker: github" needs <owner>/<repo>`);
     return githubTracker({ repo: cfg.repo, spec, api: transport ?? ghApi({ cwd: repoDir }), labels: labelMap(read(repoDir, LABELS_DOC)), cwd: repoDir });
+  },
+  gitlab: ({ repoDir, spec, cfg, transport }) => {
+    if (!cfg.repo) throw new Error(`${TRACKER_DOC}: "Tracker: gitlab" needs <group>/<project>`);
+    return gitlabTracker({ repo: cfg.repo, spec, api: transport ?? glabApi({ cwd: repoDir }), labels: labelMap(read(repoDir, LABELS_DOC)), cwd: repoDir });
   },
 };
 

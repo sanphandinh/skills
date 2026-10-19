@@ -177,3 +177,56 @@ export function fakeGitHub(repo = "acme/app") {
   };
   return { api, issues, add, repo };
 }
+
+// In-memory GitLab REST v4 API for the issue, link, note, and merge request
+// endpoints the adapters use.
+export function fakeGitLab(repo = "acme/app") {
+  const issues = new Map();
+  const mrs = [];
+  const enc = encodeURIComponent(repo);
+  const add = (i) => {
+    issues.set(i.iid, { state: "opened", labels: [], description: "", notes: [], links: [], ...i });
+    return issues.get(i.iid);
+  };
+  const view = (i) => ({ iid: i.iid, title: i.title, description: i.description, state: i.state, labels: [...i.labels] });
+  const api = async (method, p, body = {}) => {
+    const [pathname, query = ""] = p.split("?");
+    const q = new URLSearchParams(query);
+    const base = `projects/${enc}/`;
+    if (!pathname.startsWith(base)) throw new Error(`fake GitLab: wrong project in ${p}`);
+    const rest = pathname.slice(base.length);
+    let m;
+    if ((m = rest.match(/^issues\/(\d+)$/))) {
+      const i = issues.get(Number(m[1]));
+      if (!i) throw new Error("fake GitLab: 404");
+      if (method === "GET") return view(i);
+      if (method === "PUT") {
+        const remove = new Set(String(body.remove_labels ?? "").split(",").filter(Boolean));
+        i.labels = i.labels.filter((l) => !remove.has(l));
+        if (body.add_labels) i.labels = [...new Set([...i.labels, ...body.add_labels.split(",")])];
+        if (body.state_event === "close") i.state = "closed";
+        return view(i);
+      }
+    }
+    if ((m = rest.match(/^issues\/(\d+)\/links$/))) return issues.get(Number(m[1])).links.map((l) => ({ ...view(issues.get(l.iid)), link_type: l.type }));
+    if ((m = rest.match(/^issues\/(\d+)\/notes$/))) {
+      const i = issues.get(Number(m[1]));
+      if (method === "GET") return i.notes.map((n) => ({ ...n }));
+      return i.notes.push({ body: body.body }) && null;
+    }
+    if (rest === "merge_requests" && method === "POST") {
+      const mr = { iid: mrs.length + 1, web_url: `https://gitlab.test/${repo}/-/merge_requests/${mrs.length + 1}`, state: "opened", notes: [], ...body };
+      mrs.push(mr);
+      return mr;
+    }
+    if (rest === "merge_requests" && method === "GET") return mrs.filter((x) => x.state === q.get("state") && x.source_branch === q.get("source_branch"));
+    if ((m = rest.match(/^merge_requests\/(\d+)(\/notes|\/merge)?$/))) {
+      const mr = mrs[Number(m[1]) - 1];
+      if (m[2] === "/notes") return mr.notes.push(body.body) && null;
+      if (m[2] === "/merge") return (mr.state = "merged") && mr;
+      return mr;
+    }
+    throw new Error(`fake GitLab: no route for ${method} ${p}`);
+  };
+  return { api, issues, mrs, add, repo };
+}

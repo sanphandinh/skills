@@ -101,3 +101,64 @@ test("the tracker doc's Tracker line picks the adapter, and no line means local"
   assert.deepEqual(trackerConfig("Tracker: gitlab group/sub/project"), { kind: "gitlab", repo: "group/sub/project" });
   assert.deepEqual(trackerConfig("Tracker: jira https://acme.atlassian.net APP"), { kind: "jira", site: "https://acme.atlassian.net", project: "APP" });
 });
+
+// ---------- GitLab ----------
+
+import { gitlabForge, gitlabTracker } from "./lib/trackers/gitlab.mjs";
+import { fakeGitLab } from "./test-helpers.mjs";
+
+function gitlab() {
+  const gl = fakeGitLab("acme/sub/app");
+  gl.add({ iid: 1, title: "Spec", labels: ["agent:ready"], links: [{ iid: 2, type: "relates_to" }, { iid: 3, type: "relates_to" }] });
+  gl.add({ iid: 2, title: "Base", labels: ["agent:ready"] });
+  gl.add({ iid: 3, title: "On top", labels: ["agent:ready"], links: [{ iid: 2, type: "is_blocked_by" }], description: "**Door:** two-way" });
+  return { gl, tracker: gitlabTracker({ repo: gl.repo, spec: "#1", api: gl.api, labels: LABELS }) };
+}
+
+test("gitlab: issues linked to the spec are its tickets, with is_blocked_by edges, and claims use the shared lock", async () => {
+  const { gl, tracker } = gitlab();
+  const tickets = await tracker.tickets();
+  assert.deepEqual(tickets.map((t) => [t.id, t.status, t.blockedBy, t.door]), [["2", "ready-for-agent", [], null], ["3", "ready-for-agent", ["2"], "two-way"]]);
+  assert.equal(tracker.pointer(tickets[0]), "gitlab acme/sub/app#2");
+  assert.equal(await tracker.claim(tickets[0], "autopilot@a"), "claimed");
+  assert.equal(await tracker.claim(tickets[0], "autopilot@b"), false);
+  await tracker.handToHuman(tickets[0], "needs a decision");
+  assert.deepEqual(gl.issues.get(2).labels, ["human"]);
+  await tracker.afterMerge(tickets[1], { handoff: "done", pr: { url: "https://gitlab.test/mr/1" } });
+  assert.equal(gl.issues.get(3).state, "closed");
+  assert.match(gl.issues.get(3).notes.at(-1).body, /## Handoff/);
+});
+
+test("gitlab forge: merge requests on the configured project, with pipeline status as CI", async () => {
+  const gl = fakeGitLab("acme/sub/app");
+  const forge = gitlabForge({ repo: gl.repo, api: gl.api });
+  const pr = await forge.openPr({ branch: "autopilot/gl-1/2", base: "main", title: "2: Base", body: "Closes acme/sub/app#2" });
+  assert.deepEqual(pr, { number: 1, url: "https://gitlab.test/acme/sub/app/-/merge_requests/1" });
+  assert.deepEqual(await forge.findPr("autopilot/gl-1/2"), pr);
+  assert.equal(await forge.ciStatus(1), "pass", "no pipeline counts as passing");
+  gl.mrs[0].head_pipeline = { status: "running" };
+  assert.equal(await forge.ciStatus(1), "pending");
+  gl.mrs[0].head_pipeline = { status: "failed" };
+  assert.equal(await forge.ciStatus(1), "fail");
+  await forge.comment(1, "Verdict: PASS");
+  await forge.merge(1);
+  assert.equal(await forge.isMerged(1), true);
+  assert.deepEqual(gl.mrs[0].notes, ["Verdict: PASS"]);
+});
+
+test("gitlab: one run builds the linked issues in order and closes them", async () => {
+  const { gl, tracker } = gitlab();
+  const fx = repoFixture({});
+  const report = await runAutopilot({
+    repoDir: fx.clone,
+    spec: "#1",
+    tracker,
+    harness: fakeHarness({ implementer: implementer(), verifier: PASS, "review-spec": SPEC_OK, "review-standards": STANDARDS_OK }),
+    forge: fakeForge(fx),
+    stateDir: fx.stateDir,
+    who: "autopilot@test",
+  });
+  assert.deepEqual(report.tickets.map((t) => [t.id, t.outcome]), [["2", "merged"], ["3", "merged"]]);
+  assert.equal(gl.issues.get(2).state, "closed");
+  assert.match(onTrunk(fx, ".autopilot/gl-1/trail/3.tsv"), /\tautopilot\tmerge\t/);
+});
