@@ -31,6 +31,12 @@ roles:
     omp: ["@reviewer", "@slow"]
     claude: opus
     codex: high
+  verifier:
+    purpose: proving a change works on the real product, independent of its author (software)
+    custom: true
+    omp: ["@verifier", "@slow"]
+    claude: opus
+    codex: high
   writer:
     purpose: drafting copy and articles in the brand voice (marketing, seo)
     custom: true
@@ -51,6 +57,7 @@ role to a model. Change models in your config, not in this repo.
 | architect | specs, tickets, interface design | `@plan` | `opus` | high |
 | judge | quick pass or fail checks | `@tiny` | `haiku` | low |
 | reviewer (custom) | code review | `@reviewer`, falls back to `@slow` | `opus` | high |
+| verifier (custom) | proving a change works, not its author | `@verifier`, falls back to `@slow` | `opus` | high |
 | writer (custom) | copy and articles | `@writer`, falls back to `@default` | `sonnet` | medium |
 
 The frontmatter above is the machine-readable copy; `npm run validate` checks

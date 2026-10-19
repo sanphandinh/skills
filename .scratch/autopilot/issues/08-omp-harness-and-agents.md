@@ -4,11 +4,15 @@
 
 **Blocked by:** 05
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] The OMP adapter runs a role non-interactively with JSON output and maps it to the harness port's result
-- [ ] `implementer` and `verifier` agents exist in the OMP plugin (typed output for the verifier) and the Claude plugin, with the same names
-- [ ] `ROLES.md` gains a custom `verifier` role with an OMP fallback; implementer uses `worker`, reviewers use `reviewer`
-- [ ] Agent prompts carry the always-pause list (force-push to shared branches, deploys, data deletion, customer messages)
-- [ ] An opt-in smoke test runs a trivial role through a real `omp`; it is skipped in the default suite
-- [ ] `npm run validate` and `npm test` pass
+- [x] The OMP adapter runs a role non-interactively with JSON output and maps it to the harness port's result
+- [x] `implementer` and `verifier` agents exist in the OMP plugin (typed output for the verifier) and the Claude plugin, with the same names
+- [x] `ROLES.md` gains a custom `verifier` role with an OMP fallback; implementer uses `worker`, reviewers use `reviewer`
+- [x] Agent prompts carry the always-pause list (force-push to shared branches, deploys, data deletion, customer messages)
+- [x] An opt-in smoke test runs a trivial role through a real `omp`; it is skipped in the default suite
+- [x] `npm run validate` and `npm test` pass
+
+## Comments
+
+Done. The adapter runs one `omp -p --mode json --auto-approve` session per role and asks it to delegate to the named agent, so the agent definition picks the model through its role. Adapter tests run against a stand-in executable; the real-omp smoke test runs only with `AUTOPILOT_SMOKE_OMP=1`. On Claude Code the verifier is `opus` and the implementer `inherit`; ticket 14 runs the parent session on a different alias so the implementer never shares the reviewers' model.
