@@ -398,22 +398,22 @@ async function work(ctx, ticket) {
       if (patchId(ctx.repo, ctx.trunkRef, head) !== gate.patch) return human("the branch keeps changing after verification");
     }
 
-    const ci = await waitForCi(ctx, pr);
-    if (ci !== "pass") return human(`CI is ${ci}`);
     const refused = refusals(loadPolicy(show(ctx.repo, ctx.trunkRef, POLICY_DOC)), {
       verifyDoc: show(ctx.repo, ctx.trunkRef, VERIFY_DOC) !== null,
       prBody,
       changedFiles: changedFiles(ctx.repo, ctx.trunkRef, head),
     });
     if (refused.length) return human(refused.join("; "));
+    const ci = await waitForCi(ctx, pr);
+    if (ci !== "pass") return human(`CI is ${ci}`);
     trail.add("autopilot", "merge", `every gate passed on patch ${gate.patch}`);
     if (!trail.land(wt.dir, branch, lastPushed)) return human("could not record the decision trail on the branch");
     await ctx.forge.merge(pr.number);
     if (!(await ctx.forge.isMerged(pr.number))) return human("the merge did not land");
     return done("merged", { pr: pr.url });
   } catch (err) {
-    if (err instanceof OverBudget) return human(err.message);
-    throw err;
+    // One ticket's failure must not strand the rest of an unattended run.
+    return human(err instanceof OverBudget ? err.message : `autopilot hit an error: ${err.message}`);
   } finally {
     wt.cleanup();
   }

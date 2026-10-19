@@ -571,3 +571,27 @@ test("each ticket's decision trail lands with it, and the report sorts every tic
   assert.match(text, /## Blocked\n\n- 03 After breaks: waiting on 02 \(ready-for-human\)/);
   assert.match(text, /## Needs approval\n\n- 04 Not approved/);
 });
+
+// ---------- review fixes ----------
+
+test("an unexpected failure on one ticket hands it to the human and the run goes on", async () => {
+  const fx = repoFixture({ [SPEC_PATH]: SPEC(), [T2("01", "a")]: TICKET("01", "A"), [T2("02", "b")]: TICKET("02", "B") });
+  const forge = fakeForge(fx);
+  const open = forge.openPr;
+  forge.openPr = async (args) => {
+    if (args.title.startsWith("01")) throw new Error("GitHub is down");
+    return open(args);
+  };
+  const report = await run(fx, fakeHarness(happyRoles()), forge);
+  assert.deepEqual(report.tickets.map((t) => [t.id, t.outcome]), [["01", "ready-for-human"], ["02", "merged"]]);
+  assert.match(report.tickets[0].reason, /GitHub is down/);
+});
+
+test("the merge policy is checked before waiting on CI", async () => {
+  let ciAsked = 0;
+  const fx = oneTicket({ verifyDoc: false });
+  const forge = fakeForge(fx, { ci: () => (ciAsked++, "pass") });
+  const report = await run(fx, fakeHarness(happyRoles()), forge);
+  assert.equal(report.tickets[0].outcome, "ready-for-human");
+  assert.equal(ciAsked, 0);
+});
