@@ -106,8 +106,10 @@ A project also needs, from `setup-software-context` and `setup-verification`:
 Run it from the repository root:
 
 ```bash
-node <plugin folder>/skills/autopilot/scripts/autopilot.mjs run .scratch/<feature>/spec.md --harness omp
+node <plugin folder>/skills/autopilot/scripts/autopilot.mjs run .scratch/<feature>/spec.md
 ```
+
+The harness is detected: the agent session the script runs inside (`omp` or `claude` among its parent processes, or `CLAUDECODE=1`), else the agent plugin the project installed, else the only agent CLI on PATH. `--harness` overrides it.
 
 The adapters' smoke tests call the real CLIs only when asked:
 `AUTOPILOT_SMOKE_OMP=1`, `AUTOPILOT_SMOKE_CLAUDE=1`, `AUTOPILOT_SMOKE_GH=1`.

@@ -1,7 +1,7 @@
 ---
 name: autopilot
 description: "Build an approved spec unattended: one independently verified and reviewed pull request per ticket, auto-merged when the merge policy allows."
-argument-hint: "<spec path> [harness: omp | claude]"
+argument-hint: "<spec> [--harness omp|claude]"
 disable-model-invocation: true
 ---
 
@@ -21,12 +21,14 @@ Check each one and stop with the reason when one fails:
 From the repository root, run:
 
 ```bash
-node <this skill's folder>/scripts/autopilot.mjs run <spec path> --harness <omp|claude>
+node <this skill's folder>/scripts/autopilot.mjs run <spec>
 ```
+
+The script picks the harness itself (the session it runs inside, else the agent plugin the project installed, else the only agent CLI on PATH) and prints which one and why. Pass `--harness <omp|claude>` only when the user names one or the script asks for it.
 
 To take over tickets a dead run had claimed, pass `--as <name>` with the name on their `Claimed-by:` line; a run resumes its own claims and continues their branches.
 
-Use the harness the user named; otherwise the one this session runs on. Pass `--concurrency <n>` when the user asks for parallel tickets, `--max-tokens <n>` or `--max-minutes <n>` to change the per-ticket budget, and `--dry-run` to show the frontier without changing anything.
+Pass `--concurrency <n>` when the user asks for parallel tickets, `--max-tokens <n>` or `--max-minutes <n>` to change the per-ticket budget, and `--dry-run` to show the frontier without changing anything.
 
 ## Report
 

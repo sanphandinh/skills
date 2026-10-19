@@ -96,3 +96,39 @@ test("smoke: a real claude answers a trivial role", { skip: !process.env.AUTOPIL
   const result = await createHarness("claude").run({ role: "trivial", prompt: 'Reply with exactly this and nothing else:\n```json\n{ "ok": true }\n```', cwd: tmp(), delegate: false });
   assert.deepEqual(result.output, { ok: true });
 });
+
+// ---------- harness detection ----------
+
+import { detectHarness } from "./lib/harness.mjs";
+
+const noProject = () => tmp("autopilot-proj-");
+const detect = (o) =>
+  detectHarness({ repoDir: o.repoDir ?? noProject(), ancestors: () => o.ancestors ?? [], onPath: (c) => (o.path ?? []).includes(c), explicit: o.explicit, env: o.env ?? {} });
+
+test("an explicit harness always wins", () => {
+  assert.deepEqual(detect({ explicit: "claude", ancestors: ["zsh", "omp"] }), { name: "claude", why: "--harness" });
+});
+
+test("the session autopilot runs inside picks the harness", () => {
+  assert.deepEqual(detect({ ancestors: ["node", "bash", "omp", "zsh"], path: ["omp", "claude"] }), { name: "omp", why: "running inside omp" });
+  assert.deepEqual(detect({ ancestors: ["node", "/opt/homebrew/bin/claude", "zsh"], path: ["omp", "claude"] }), { name: "claude", why: "running inside claude" });
+  assert.deepEqual(detect({ ancestors: ["node", "zsh"], env: { CLAUDECODE: "1" }, path: ["omp", "claude"] }), { name: "claude", why: "running inside claude" });
+});
+
+test("from a plain terminal, the agent plugin installed in the project picks the harness", () => {
+  const omp = noProject();
+  fs.mkdirSync(path.join(omp, ".omp/plugins"), { recursive: true });
+  fs.writeFileSync(path.join(omp, ".omp/plugins/installed_plugins.json"), JSON.stringify({ plugins: { "software-omp@sanphan-skills": [{}] } }));
+  assert.deepEqual(detect({ repoDir: omp, ancestors: ["zsh"], path: ["omp", "claude"] }), { name: "omp", why: "software-omp is installed in the project" });
+
+  const claude = noProject();
+  fs.mkdirSync(path.join(claude, ".claude"), { recursive: true });
+  fs.writeFileSync(path.join(claude, ".claude/settings.json"), JSON.stringify({ enabledPlugins: { "software-claude@sanphan-skills": true } }));
+  assert.deepEqual(detect({ repoDir: claude, ancestors: ["zsh"], path: ["omp", "claude"] }), { name: "claude", why: "software-claude is enabled in the project" });
+});
+
+test("with no other signal, the only agent CLI on PATH is used, and anything ambiguous asks for --harness", () => {
+  assert.deepEqual(detect({ ancestors: ["zsh"], path: ["claude"] }), { name: "claude", why: "the only agent CLI on PATH" });
+  assert.throws(() => detect({ ancestors: ["zsh"], path: ["omp", "claude"] }), /pass --harness omp or --harness claude/);
+  assert.throws(() => detect({ ancestors: ["zsh"], path: [] }), /no agent CLI/);
+});

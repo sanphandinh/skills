@@ -3,7 +3,9 @@
 // its reply with. One adapter per agent harness; each runs one fresh,
 // non-interactive session per call and lets the harness's own agent
 // definitions pick the model for the role.
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import path from "node:path";
 
 const adapters = {
   omp: (opts) => cliHarness({ ...opts, command: opts.command ?? "omp", args: ompArgs, parse: parseOmp }),
@@ -21,6 +23,60 @@ export function createHarness(name, options = {}) {
   const make = adapters[name];
   if (!make) throw new Error(`unknown harness "${name}"; available: ${Object.keys(adapters).join(", ")}`);
   return make(options);
+}
+
+// Which harness to run roles through, and why: an explicit choice, else the
+// agent session this script runs inside, else the agent plugin the project
+// installed, else the only agent CLI on PATH.
+export function detectHarness({ explicit, repoDir, ancestors = processAncestors, onPath = commandOnPath, env = process.env } = {}) {
+  const names = Object.keys(adapters);
+  if (explicit) return { name: explicit, why: "--harness" };
+  if (env.CLAUDECODE === "1") return { name: "claude", why: "running inside claude" };
+  for (const proc of ancestors()) {
+    const base = path.basename(proc).replace(/\.exe$/, "");
+    if (names.includes(base)) return { name: base, why: `running inside ${base}` };
+  }
+  const installed = projectPlugins(repoDir);
+  if (installed.length === 1) return installed[0];
+  const found = names.filter(onPath);
+  if (found.length === 1) return { name: found[0], why: "the only agent CLI on PATH" };
+  if (!found.length) throw new Error(`no agent CLI (${names.join(", ")}) found on PATH; install one or pass --harness`);
+  throw new Error(`several harnesses are available (${found.join(", ")}); pass ${found.map((n) => `--harness ${n}`).join(" or ")}`);
+}
+
+function readJson(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function projectPlugins(repoDir) {
+  const out = [];
+  const omp = readJson(path.join(repoDir, ".omp/plugins/installed_plugins.json"));
+  if (Object.keys(omp?.plugins ?? {}).some((k) => k.startsWith("software-omp@"))) out.push({ name: "omp", why: "software-omp is installed in the project" });
+  const claude = readJson(path.join(repoDir, ".claude/settings.json"));
+  if (Object.entries(claude?.enabledPlugins ?? {}).some(([k, on]) => on && k.startsWith("software-claude@"))) out.push({ name: "claude", why: "software-claude is enabled in the project" });
+  return out;
+}
+
+// Command names of this process's ancestors, nearest first (POSIX `ps`).
+function processAncestors() {
+  const out = [];
+  let pid = process.ppid;
+  for (let i = 0; i < 20 && pid > 1; i++) {
+    const r = spawnSync("ps", ["-o", "ppid=,comm=", "-p", String(pid)], { encoding: "utf8" });
+    const m = r.stdout?.trim().match(/^(\d+)\s+(.+)$/);
+    if (!m) break;
+    out.push(m[2]);
+    pid = Number(m[1]);
+  }
+  return out;
+}
+
+function commandOnPath(cmd) {
+  return spawnSync("sh", ["-c", `command -v ${cmd}`], { stdio: "ignore" }).status === 0;
 }
 
 export function registerHarness(name, make) {

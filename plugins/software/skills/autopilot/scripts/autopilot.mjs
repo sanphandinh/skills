@@ -3,7 +3,7 @@
 import os from "node:os";
 import { parseArgs } from "node:util";
 import { createForge } from "./lib/forge.mjs";
-import { createHarness } from "./lib/harness.mjs";
+import { createHarness, detectHarness } from "./lib/harness.mjs";
 import { renderReport } from "./lib/report.mjs";
 import { runAutopilot } from "./lib/run.mjs";
 
@@ -24,15 +24,24 @@ const { positionals, values } = parseArgs({
 });
 
 const [command, spec] = positionals;
-if (values.help || command !== "run" || !spec || !values.harness) {
-  console.log("usage: autopilot.mjs run <spec path> --harness <omp|claude> [--repo dir] [--remote origin] [--trunk main] [--concurrency n] [--as name] [--max-tokens n] [--max-minutes n] [--dry-run]");
+if (values.help || command !== "run" || !spec) {
+  console.log("usage: autopilot.mjs run <spec> [--harness omp|claude] [--repo dir] [--remote origin] [--trunk main] [--concurrency n] [--as name] [--max-tokens n] [--max-minutes n] [--dry-run]");
   process.exit(values.help ? 0 : 1);
 }
+
+let harness;
+try {
+  harness = detectHarness({ explicit: values.harness, repoDir: values.repo });
+} catch (err) {
+  console.error(`autopilot: ${err.message}`);
+  process.exit(1);
+}
+console.log(`Harness: ${harness.name} (${harness.why})`);
 
 const report = await runAutopilot({
   repoDir: values.repo,
   spec,
-  harness: createHarness(values.harness, { repoDir: values.repo }),
+  harness: createHarness(harness.name, { repoDir: values.repo }),
   forge: createForge({ repoDir: values.repo }),
   remote: values.remote,
   trunk: values.trunk,
