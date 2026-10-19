@@ -85,11 +85,17 @@ async function splitSpec(ctx) {
       .map((f) => parseTicket(path.posix.join(ctx.issuesDir, f), fs.readFileSync(path.join(wt.dir, ctx.issuesDir, f), "utf8")));
     if (!tickets.length) return { status: "stopped", reason: "the split wrote no tickets", tickets: [] };
     const why = largeReasons(tickets);
+    const trailFile = path.join(wt.dir, path.posix.dirname(ctx.spec), "trail", "split.tsv");
+    const when = new Date(ctx.clock()).toISOString();
+    const rows = (result.output?.decisions ?? []).map((d) => [when, "splitter", d.decision, d.reason]);
+    rows.push([when, "autopilot", why.length ? "stop for approval" : "build unattended", why.join("; ") || "small breakdown"]);
+    fs.mkdirSync(path.dirname(trailFile), { recursive: true });
+    fs.writeFileSync(trailFile, `time\tactor\tdecision\treason\n${rows.map((r) => r.map((c) => String(c ?? "").replace(/\s+/g, " ")).join("\t")).join("\n")}\n`);
     for (const t of tickets) {
       const status = why.length ? "needs-triage" : "ready-for-agent";
       fs.writeFileSync(path.join(wt.dir, t.rel), setField(t.text, "Status", status));
     }
-    git(wt.dir, ["add", "-A", ctx.issuesDir]);
+    git(wt.dir, ["add", "-A", ctx.issuesDir, path.relative(wt.dir, trailFile)]);
     git(wt.dir, ["commit", "-qm", `autopilot: split ${ctx.slug} into ${tickets.length} tickets`, "--allow-empty"]);
     for (let attempt = 0; !gitOk(wt.dir, ["push", "-q", ctx.remote, `HEAD:${ctx.trunk}`]); attempt++) {
       if (attempt >= 4) return { status: "stopped", reason: "could not push the tickets to trunk", tickets: [] };
@@ -122,13 +128,15 @@ function largeReasons(tickets) {
 // Tickets still waiting on a blocker that did not close.
 function blocked(tickets, outcomes) {
   const byId = new Map(tickets.map((t) => [t.id, t]));
+  const approval = tickets.filter((t) => t.status === "needs-triage").map((t) => ({ id: t.id, title: t.title, outcome: "needs-approval" }));
   return tickets
     .filter((t) => t.status === "ready-for-agent" && !outcomes.has(t.id))
     .map((t) => {
       const waiting = t.blockedBy.filter((b) => byId.get(b)?.status !== "closed").map((b) => `${b} (${byId.get(b)?.status ?? "missing"})`);
       return waiting.length ? { id: t.id, title: t.title, outcome: "blocked", reason: `waiting on ${waiting.join(", ")}` } : null;
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .concat(approval);
 }
 
 function context({
@@ -243,6 +251,43 @@ function blockerRels(ctx, ticket) {
   return ticket.blockedBy.map((b) => files.find((f) => f.startsWith(`${b}-`))).filter(Boolean).map((f) => path.posix.join(ctx.issuesDir, f));
 }
 
+// The ticket's decision trail, a TSV committed under `.scratch/<slug>/trail/`.
+// It lands once, in a tracker-only commit rebased onto the branch head and
+// pushed without force, so it never overwrites anyone's push.
+class Trail {
+  constructor(ctx, ticket) {
+    this.ctx = ctx;
+    this.rel = path.posix.join(path.posix.dirname(ctx.spec), "trail", `${ticket.id}.tsv`);
+    this.rows = [];
+  }
+  add(actor, decision, reason = "") {
+    const cell = (v) => String(v ?? "").replace(/[\t\n\r]+/g, " ").trim();
+    this.rows.push([new Date(this.ctx.clock()).toISOString(), actor, cell(decision), cell(reason)].join("\t"));
+  }
+  gate(g) {
+    this.add("verifier", g.verify.verdict ?? "no verdict", g.verify.evidence);
+    this.add("review-spec", g.spec.verdict ?? "no verdict", (g.spec.findings ?? []).map((f) => f.requirement ?? f.detail).join("; "));
+    this.add("review-standards", g.standards.verdict ?? "no verdict", (g.standards.findings ?? []).map((f) => `${f.severity}: ${f.rule}`).join("; "));
+  }
+  land(dir, branch, lastPushed) {
+    const { ctx } = this;
+    fetch(ctx);
+    const remoteHead = `${ctx.remote}/${branch}`;
+    if (!gitOk(dir, ["merge-base", "--is-ancestor", lastPushed, remoteHead])) return false;
+    git(dir, ["reset", "-q", "--hard", remoteHead]);
+    const file = path.join(dir, this.rel);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const existing = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "time\tactor\tdecision\treason\n";
+    fs.writeFileSync(file, `${existing}${this.rows.map((r) => `${r}\n`).join("")}`);
+    this.rows = [];
+    git(dir, ["add", this.rel]);
+    git(dir, ["commit", "-qm", `autopilot: decision trail for ${path.posix.basename(this.rel, ".tsv")}`]);
+    const ok = gitOk(dir, ["push", "-q", ctx.remote, `HEAD:refs/heads/${branch}`]);
+    fetch(ctx);
+    return ok;
+  }
+}
+
 class OverBudget extends Error {}
 
 // Per-machine bookkeeping, kept outside the repository.
@@ -296,6 +341,13 @@ async function work(ctx, ticket) {
   let lastPushed = resumed ? git(ctx.repo, ["rev-parse", head]) : "";
   const agent = budgeted(ctx, ticket);
   const st = ctx.state.ticket(ticket.id);
+  const trail = new Trail(ctx, ticket);
+  // Every exit records why, then lands the trail on the branch.
+  const human = async (reason) => {
+    trail.add("autopilot", "hand to human", reason);
+    if (lastPushed) trail.land(wt.dir, branch, lastPushed);
+    return handToHuman(ctx, ticket, pr, reason, done);
+  };
   try {
     for (let round = 0; ; round++) {
       st.rounds = round + 1;
@@ -306,53 +358,61 @@ async function work(ctx, ticket) {
         prompt: implementerPrompt({ spec: ctx.spec, ticket: ticket.rel, branch, trackerDoc: TRACKER_DOC, blockers: blockerRels(ctx, ticket), findings }),
       });
       const out = result.output ?? {};
+      for (const d of out.decisions ?? []) trail.add("implementer", d.decision, d.reason);
       const conflict = out.handoffConflict;
-      if (conflict?.touchesAcceptance) return handToHuman(ctx, ticket, pr, `a blocker's handoff contradicts the acceptance criteria: ${conflict.note}`, done);
+      if (conflict?.touchesAcceptance) return human(`a blocker's handoff contradicts the acceptance criteria: ${conflict.note}`);
       const incomplete = incompleteAttempt(wt.dir, ticket, result);
       if (incomplete) {
         findings = [incomplete];
-        if (round >= ctx.maxFixRounds) return handToHuman(ctx, ticket, pr, incomplete, done);
+        if (round >= ctx.maxFixRounds) return human(incomplete);
         continue;
       }
       if (getField(fs.readFileSync(path.join(wt.dir, ticket.rel), "utf8"), "Status") !== "closed") close(wt.dir, ticket);
       // Force only over what this run pushed last; anyone else's push wins.
       if (!gitOk(wt.dir, ["push", "-q", `--force-with-lease=refs/heads/${branch}:${lastPushed}`, ctx.remote, `HEAD:refs/heads/${branch}`])) {
-        return handToHuman(ctx, ticket, pr, `someone else pushed to ${branch}; autopilot will not overwrite it`, done);
+        return human(`someone else pushed to ${branch}; autopilot will not overwrite it`);
       }
       lastPushed = git(wt.dir, ["rev-parse", "HEAD"]);
       fetch(ctx);
       prBody = out.prBody ?? prBody;
       pr ??= await ctx.forge.openPr({ branch, base: ctx.trunk, title: `${ticket.id}: ${ticket.title}`, body: prBody });
-      if (conflict?.note) await ctx.forge.comment(pr.number, `Handoff divergence: ${conflict.note}`);
+      if (conflict?.note) {
+        trail.add("implementer", "followed a blocker's handoff over the ticket", conflict.note);
+        await ctx.forge.comment(pr.number, `Handoff divergence: ${conflict.note}`);
+      }
 
       gate = await gates(ctx, agent, ticket, pr, head);
+      trail.gate(gate);
       if (!gate.blocking.length) break;
       findings = gate.blocking;
-      if (round >= ctx.maxFixRounds) return handToHuman(ctx, ticket, pr, findings.join("; "), done);
+      if (round >= ctx.maxFixRounds) return human(findings.join("; "));
     }
 
     // A verdict covers one patch: anything pushed after it needs a fresh one.
     fetch(ctx);
     if (patchId(ctx.repo, ctx.trunkRef, head) !== gate.patch) {
       gate = await gates(ctx, agent, ticket, pr, head);
+      trail.gate(gate);
       fetch(ctx);
-      if (gate.blocking.length) return handToHuman(ctx, ticket, pr, gate.blocking.join("; "), done);
-      if (patchId(ctx.repo, ctx.trunkRef, head) !== gate.patch) return handToHuman(ctx, ticket, pr, "the branch keeps changing after verification", done);
+      if (gate.blocking.length) return human(gate.blocking.join("; "));
+      if (patchId(ctx.repo, ctx.trunkRef, head) !== gate.patch) return human("the branch keeps changing after verification");
     }
 
     const ci = await waitForCi(ctx, pr);
-    if (ci !== "pass") return handToHuman(ctx, ticket, pr, `CI is ${ci}`, done);
+    if (ci !== "pass") return human(`CI is ${ci}`);
     const refused = refusals(loadPolicy(show(ctx.repo, ctx.trunkRef, POLICY_DOC)), {
       verifyDoc: show(ctx.repo, ctx.trunkRef, VERIFY_DOC) !== null,
       prBody,
       changedFiles: changedFiles(ctx.repo, ctx.trunkRef, head),
     });
-    if (refused.length) return handToHuman(ctx, ticket, pr, refused.join("; "), done);
+    if (refused.length) return human(refused.join("; "));
+    trail.add("autopilot", "merge", `every gate passed on patch ${gate.patch}`);
+    if (!trail.land(wt.dir, branch, lastPushed)) return human("could not record the decision trail on the branch");
     await ctx.forge.merge(pr.number);
-    if (!(await ctx.forge.isMerged(pr.number))) return handToHuman(ctx, ticket, pr, "the merge did not land", done);
+    if (!(await ctx.forge.isMerged(pr.number))) return human("the merge did not land");
     return done("merged", { pr: pr.url });
   } catch (err) {
-    if (err instanceof OverBudget) return handToHuman(ctx, ticket, pr, err.message, done);
+    if (err instanceof OverBudget) return human(err.message);
     throw err;
   } finally {
     wt.cleanup();
@@ -382,7 +442,7 @@ async function gates(ctx, agent, ticket, pr, head) {
     if (!["PASS", "PASS+NOTES"].includes(v.verdict)) blocking.push(`verification ${v.verdict ?? "missing"}: ${v.evidence ?? "no evidence"}`);
     if (sp.verdict !== "pass") blocking.push(...(sp.findings?.length ? sp.findings.map((f) => `spec ${f.kind}: ${f.requirement ?? f.detail}`) : ["spec review failed"]));
     for (const f of st.findings ?? []) if (f.severity === "hard") blocking.push(`standards: ${f.rule}: ${f.detail ?? ""}`);
-    return { blocking, verdict: v.verdict, patch };
+    return { blocking, patch, verify: v, spec: sp, standards: st };
   } finally {
     check.cleanup();
   }

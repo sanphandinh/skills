@@ -495,6 +495,7 @@ test("a small spec with no tickets is split unattended and then built", async ()
   assert.match(split[0].prompt, /to-tickets\/SKILL\.md/);
   assert.match(split[0].prompt, /unattended/i);
   assert.deepEqual(report.tickets.map((t) => [t.id, t.outcome]), [["01", "merged"], ["02", "merged"]]);
+  assert.match(onTrunk(fx, ".scratch/demo/trail/split.tsv"), /\tsplitter\tsplit by user-visible behaviour\teach slice demoable/);
 });
 
 test("a large spec stops for approval with its tickets in needs-triage, and resumes once approved", async () => {
@@ -517,7 +518,7 @@ test("a large spec stops for approval with its tickets in needs-triage, and resu
 
   const second = await run(fx, harness, fakeForge(fx));
   assert.equal(harness.calls.filter((c) => c.role === "splitter").length, 1, "no re-split");
-  assert.deepEqual(second.tickets.map((t) => [t.id, t.outcome]), [["01", "merged"]]);
+  assert.deepEqual(second.tickets.map((t) => [t.id, t.outcome]), [["01", "merged"], ["02", "needs-approval"]]);
 });
 
 test("more than five tickets, or one ticket blocking three others, also needs approval", async () => {
@@ -538,4 +539,35 @@ test("a split that touches anything outside the issues folder is refused", async
   assert.equal(report.status, "stopped");
   assert.match(report.reason, /src\/sneaky\.js/);
   assert.throws(() => onTrunk(fx, ".scratch/demo/issues/01-a.md"));
+});
+
+// ---------- 13: decision trail and final report ----------
+
+test("each ticket's decision trail lands with it, and the report sorts every ticket by what it needs", async () => {
+  const { renderReport } = await import("./lib/report.mjs");
+  const fx = repoFixture({
+    [SPEC_PATH]: SPEC(),
+    [T2("01", "ok")]: TICKET("01", "Works"),
+    [T2("02", "bad")]: TICKET("02", "Breaks"),
+    [T2("03", "after-bad")]: TICKET("03", "After breaks", { blockedBy: "02" }),
+    [T2("04", "unapproved")]: TICKET("04", "Not approved", { status: "needs-triage" }),
+  });
+  const harness = fakeHarness(happyRoles({ verifier: ({ prompt }) => (/02-bad/.test(prompt) ? { verdict: "FAIL", evidence: "crashes on save" } : PASS()) }));
+  const forge = fakeForge(fx);
+  const report = await run(fx, harness, forge, { maxFixRounds: 0 });
+
+  const trail = onTrunk(fx, ".scratch/demo/trail/01.tsv").split("\n");
+  assert.equal(trail[0], "time\tactor\tdecision\treason");
+  assert.ok(trail.some((r) => /\timplementer\tbuilt 01\tticket asked for it$/.test(r)));
+  assert.ok(trail.some((r) => /\tverifier\tPASS\t/.test(r)));
+  assert.ok(trail.some((r) => /\tautopilot\tmerge\t/.test(r)));
+  const badTrail = sh(fx.remote, "show", "autopilot/demo/02:.scratch/demo/trail/02.tsv");
+  assert.match(badTrail, /\tverifier\tFAIL\tcrashes on save/);
+  assert.match(badTrail, /\tautopilot\thand to human\t/);
+
+  const text = renderReport(report);
+  assert.match(text, /## Merged\n\n- 01 Works: https:\/\/example\.test\/pr\/1/);
+  assert.match(text, /## Waiting for a human\n\n- 02 Breaks: verification FAIL: crashes on save \(https:\/\/example\.test\/pr\/2\)/);
+  assert.match(text, /## Blocked\n\n- 03 After breaks: waiting on 02 \(ready-for-human\)/);
+  assert.match(text, /## Needs approval\n\n- 04 Not approved/);
 });
