@@ -185,3 +185,19 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Other sources
+
+`plugins/software/skills/setup-verification` adapts `create-verification-skill`
+from [cursor/plugins `pstack`](https://github.com/cursor/plugins/tree/main/pstack),
+and the `autopilot` skill borrows pstack's ideas of independent verifiers,
+patch-bound verdicts, and decision trails. It is not tracked by the upstream
+tool.
+
+```
+MIT License
+
+Copyright (c) 2026 Lauren Tan
+```
+
+The full MIT text is the same as the license above.

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Setup Verification"
+  short_description: "Write the doc verifiers follow to drive the real product"
+policy:
+  allow_implicit_invocation: false
