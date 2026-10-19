@@ -5,6 +5,7 @@ import { test } from "node:test";
 import { runAutopilot } from "./lib/run.mjs";
 import {
   PASS,
+  PR_BODY,
   SPEC,
   SPEC_OK,
   STANDARDS_OK,
@@ -158,4 +159,103 @@ test("judgement-only standards findings do not block the merge", async () => {
   const forge = fakeForge(fx);
   await run(fx, fakeHarness(happyRoles({ "review-standards": () => ({ verdict: "pass", findings: [{ severity: "judgement", rule: "Feature Envy" }] }) })), forge);
   assert.equal(forge.prs[0].state, "merged");
+});
+
+// ---------- 06: merge policy ----------
+
+const POLICY = ({ auto = "on", blast = ["none", "low"], protect = [], unprotect = [] } = {}) =>
+  `# Merge policy\n\nAuto-merge: ${auto}\n\n## Allowed blast radius\n\n${blast.map((b) => `- ${b}`).join("\n")}\n\n## Protected paths\n\n${protect.map((p) => `- ${p}`).join("\n") || "- (none)"}\n\n## Unprotected defaults\n\n${unprotect.map((p) => `- ${p}`).join("\n")}\n`;
+
+async function policyRun({ files = {}, verifyDoc = true, roles = {} } = {}) {
+  const fx = repoFixture({ [SPEC_PATH]: SPEC(), [T("01")]: TICKET("01", "First thing"), ...files }, { verifyDoc });
+  const harness = fakeHarness(happyRoles(roles));
+  const forge = fakeForge(fx);
+  const report = await run(fx, harness, forge);
+  return { fx, harness, forge, ticket: report.tickets[0] };
+}
+
+const touching = (rel) =>
+  implementer({
+    change: ({ cwd }) => {
+      fs.mkdirSync(path.dirname(path.join(cwd, rel)), { recursive: true });
+      fs.writeFileSync(path.join(cwd, rel), "x\n");
+    },
+  });
+
+test("without a verification doc nothing auto-merges", async () => {
+  const { forge, ticket } = await policyRun({ verifyDoc: false });
+  assert.equal(forge.prs[0].state, "open");
+  assert.equal(ticket.outcome, "ready-for-human");
+  assert.match(ticket.reason, /no verification doc/);
+});
+
+test("a change under a default protected path goes to the human", async () => {
+  const { forge, ticket } = await policyRun({ roles: { implementer: touching("db/migrations/001.sql") } });
+  assert.equal(forge.prs[0].state, "open");
+  assert.match(ticket.reason, /protected path: db\/migrations\/001\.sql/);
+});
+
+test("a lockfile change goes to the human", async () => {
+  const { ticket } = await policyRun({ roles: { implementer: touching("package-lock.json") } });
+  assert.match(ticket.reason, /protected path: package-lock\.json/);
+});
+
+test("a one-way door goes to the human", async () => {
+  const { ticket } = await policyRun({ roles: { implementer: implementer({ prBody: PR_BODY({ door: "one-way" }) }) } });
+  assert.equal(ticket.outcome, "ready-for-human");
+  assert.match(ticket.reason, /one-way door/);
+});
+
+test("a blast radius outside the allowed set goes to the human", async () => {
+  const { ticket } = await policyRun({
+    files: { "docs/agents/merge-policy.md": POLICY({ blast: ["none"] }) },
+    roles: { implementer: implementer({ prBody: PR_BODY({ blast: "Checkout" }) }) },
+  });
+  assert.match(ticket.reason, /blast radius "Checkout" is not allowed/);
+});
+
+test("auto-merge can be turned off by the policy", async () => {
+  const { ticket } = await policyRun({ files: { "docs/agents/merge-policy.md": POLICY({ auto: "off" }) } });
+  assert.match(ticket.reason, /auto-merge is off/);
+});
+
+test("a project may protect more paths, and unprotect a default only with a reason", async () => {
+  const added = await policyRun({ files: { "docs/agents/merge-policy.md": POLICY({ protect: ["src/billing/"] }) }, roles: { implementer: touching("src/billing/pay.js") } });
+  assert.match(added.ticket.reason, /protected path: src\/billing\/pay\.js/);
+
+  const noReason = await policyRun({ files: { "docs/agents/merge-policy.md": POLICY({ unprotect: [".github/"] }) }, roles: { implementer: touching(".github/workflows/ci.yml") } });
+  assert.match(noReason.ticket.reason, /protected path: \.github\/workflows\/ci\.yml/);
+
+  const withReason = await policyRun({
+    files: { "docs/agents/merge-policy.md": POLICY({ unprotect: [".github/: CI here only runs lint, reviewed weekly"] }) },
+    roles: { implementer: touching(".github/workflows/ci.yml") },
+  });
+  assert.equal(withReason.ticket.outcome, "merged");
+});
+
+test("a verdict for an older patch is re-verified before merging", async () => {
+  const { fx, harness, forge, ticket } = await policyRun({
+    roles: {
+      "review-standards": ({ cwd, call }) => {
+        if (call === 1) {
+          fs.writeFileSync(path.join(cwd, "src/late.js"), "late\n");
+          sh(cwd, "add", "-A");
+          sh(cwd, "commit", "-qm", "late change");
+          const branch = "autopilot/demo/01";
+          sh(cwd, "push", "-q", "origin", `HEAD:${branch}`);
+        }
+        return STANDARDS_OK();
+      },
+    },
+  });
+  assert.equal(harness.calls.filter((c) => c.role === "verifier").length, 2, "the new patch got its own verdict");
+  assert.equal(ticket.outcome, "merged");
+  assert.equal(forge.prs[0].state, "merged");
+  assert.equal(onTrunk(fx, "src/late.js"), "late");
+});
+
+test("the merge policy seed template parses to the built-in defaults", async () => {
+  const { loadPolicy } = await import("./lib/policy.mjs");
+  const seed = fs.readFileSync(new URL("../../setup-software-context/merge-policy.md", import.meta.url), "utf8");
+  assert.deepEqual(loadPolicy(seed), loadPolicy(null));
 });

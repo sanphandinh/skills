@@ -4,12 +4,16 @@
 
 **Blocked by:** 05
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] A merge policy template is added to `setup-software-context`'s seed templates and the policy doc is read from `docs/agents/`
-- [ ] Mandatory gates: verification doc present, independent verifier `PASS` or `PASS+NOTES` on the current patch, no hard finding on either axis, green CI, two-way door, blast radius in the allowed set, no file under a protected path
-- [ ] Default protected paths: database migrations, infrastructure, CI configuration, dependency lockfiles, environment files; a project may add paths, and removing a default requires a written reason
-- [ ] A verdict whose patch identity differs from the current head blocks the merge until re-verified
-- [ ] A refused pull request marks its ticket `ready-for-human` and posts the reason on the pull request
-- [ ] Tests cover: no verification doc, protected path touched, one-way door, stale verdict, and the passing case
-- [ ] `npm run validate` and `npm test` pass
+- [x] A merge policy template is added to `setup-software-context`'s seed templates and the policy doc is read from `docs/agents/`
+- [x] Mandatory gates: verification doc present, independent verifier `PASS` or `PASS+NOTES` on the current patch, no hard finding on either axis, green CI, two-way door, blast radius in the allowed set, no file under a protected path
+- [x] Default protected paths: database migrations, infrastructure, CI configuration, dependency lockfiles, environment files; a project may add paths, and removing a default requires a written reason
+- [x] A verdict whose patch identity differs from the current head blocks the merge until re-verified
+- [x] A refused pull request marks its ticket `ready-for-human` and posts the reason on the pull request
+- [x] Tests cover: no verification doc, protected path touched, one-way door, stale verdict, and the passing case
+- [x] `npm run validate` and `npm test` pass
+
+## Comments
+
+Done. A stale verdict triggers one re-verification before the merge decision, not a fix round. A test keeps the seed template and the built-in defaults identical. This repo now has its own `docs/agents/merge-policy.md` from the seed.

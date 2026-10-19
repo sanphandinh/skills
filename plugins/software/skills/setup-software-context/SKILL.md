@@ -27,6 +27,7 @@ Look at the current repo to understand its starting state. Read whatever exists;
 - `docs/agents/`: does this skill's prior output already exist?
 - `.scratch/`: a sign that a local-markdown issue tracker convention is already in use
 - Is the `triage` skill installed? (a `triage` skill folder alongside this one, or `triage` in your available skills.) This decides whether Section B runs at all.
+- Is the `autopilot` skill installed? (same check.) This decides whether `docs/agents/merge-policy.md` is written.
 - Monorepo signals: a `pnpm-workspace.yaml`, a `workspaces` field in `package.json`, or a populated `packages/*` with its own `src/`. These are present only in a genuinely large multi-package repo; their absence means single-context, which is almost every repo.
 
 ### 2. Present findings and ask
@@ -65,7 +66,7 @@ Offer **multi-context** (a root `GLOSSARY-MAP.md` pointing to per-context `GLOSS
 Show the user a draft of:
 
 - The `## Agent skills` block to add to `AGENTS.md` (see step 4)
-- The contents of `docs/agents/issue-tracker.md`, `docs/agents/domain.md`, and `docs/agents/triage-labels.md` (the last only when `triage` is installed)
+- The contents of `docs/agents/issue-tracker.md`, `docs/agents/domain.md`, `docs/agents/triage-labels.md` (only when `triage` is installed), and `docs/agents/merge-policy.md` (only when `autopilot` is installed, written from the seed as is)
 
 Let them edit before writing.
 
@@ -109,6 +110,7 @@ Then write the docs files using the seed templates in this skill folder as a sta
 - [issue-tracker-gitlab.md](./issue-tracker-gitlab.md): GitLab issue tracker
 - [issue-tracker-local.md](./issue-tracker-local.md): local-markdown issue tracker
 - [triage-labels.md](./triage-labels.md): label mapping (only if `triage` is installed)
+- [merge-policy.md](./merge-policy.md): when pull requests merge without a human (only if `autopilot` is installed)
 - [domain.md](./domain.md): domain doc consumer rules + layout
 
 For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description.

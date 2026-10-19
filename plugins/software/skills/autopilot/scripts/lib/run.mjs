@@ -3,7 +3,8 @@
 // port and the forge only through the forge port.
 import fs from "node:fs";
 import path from "node:path";
-import { git, gitOk, listTree, patchId, show, worktree } from "./git.mjs";
+import { changedFiles, git, gitOk, listTree, patchId, show, worktree } from "./git.mjs";
+import { POLICY_DOC, loadPolicy, refusals } from "./policy.mjs";
 import { implementerPrompt, reviewPrompt, verifierPrompt } from "./prompts.mjs";
 import { appendComment, getField, parseTicket, removeField, setField, tickAll } from "./tracker.mjs";
 
@@ -130,7 +131,9 @@ async function work(ctx, ticket) {
   const wt = worktree(ctx.repo, ctx.trunkRef, { branch });
   const done = (outcome, extra = {}) => ({ id: ticket.id, title: ticket.title, outcome, ...extra });
   let pr = null;
+  let prBody = "";
   let findings = [];
+  let gate;
   try {
     for (let round = 0; ; round++) {
       const result = await ctx.harness.run({
@@ -142,16 +145,32 @@ async function work(ctx, ticket) {
       if (round === 0) close(wt.dir, ticket);
       git(wt.dir, ["push", "-q", "--force-with-lease", ctx.remote, `HEAD:${branch}`]);
       fetch(ctx);
-      pr ??= await ctx.forge.openPr({ branch, base: ctx.trunk, title: `${ticket.id}: ${ticket.title}`, body: out.prBody ?? "" });
+      prBody = out.prBody ?? prBody;
+      pr ??= await ctx.forge.openPr({ branch, base: ctx.trunk, title: `${ticket.id}: ${ticket.title}`, body: prBody });
 
-      const gate = await gates(ctx, ticket, pr, head);
+      gate = await gates(ctx, ticket, pr, head);
       if (!gate.blocking.length) break;
       findings = gate.blocking;
       if (round >= ctx.maxFixRounds) return handToHuman(ctx, ticket, pr, findings.join("; "), done);
     }
 
+    // A verdict covers one patch: anything pushed after it needs a fresh one.
+    fetch(ctx);
+    if (patchId(ctx.repo, ctx.trunkRef, head) !== gate.patch) {
+      gate = await gates(ctx, ticket, pr, head);
+      fetch(ctx);
+      if (gate.blocking.length) return handToHuman(ctx, ticket, pr, gate.blocking.join("; "), done);
+      if (patchId(ctx.repo, ctx.trunkRef, head) !== gate.patch) return handToHuman(ctx, ticket, pr, "the branch keeps changing after verification", done);
+    }
+
     const ci = await waitForCi(ctx, pr);
     if (ci !== "pass") return handToHuman(ctx, ticket, pr, `CI is ${ci}`, done);
+    const refused = refusals(loadPolicy(show(ctx.repo, ctx.trunkRef, POLICY_DOC)), {
+      verifyDoc: show(ctx.repo, ctx.trunkRef, VERIFY_DOC) !== null,
+      prBody,
+      changedFiles: changedFiles(ctx.repo, ctx.trunkRef, head),
+    });
+    if (refused.length) return handToHuman(ctx, ticket, pr, refused.join("; "), done);
     await ctx.forge.merge(pr.number);
     if (!(await ctx.forge.isMerged(pr.number))) return handToHuman(ctx, ticket, pr, "the merge did not land", done);
     return done("merged", { pr: pr.url });
