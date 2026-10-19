@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** closed
 
 - [x] Each of the four skills is pulled with the upstream tool and `UPSTREAM.md` records the new commits
 - [x] Local edits survive (for example `setup-software-context` writing to `AGENTS.md`, and `code-review`'s "Which sub-agents to use" paragraph)

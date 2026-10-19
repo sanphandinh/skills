@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** closed
 
 - [x] A path-like token (`/tmp`, `/usr/bin`, any `/word` that is not the name of a skill in this repo) passes through the rewrites unchanged
 - [x] A slash-prefixed skill name still becomes a plain reference to that skill
