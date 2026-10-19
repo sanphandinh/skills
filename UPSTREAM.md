@@ -21,7 +21,9 @@ rewrites:
     to: use whichever skills
   - pattern: the result of /([a-z][a-z0-9-]+) and /([a-z][a-z0-9-]+)
     replace: the result of the `$1` and `$2` skills
-    skillGroups: [1, 2]
+    skillGroups:
+      - 1
+      - 2
   - pattern: Call the Skill tool with [`"]([a-z0-9-]+)[`"]
     replace: Use the `$1` skill
   - pattern: call the Skill tool with [`"]([a-z0-9-]+)[`"]
@@ -30,16 +32,20 @@ rewrites:
     to: should use
   - pattern: "`/([a-z][a-z0-9-]+)` skill"
     replace: "`$1` skill"
-    skillGroups: [1]
+    skillGroups:
+      - 1
   - pattern: \b([Tt]he) `/([a-z][a-z0-9-]+)`
     replace: $1 `$2` skill
-    skillGroups: [2]
+    skillGroups:
+      - 2
   - pattern: "`/([a-z][a-z0-9-]+)`"
     replace: the `$1` skill
-    skillGroups: [1]
+    skillGroups:
+      - 1
   - pattern: \b([Uu]se) /([a-z][a-z0-9-]+)\b
     replace: $1 the `$2` skill
-    skillGroups: [2]
+    skillGroups:
+      - 2
 ignore: []
 skills:
   grilling:
@@ -50,7 +56,7 @@ skills:
     commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
   handoff:
     path: skills/productivity/handoff
-    commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
+    commit: 49dd158d1076134a641b33efb035946536778336
   research:
     path: skills/engineering/research
     commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
@@ -59,25 +65,25 @@ skills:
     commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
   setup-software-context:
     path: skills/engineering/setup-matt-pocock-skills
-    commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
+    commit: 49dd158d1076134a641b33efb035946536778336
   to-spec:
     path: skills/engineering/to-spec
     commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
   to-tickets:
     path: skills/engineering/to-tickets
-    commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
+    commit: 49dd158d1076134a641b33efb035946536778336
   implement:
     path: skills/engineering/implement
-    commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
+    commit: 49dd158d1076134a641b33efb035946536778336
   tdd:
     path: skills/engineering/tdd
-    commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
+    commit: 49dd158d1076134a641b33efb035946536778336
   codebase-design:
     path: skills/engineering/codebase-design
     commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
   code-review:
     path: skills/engineering/code-review
-    commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
+    commit: 49dd158d1076134a641b33efb035946536778336
   diagnosing-bugs:
     path: skills/engineering/diagnosing-bugs
     commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
