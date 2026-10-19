@@ -162,3 +162,79 @@ test("gitlab: one run builds the linked issues in order and closes them", async 
   assert.equal(gl.issues.get(2).state, "closed");
   assert.match(onTrunk(fx, ".autopilot/gl-1/trail/3.tsv"), /\tautopilot\tmerge\t/);
 });
+
+// ---------- Jira ----------
+
+import { adfText, jiraApi, jiraStatuses, jiraTracker } from "./lib/trackers/jira.mjs";
+import { fakeJira } from "./test-helpers.mjs";
+
+function jira() {
+  const j = fakeJira();
+  j.add({ key: "APP-1", summary: "Spec epic", status: "To Do" });
+  j.add({ key: "APP-2", summary: "Base", parent: "APP-1" });
+  j.add({ key: "APP-3", summary: "On top", parent: "APP-1", links: ["APP-2"], description: "**Door:** two-way" });
+  j.add({ key: "APP-4", summary: "Fallback", parent: "APP-1", status: "Backlog", description: "Blocked by: APP-2, APP-3" });
+  return { j, tracker: jiraTracker({ project: "APP", spec: "APP-1", api: j.api, statuses: jiraStatuses("Jira statuses: ready-for-human=Blocked") }) };
+}
+
+test("jira: an epic's children are its tickets, blockers from Blocks links or the body, status from mapped workflow names", async () => {
+  const { tracker } = jira();
+  assert.deepEqual(await tracker.spec(), { ref: "APP-1", status: "ready-for-agent", title: "Spec epic" });
+  assert.deepEqual(
+    (await tracker.tickets()).map((t) => [t.id, t.status, t.blockedBy, t.door]),
+    [
+      ["APP-2", "ready-for-agent", [], null],
+      ["APP-3", "ready-for-agent", ["APP-2"], "two-way"],
+      ["APP-4", "needs-triage", ["APP-2", "APP-3"], null],
+    ],
+  );
+});
+
+test("jira: claims survive rich-text comments, handing to the human transitions to the mapped status, and merge closes with the handoff", async () => {
+  const { j, tracker } = jira();
+  const [t2] = await tracker.tickets();
+  assert.equal(await tracker.claim(t2, "autopilot@a"), "claimed");
+  assert.equal(await tracker.claim(t2, "autopilot@b"), false);
+  assert.doesNotMatch(adfText(j.issues.get("APP-2").comments[0]), /<!--/, "markers are visible text, not HTML comments");
+  await tracker.handToHuman(t2, "unclear criteria");
+  assert.equal(j.issues.get("APP-2").status, "Blocked");
+  assert.equal((await tracker.tickets())[0].claimedBy, null, "released");
+  await tracker.afterMerge(t2, { handoff: "done", pr: { url: "https://example.test/pr/1" } });
+  assert.equal(j.issues.get("APP-2").status, "Done");
+  assert.equal((await tracker.tickets())[0].status, "closed");
+  assert.equal(tracker.prLink(t2), "Jira: APP-2");
+});
+
+test("jira: the API token only ever goes into the Authorization header", async () => {
+  const seen = [];
+  const api = jiraApi({
+    site: "https://acme.atlassian.net/",
+    email: "me@acme.test",
+    token: "s3cret-token",
+    fetchImpl: async (url, init) => (seen.push({ url, init }), { ok: false, status: 401, text: async () => "" }),
+  });
+  await assert.rejects(api("GET", "issue/APP-1"), (err) => !String(err.message).includes("s3cret") && /401/.test(err.message));
+  assert.equal(seen[0].url, "https://acme.atlassian.net/rest/api/3/issue/APP-1");
+  assert.ok(!seen[0].url.includes("s3cret"));
+  assert.equal(seen[0].init.headers.Authorization, `Basic ${Buffer.from("me@acme.test:s3cret-token").toString("base64")}`);
+  assert.throws(() => jiraApi({ site: "https://x", email: "", token: "" }), /JIRA_EMAIL and JIRA_API_TOKEN/);
+});
+
+test("jira: one run builds the epic's ready issues and opens pull requests on the code host", async () => {
+  const { j, tracker } = jira();
+  const fx = repoFixture({});
+  const forge = fakeForge(fx);
+  const report = await runAutopilot({
+    repoDir: fx.clone,
+    spec: "APP-1",
+    tracker,
+    harness: fakeHarness({ implementer: implementer(), verifier: PASS, "review-spec": SPEC_OK, "review-standards": STANDARDS_OK }),
+    forge,
+    stateDir: fx.stateDir,
+    who: "autopilot@test",
+  });
+  assert.deepEqual(report.tickets.map((t) => [t.id, t.outcome]), [["APP-2", "merged"], ["APP-3", "merged"], ["APP-4", "needs-approval"]]);
+  assert.equal(j.issues.get("APP-3").status, "Done");
+  assert.match(forge.prs[0].body, /Jira: APP-2/);
+  assert.match(forge.prs[0].branch, /^autopilot\/jira-APP-1\/APP-2$/);
+});

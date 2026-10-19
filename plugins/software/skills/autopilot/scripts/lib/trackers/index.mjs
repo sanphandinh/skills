@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { githubTracker, ghApi } from "./github.mjs";
 import { gitlabTracker, glabApi } from "./gitlab.mjs";
+import { jiraApi, jiraStatuses, jiraTracker } from "./jira.mjs";
 import { labelMap } from "./labels.mjs";
 import { localTracker } from "./local.mjs";
 
@@ -33,6 +34,16 @@ export const factories = {
   gitlab: ({ repoDir, spec, cfg, transport }) => {
     if (!cfg.repo) throw new Error(`${TRACKER_DOC}: "Tracker: gitlab" needs <group>/<project>`);
     return gitlabTracker({ repo: cfg.repo, spec, api: transport ?? glabApi({ cwd: repoDir }), labels: labelMap(read(repoDir, LABELS_DOC)), cwd: repoDir });
+  },
+  jira: ({ repoDir, spec, cfg, transport, env = process.env }) => {
+    if (!cfg.site || !cfg.project) throw new Error(`${TRACKER_DOC}: "Tracker: jira" needs <site URL> <project key>`);
+    return jiraTracker({
+      project: cfg.project,
+      spec,
+      api: transport ?? jiraApi({ site: cfg.site, email: env.JIRA_EMAIL, token: env.JIRA_API_TOKEN }),
+      statuses: jiraStatuses(read(repoDir, TRACKER_DOC)),
+      cwd: repoDir,
+    });
   },
 };
 

@@ -230,3 +230,48 @@ export function fakeGitLab(repo = "acme/app") {
   };
   return { api, issues, mrs, add, repo };
 }
+
+// In-memory Jira Cloud REST v3 for the issue, search, comment, and transition
+// endpoints the adapter uses. Workflow: any status can move to any other.
+export function fakeJira(statusNames = ["Backlog", "To Do", "Blocked", "Done"]) {
+  const issues = new Map();
+  const add = (i) => {
+    issues.set(i.key, { status: "To Do", parent: null, links: [], description: "", comments: [], ...i });
+    return issues.get(i.key);
+  };
+  const doc = (text) => ({ type: "doc", version: 1, content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
+  const fields = (i) => ({
+    summary: i.summary,
+    status: { name: i.status, statusCategory: { key: i.status === "Done" ? "done" : "new" } },
+    description: i.description ? doc(i.description) : null,
+    issuelinks: i.links.map((k) => ({ type: { name: "Blocks" }, inwardIssue: { key: k } })),
+  });
+  const api = async (method, p, body) => {
+    const [pathname, query = ""] = p.split("?");
+    const q = new URLSearchParams(query);
+    let m;
+    if (pathname === "search/jql") {
+      const parent = q.get("jql").match(/parent = (\S+)/)[1];
+      return { issues: [...issues.values()].filter((i) => i.parent === parent).sort((a, b) => a.key.localeCompare(b.key, "en", { numeric: true })).map((i) => ({ key: i.key, fields: fields(i) })) };
+    }
+    if ((m = pathname.match(/^issue\/([A-Z]+-\d+)$/))) {
+      const i = issues.get(m[1]);
+      if (!i) throw new Error("Jira GET failed with 404");
+      return { key: i.key, fields: fields(i) };
+    }
+    if ((m = pathname.match(/^issue\/([A-Z]+-\d+)\/comment$/))) {
+      const i = issues.get(m[1]);
+      if (method === "GET") return { comments: i.comments.map((body) => ({ body })) };
+      i.comments.push(body.body);
+      return {};
+    }
+    if ((m = pathname.match(/^issue\/([A-Z]+-\d+)\/transitions$/))) {
+      const i = issues.get(m[1]);
+      if (method === "GET") return { transitions: statusNames.map((name, n) => ({ id: String(n + 1), to: { name } })) };
+      i.status = statusNames[Number(body.transition.id) - 1];
+      return null;
+    }
+    throw new Error(`fake Jira: no route for ${method} ${p}`);
+  };
+  return { api, issues, add };
+}

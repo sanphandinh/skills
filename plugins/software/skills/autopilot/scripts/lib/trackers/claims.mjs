@@ -3,8 +3,10 @@
 // holds the ticket. Shared by the remote tracker adapters.
 import { randomBytes } from "node:crypto";
 
-const CLAIM = /<!-- autopilot:claim who=(\S+) nonce=(\S+) -->/;
-const RELEASE = /<!-- autopilot:release who=(\S+) -->/;
+// Markers match with or without the HTML comment around them, because some
+// trackers (Jira) store comments as rich text and drop HTML comments.
+const CLAIM = /autopilot:claim who=(\S+) nonce=([0-9a-z]+)/;
+const RELEASE = /autopilot:release who=([^\s\]]+?)(?:\s|\]|-->|$)/;
 
 export const claimBody = (who, nonce) => `<!-- autopilot:claim who=${who} nonce=${nonce} -->\nClaimed by ${who} for an unattended build.`;
 export const releaseBody = (who, reason) => `<!-- autopilot:release who=${who} -->\nAutopilot handed this to a human: ${reason}`;
