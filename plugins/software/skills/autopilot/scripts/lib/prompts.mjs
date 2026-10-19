@@ -63,3 +63,17 @@ export function reviewPrompt({ axis, spec, ticket, base }) {
     ),
   ].join("\n");
 }
+
+export function splitterPrompt({ spec, issuesDir, toTickets }) {
+  return [
+    "Agent: splitter",
+    `Spec: ${spec}`,
+    `Issues dir: ${issuesDir}`,
+    `Process: ${toTickets}`,
+    "",
+    "Read the process file above and follow its unattended mode: break the spec into tickets with no quiz, write one file per ticket into the issues dir, and commit.",
+    "Give every ticket a `**Door:**` line (`one-way` or `two-way`), and order foundation and low-risk tickets first and one-way-door tickets last.",
+    "Touch nothing outside the issues dir.",
+    footer('{ "ok": true, "decisions": [{ "decision": "...", "reason": "..." }] }'),
+  ].join("\n");
+}

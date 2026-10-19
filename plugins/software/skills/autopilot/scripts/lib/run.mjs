@@ -5,13 +5,18 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { changedFiles, git, gitOk, listTree, patchId, show, worktree } from "./git.mjs";
 import { POLICY_DOC, loadPolicy, refusals } from "./policy.mjs";
-import { implementerPrompt, reviewPrompt, verifierPrompt } from "./prompts.mjs";
+import { implementerPrompt, reviewPrompt, splitterPrompt, verifierPrompt } from "./prompts.mjs";
 import { appendComment, getField, hasSection, parseTicket, removeField, setField, tickAll } from "./tracker.mjs";
 
 const TRACKER_DOC = "docs/agents/issue-tracker.md";
 const VERIFY_DOC = "docs/agents/verify.md";
+// to-tickets ships in the same plugin; its unattended mode is read as a file
+// because a user-invoked skill cannot be invoked by an agent.
+const TO_TICKETS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../to-tickets/SKILL.md");
+const LARGE = { tickets: 5, fanOut: 3 };
 
 export async function runAutopilot(opts) {
   const ctx = context(opts);
@@ -21,6 +26,11 @@ export async function runAutopilot(opts) {
   const specStatus = getField(specText, "Status");
   if (specStatus !== "ready-for-agent") {
     return { status: "refused", reason: `spec status is ${specStatus ?? "missing"}, not ready-for-agent`, tickets: [] };
+  }
+
+  if (!readTickets(ctx).length) {
+    const split = await splitSpec(ctx);
+    if (split) return split;
   }
 
   if (ctx.dryRun) {
@@ -49,6 +59,64 @@ export async function runAutopilot(opts) {
     await Promise.race(running.values());
   }
   return { status: "done", tickets: [...outcomes.values(), ...blocked(readTickets(ctx), outcomes)] };
+}
+
+// Split a spec that has no tickets. A large or risky breakdown is written as
+// needs-triage and the run stops for the human; returns a report to stop with,
+// or null to go on building.
+async function splitSpec(ctx) {
+  if (ctx.dryRun) return { status: "dry-run", tickets: [], reason: "the spec has no tickets yet; a real run would split it first" };
+  const wt = worktree(ctx.repo, ctx.trunkRef);
+  try {
+    const result = await ctx.harness.run({
+      role: "splitter",
+      delegate: false,
+      cwd: wt.dir,
+      prompt: splitterPrompt({ spec: ctx.spec, issuesDir: ctx.issuesDir, toTickets: TO_TICKETS }),
+    });
+    if (!result.ok) return { status: "stopped", reason: `splitting the spec failed: ${result.output?.error ?? result.output?.note ?? "no reason given"}`, tickets: [] };
+    const outside = changedFiles(wt.dir, ctx.trunkRef, "HEAD").filter((f) => !f.startsWith(`${ctx.issuesDir}/`));
+    if (outside.length) return { status: "stopped", reason: `the split touched files outside ${ctx.issuesDir}: ${outside.join(", ")}`, tickets: [] };
+
+    const tickets = fs
+      .readdirSync(path.join(wt.dir, ctx.issuesDir))
+      .filter((f) => f.endsWith(".md"))
+      .sort()
+      .map((f) => parseTicket(path.posix.join(ctx.issuesDir, f), fs.readFileSync(path.join(wt.dir, ctx.issuesDir, f), "utf8")));
+    if (!tickets.length) return { status: "stopped", reason: "the split wrote no tickets", tickets: [] };
+    const why = largeReasons(tickets);
+    for (const t of tickets) {
+      const status = why.length ? "needs-triage" : "ready-for-agent";
+      fs.writeFileSync(path.join(wt.dir, t.rel), setField(t.text, "Status", status));
+    }
+    git(wt.dir, ["add", "-A", ctx.issuesDir]);
+    git(wt.dir, ["commit", "-qm", `autopilot: split ${ctx.slug} into ${tickets.length} tickets`, "--allow-empty"]);
+    for (let attempt = 0; !gitOk(wt.dir, ["push", "-q", ctx.remote, `HEAD:${ctx.trunk}`]); attempt++) {
+      if (attempt >= 4) return { status: "stopped", reason: "could not push the tickets to trunk", tickets: [] };
+      fetch(ctx);
+      git(wt.dir, ["rebase", "-q", ctx.trunkRef]);
+    }
+    fetch(ctx);
+    if (!why.length) return null;
+    return {
+      status: "stopped",
+      reason: `the breakdown needs approval (${why.join("; ")}): review the tickets in ${ctx.issuesDir}, set each one you approve to ready-for-agent, and run again`,
+      tickets: tickets.map((t) => ({ id: t.id, title: t.title, outcome: "needs-triage" })),
+    };
+  } finally {
+    wt.cleanup();
+  }
+}
+
+function largeReasons(tickets) {
+  const why = [];
+  if (tickets.length > LARGE.tickets) why.push(`${tickets.length} tickets`);
+  for (const t of tickets) if (t.door === "one-way") why.push(`${t.id} is a one-way door`);
+  for (const t of tickets) {
+    const fan = tickets.filter((o) => o.blockedBy.includes(t.id)).length;
+    if (fan >= LARGE.fanOut) why.push(`${t.id} blocks ${fan} tickets`);
+  }
+  return why;
 }
 
 // Tickets still waiting on a blocker that did not close.

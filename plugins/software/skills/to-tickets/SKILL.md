@@ -41,6 +41,8 @@ Give each ticket its **blocking edges**: the other tickets that must complete be
 
 ### 4. Quiz the user
 
+In **unattended mode** (the `autopilot` skill's orchestrator asks for it, and no human is present), skip this step: do not quiz. Instead, give every ticket a `**Door:**` line (`one-way` for destructive or hard-to-reverse work such as migrations, data deletion, or public API changes; `two-way` otherwise), order foundation and low-risk tickets first and one-way-door tickets last, and report each breakdown choice and its reason in your result. Write the tickets only into the issues folder you were given; the orchestrator decides whether the breakdown needs a human's approval before anything is built.
+
 Present the proposed breakdown as a numbered list. For each ticket, show:
 
 - **Title**: short descriptive name

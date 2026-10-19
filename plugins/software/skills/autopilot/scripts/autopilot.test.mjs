@@ -470,3 +470,72 @@ test("a run on another machine picks up a ticket claimed under its name from the
   assert.deepEqual(report.tickets.map((t) => [t.id, t.outcome]), [["01", "merged"]]);
   assert.equal(onTrunk(fx, "src/partial.js"), "partial", "the earlier branch was continued, not discarded");
 });
+
+// ---------- 12: unattended ticket split ----------
+
+function splitter(tickets, { touch } = {}) {
+  return ({ cwd, prompt }) => {
+    const dir = prompt.match(/^Issues dir: (.+)$/m)[1];
+    for (const [file, text] of Object.entries(tickets)) write(cwd, { [path.posix.join(dir, file)]: text });
+    if (touch) write(cwd, { [touch]: "x\n" });
+    sh(cwd, "add", "-A");
+    sh(cwd, "commit", "-qm", "split");
+    return { ok: true, decisions: [{ decision: "split by user-visible behaviour", reason: "each slice demoable" }] };
+  };
+}
+
+const twoWay = (id, title, opts = {}) => TICKET(id, title, { ...opts, extra: `\n**Door:** ${opts.door ?? "two-way"}\n` });
+
+test("a small spec with no tickets is split unattended and then built", async () => {
+  const fx = repoFixture({ [SPEC_PATH]: SPEC() });
+  const harness = fakeHarness(happyRoles({ splitter: splitter({ "01-a.md": twoWay("01", "A"), "02-b.md": twoWay("02", "B", { blockedBy: "01" }) }) }));
+  const report = await run(fx, harness, fakeForge(fx));
+  const split = harness.calls.filter((c) => c.role === "splitter");
+  assert.equal(split.length, 1);
+  assert.match(split[0].prompt, /to-tickets\/SKILL\.md/);
+  assert.match(split[0].prompt, /unattended/i);
+  assert.deepEqual(report.tickets.map((t) => [t.id, t.outcome]), [["01", "merged"], ["02", "merged"]]);
+});
+
+test("a large spec stops for approval with its tickets in needs-triage, and resumes once approved", async () => {
+  const fx = repoFixture({ [SPEC_PATH]: SPEC() });
+  const tickets = { "01-a.md": twoWay("01", "A"), "02-b.md": twoWay("02", "Drop the legacy table", { door: "one-way", blockedBy: "01" }) };
+  const harness = fakeHarness(happyRoles({ splitter: splitter(tickets) }));
+  const first = await run(fx, harness, fakeForge(fx));
+  assert.equal(first.status, "stopped");
+  assert.match(first.reason, /approve/i);
+  assert.match(first.reason, /one-way/);
+  assert.equal(harness.calls.filter((c) => c.role === "implementer").length, 0);
+  assert.match(onTrunk(fx, ".scratch/demo/issues/01-a.md"), /\*\*Status:\*\* needs-triage/);
+
+  // The human approves only the first ticket.
+  const human = anotherClone(fx, "human");
+  const f = path.join(human, ".scratch/demo/issues/01-a.md");
+  fs.writeFileSync(f, fs.readFileSync(f, "utf8").replace("needs-triage", "ready-for-agent"));
+  sh(human, "commit", "-qam", "approve 01");
+  sh(human, "push", "-q", "origin", "HEAD:main");
+
+  const second = await run(fx, harness, fakeForge(fx));
+  assert.equal(harness.calls.filter((c) => c.role === "splitter").length, 1, "no re-split");
+  assert.deepEqual(second.tickets.map((t) => [t.id, t.outcome]), [["01", "merged"]]);
+});
+
+test("more than five tickets, or one ticket blocking three others, also needs approval", async () => {
+  const many = Object.fromEntries(["01", "02", "03", "04", "05", "06"].map((id) => [`${id}-t.md`, twoWay(id, `T${id}`)]));
+  const fx = repoFixture({ [SPEC_PATH]: SPEC() });
+  const report = await run(fx, fakeHarness(happyRoles({ splitter: splitter(many) })), fakeForge(fx));
+  assert.match(report.reason, /6 tickets/);
+
+  const hub = { "01-hub.md": twoWay("01", "Hub"), ...Object.fromEntries(["02", "03", "04"].map((id) => [`${id}-x.md`, twoWay(id, `X${id}`, { blockedBy: "01" })])) };
+  const fx2 = repoFixture({ [SPEC_PATH]: SPEC() });
+  const report2 = await run(fx2, fakeHarness(happyRoles({ splitter: splitter(hub) })), fakeForge(fx2));
+  assert.match(report2.reason, /01 blocks 3/);
+});
+
+test("a split that touches anything outside the issues folder is refused", async () => {
+  const fx = repoFixture({ [SPEC_PATH]: SPEC() });
+  const report = await run(fx, fakeHarness(happyRoles({ splitter: splitter({ "01-a.md": twoWay("01", "A") }, { touch: "src/sneaky.js" }) })), fakeForge(fx));
+  assert.equal(report.status, "stopped");
+  assert.match(report.reason, /src\/sneaky\.js/);
+  assert.throws(() => onTrunk(fx, ".scratch/demo/issues/01-a.md"));
+});
