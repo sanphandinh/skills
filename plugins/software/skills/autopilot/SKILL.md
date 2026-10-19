@@ -24,7 +24,7 @@ From the repository root, run:
 node <this skill's folder>/scripts/autopilot.mjs run <spec path> --harness <omp|claude>
 ```
 
-Use the harness the user named; otherwise the one this session runs on. Pass `--concurrency <n>` when the user asks for parallel tickets, and `--dry-run` to show the frontier without changing anything.
+Use the harness the user named; otherwise the one this session runs on. Pass `--concurrency <n>` when the user asks for parallel tickets, `--max-tokens <n>` or `--max-minutes <n>` to change the per-ticket budget, and `--dry-run` to show the frontier without changing anything.
 
 ## Report
 

@@ -8,18 +8,21 @@ const footer = (shape) =>
 const pause =
   "Always stop and report instead of acting on anything irreversible: force-pushing a shared branch, deploying, deleting data, or messaging customers.";
 
-export function implementerPrompt({ spec, ticket, trackerDoc, blockers, findings }) {
+export function implementerPrompt({ spec, ticket, branch, trackerDoc, blockers, findings }) {
   return [
     "Agent: implementer",
     `Spec: ${spec}`,
     `Ticket: ${ticket}`,
+    `Branch: ${branch}`,
     `Tracker doc: ${trackerDoc}`,
     ...blockers.map((b) => `Blocker handoff: ${b}`),
     ...findings.map((f) => `Finding to fix: ${f}`),
     "",
-    "Build this one ticket with the `tdd` skill at the seams the spec names, and commit on the current branch.",
+    findings.length
+      ? "This is a fix round: the branch already holds an earlier attempt. Fix every finding above without dropping anything the ticket asks for, and commit."
+      : "Build this one ticket with the `tdd` skill at the seams the spec names, and commit on the current branch.",
     "Before starting, read every blocker handoff. If one contradicts the ticket, follow the handoff and say so in `handoffConflict`.",
-    "When done, append the ticket's `## Handoff` section using the tracker doc's template, and commit it.",
+    "When done, write the ticket's `## Handoff` section using the tracker doc's template (update it if it already exists), and commit it.",
     "Write the pull request body with the `pr` skill, including its Merge Danger section.",
     "Do not review your own work; independent reviewers follow.",
     pause,

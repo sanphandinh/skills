@@ -1,12 +1,14 @@
 // The orchestrator: one run of a spec. It owns the ticket state machine,
 // claiming, and pull requests; agents are reached only through the harness
 // port and the forge only through the forge port.
+import { createHash } from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { changedFiles, git, gitOk, listTree, patchId, show, worktree } from "./git.mjs";
 import { POLICY_DOC, loadPolicy, refusals } from "./policy.mjs";
 import { implementerPrompt, reviewPrompt, verifierPrompt } from "./prompts.mjs";
-import { appendComment, getField, parseTicket, removeField, setField, tickAll } from "./tracker.mjs";
+import { appendComment, getField, hasSection, parseTicket, removeField, setField, tickAll } from "./tracker.mjs";
 
 const TRACKER_DOC = "docs/agents/issue-tracker.md";
 const VERIFY_DOC = "docs/agents/verify.md";
@@ -51,9 +53,14 @@ function context({
   maxFixRounds = 2,
   ciTimeoutMs = 30 * 60_000,
   ciPollMs = 30_000,
+  budget = {},
+  clock = Date.now,
 }) {
   const slug = path.posix.basename(path.posix.dirname(spec));
   return {
+    budget: { tokens: 3_000_000, timeMs: 2 * 60 * 60_000, ...budget },
+    clock,
+    state: new State(stateDir ?? defaultStateDir(repoDir), slug),
     repo: repoDir,
     spec,
     slug,
@@ -64,7 +71,6 @@ function context({
     trunk,
     trunkRef: `${remote}/${trunk}`,
     who,
-    stateDir,
     dryRun,
     maxFixRounds,
     ciTimeoutMs,
@@ -125,6 +131,45 @@ function claim(ctx, ticket) {
   );
 }
 
+class OverBudget extends Error {}
+
+// Per-machine bookkeeping, kept outside the repository.
+class State {
+  constructor(dir, slug) {
+    this.file = path.join(dir, `${slug}.json`);
+    this.data = fs.existsSync(this.file) ? JSON.parse(fs.readFileSync(this.file, "utf8")) : { tickets: {} };
+  }
+  ticket(id) {
+    return (this.data.tickets[id] ??= { rounds: 0, tokens: 0 });
+  }
+  save() {
+    fs.mkdirSync(path.dirname(this.file), { recursive: true });
+    fs.writeFileSync(this.file, `${JSON.stringify(this.data, null, 2)}\n`);
+  }
+}
+
+function defaultStateDir(repo) {
+  const base = process.env.XDG_STATE_HOME ?? path.join(os.homedir(), ".local", "state");
+  const id = createHash("sha1").update(path.resolve(repo)).digest("hex").slice(0, 8);
+  return path.join(base, "autopilot", `${path.basename(path.resolve(repo))}-${id}`);
+}
+
+// Every agent call for a ticket goes through this, so the ticket's token and
+// time budget is enforced in one place.
+function budgeted(ctx, ticket) {
+  const st = ctx.state.ticket(ticket.id);
+  const started = ctx.clock();
+  return async (call) => {
+    const result = await ctx.harness.run(call);
+    st.tokens += result.tokens ?? 0;
+    st.updatedAt = new Date().toISOString();
+    ctx.state.save();
+    if (st.tokens > ctx.budget.tokens) throw new OverBudget(`over the token budget (${st.tokens} > ${ctx.budget.tokens})`);
+    if (ctx.clock() - started > ctx.budget.timeMs) throw new OverBudget(`over the time budget (${Math.round((ctx.clock() - started) / 60_000)} min)`);
+    return result;
+  };
+}
+
 async function work(ctx, ticket) {
   const branch = `autopilot/${ctx.slug}/${ticket.id}`;
   const head = `${ctx.remote}/${branch}`;
@@ -134,21 +179,31 @@ async function work(ctx, ticket) {
   let prBody = "";
   let findings = [];
   let gate;
+  const agent = budgeted(ctx, ticket);
+  const st = ctx.state.ticket(ticket.id);
   try {
     for (let round = 0; ; round++) {
-      const result = await ctx.harness.run({
+      st.rounds = round + 1;
+      ctx.state.save();
+      const result = await agent({
         role: "implementer",
         cwd: wt.dir,
-        prompt: implementerPrompt({ spec: ctx.spec, ticket: ticket.rel, trackerDoc: TRACKER_DOC, blockers: [], findings }),
+        prompt: implementerPrompt({ spec: ctx.spec, ticket: ticket.rel, branch, trackerDoc: TRACKER_DOC, blockers: [], findings }),
       });
       const out = result.output ?? {};
-      if (round === 0) close(wt.dir, ticket);
+      const incomplete = incompleteAttempt(wt.dir, ticket, result);
+      if (incomplete) {
+        findings = [incomplete];
+        if (round >= ctx.maxFixRounds) return handToHuman(ctx, ticket, pr, incomplete, done);
+        continue;
+      }
+      if (getField(fs.readFileSync(path.join(wt.dir, ticket.rel), "utf8"), "Status") !== "closed") close(wt.dir, ticket);
       git(wt.dir, ["push", "-q", "--force-with-lease", ctx.remote, `HEAD:${branch}`]);
       fetch(ctx);
       prBody = out.prBody ?? prBody;
       pr ??= await ctx.forge.openPr({ branch, base: ctx.trunk, title: `${ticket.id}: ${ticket.title}`, body: prBody });
 
-      gate = await gates(ctx, ticket, pr, head);
+      gate = await gates(ctx, agent, ticket, pr, head);
       if (!gate.blocking.length) break;
       findings = gate.blocking;
       if (round >= ctx.maxFixRounds) return handToHuman(ctx, ticket, pr, findings.join("; "), done);
@@ -157,7 +212,7 @@ async function work(ctx, ticket) {
     // A verdict covers one patch: anything pushed after it needs a fresh one.
     fetch(ctx);
     if (patchId(ctx.repo, ctx.trunkRef, head) !== gate.patch) {
-      gate = await gates(ctx, ticket, pr, head);
+      gate = await gates(ctx, agent, ticket, pr, head);
       fetch(ctx);
       if (gate.blocking.length) return handToHuman(ctx, ticket, pr, gate.blocking.join("; "), done);
       if (patchId(ctx.repo, ctx.trunkRef, head) !== gate.patch) return handToHuman(ctx, ticket, pr, "the branch keeps changing after verification", done);
@@ -174,6 +229,9 @@ async function work(ctx, ticket) {
     await ctx.forge.merge(pr.number);
     if (!(await ctx.forge.isMerged(pr.number))) return handToHuman(ctx, ticket, pr, "the merge did not land", done);
     return done("merged", { pr: pr.url });
+  } catch (err) {
+    if (err instanceof OverBudget) return handToHuman(ctx, ticket, pr, err.message, done);
+    throw err;
   } finally {
     wt.cleanup();
   }
@@ -181,15 +239,15 @@ async function work(ctx, ticket) {
 
 // Verifier and both reviewers, each in a fresh checkout of the pushed head.
 // Returns the findings that block the merge.
-async function gates(ctx, ticket, pr, head) {
+async function gates(ctx, agent, ticket, pr, head) {
   const patch = patchId(ctx.repo, ctx.trunkRef, head);
   const check = worktree(ctx.repo, head);
   try {
     const verifyDoc = show(ctx.repo, ctx.trunkRef, VERIFY_DOC) === null ? null : VERIFY_DOC;
     const [verify, spec, standards] = await Promise.all([
-      ctx.harness.run({ role: "verifier", cwd: check.dir, prompt: verifierPrompt({ spec: ctx.spec, ticket: ticket.rel, verifyDoc }) }),
-      ctx.harness.run({ role: "review-spec", cwd: check.dir, prompt: reviewPrompt({ axis: "spec", spec: ctx.spec, ticket: ticket.rel, base: ctx.trunkRef }) }),
-      ctx.harness.run({ role: "review-standards", cwd: check.dir, prompt: reviewPrompt({ axis: "standards", spec: ctx.spec, ticket: ticket.rel, base: ctx.trunkRef }) }),
+      agent({ role: "verifier", cwd: check.dir, prompt: verifierPrompt({ spec: ctx.spec, ticket: ticket.rel, verifyDoc }) }),
+      agent({ role: "review-spec", cwd: check.dir, prompt: reviewPrompt({ axis: "spec", spec: ctx.spec, ticket: ticket.rel, base: ctx.trunkRef }) }),
+      agent({ role: "review-standards", cwd: check.dir, prompt: reviewPrompt({ axis: "standards", spec: ctx.spec, ticket: ticket.rel, base: ctx.trunkRef }) }),
     ]);
     const v = verify.output ?? {};
     const sp = spec.output ?? {};
@@ -230,6 +288,15 @@ async function handToHuman(ctx, ticket, pr, reason, done) {
   );
   if (pr) await ctx.forge.comment(pr.number, `Needs a human: ${reason}`);
   return done("ready-for-human", { pr: pr?.url, reason });
+}
+
+// Why an implementer's attempt cannot go to review yet, or null.
+function incompleteAttempt(dir, ticket, result) {
+  if (!result.ok || result.output?.ok === false) {
+    return `the implementer could not finish: ${result.output?.note ?? result.output?.error ?? "no reason given"}`;
+  }
+  if (!hasSection(fs.readFileSync(path.join(dir, ticket.rel), "utf8"), "Handoff")) return "the ticket has no ## Handoff section";
+  return null;
 }
 
 // The close travels on the ticket branch so it lands with the code.

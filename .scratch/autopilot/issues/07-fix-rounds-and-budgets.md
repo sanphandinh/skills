@@ -4,11 +4,15 @@
 
 **Blocked by:** 05
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Each fix round spawns a fresh implementer whose prompt points at the original ticket, every earlier finding, and the prior branch
-- [ ] After two fix rounds the ticket becomes `ready-for-human` with the outstanding findings listed; no third round starts
-- [ ] Time and token ceilings are configurable per run with sensible defaults; exceeding one makes the ticket `ready-for-human`
-- [ ] Per-machine counters live in a state directory outside the repository
-- [ ] Tests cover two failed rounds, a fix that passes on round two, and a budget breach
-- [ ] `npm run validate` and `npm test` pass
+- [x] Each fix round spawns a fresh implementer whose prompt points at the original ticket, every earlier finding, and the prior branch
+- [x] After two fix rounds the ticket becomes `ready-for-human` with the outstanding findings listed; no third round starts
+- [x] Time and token ceilings are configurable per run with sensible defaults; exceeding one makes the ticket `ready-for-human`
+- [x] Per-machine counters live in a state directory outside the repository
+- [x] Tests cover two failed rounds, a fix that passes on round two, and a budget breach
+- [x] `npm run validate` and `npm test` pass
+
+## Comments
+
+Done. Defaults: 2 fix rounds, 3M tokens and 2 hours per ticket, overridable with `--max-tokens` and `--max-minutes`. An attempt with no handoff, or one the implementer reports as failed, gets a fix round before any reviewer runs.

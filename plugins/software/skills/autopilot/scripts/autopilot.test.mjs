@@ -259,3 +259,70 @@ test("the merge policy seed template parses to the built-in defaults", async () 
   const seed = fs.readFileSync(new URL("../../setup-software-context/merge-policy.md", import.meta.url), "utf8");
   assert.deepEqual(loadPolicy(seed), loadPolicy(null));
 });
+
+// ---------- 07: fix rounds and budgets ----------
+
+test("a failed verification goes back to a fresh implementer with the findings, and merges once fixed", async () => {
+  const fx = oneTicket();
+  const harness = fakeHarness(happyRoles({ verifier: ({ call }) => (call === 1 ? { verdict: "FAIL", evidence: "total is off by one" } : PASS()) }));
+  const forge = fakeForge(fx);
+  const report = await run(fx, harness, forge);
+  const impl = harness.calls.filter((c) => c.role === "implementer");
+  assert.equal(impl.length, 2);
+  assert.match(impl[1].prompt, /^Finding to fix: verification FAIL: total is off by one$/m);
+  assert.match(impl[1].prompt, /^Branch: autopilot\/demo\/01$/m);
+  assert.match(impl[1].prompt, new RegExp(`^Ticket: ${T("01")}$`, "m"));
+  assert.equal(report.tickets[0].outcome, "merged");
+});
+
+test("after two fix rounds the ticket goes to the human and no third round starts", async () => {
+  const fx = oneTicket();
+  const harness = fakeHarness(happyRoles({ verifier: () => ({ verdict: "FAIL", evidence: "still broken" }) }));
+  const report = await run(fx, harness, fakeForge(fx));
+  assert.equal(harness.calls.filter((c) => c.role === "implementer").length, 3, "the first build plus two fix rounds");
+  assert.equal(report.tickets[0].outcome, "ready-for-human");
+  assert.match(report.tickets[0].reason, /still broken/);
+});
+
+test("a ticket over its token budget stops and goes to the human", async () => {
+  const fx = oneTicket();
+  const harness = fakeHarness(happyRoles({ implementer: (ctx) => ({ ...implementer()(ctx), tokens: 5000 }) }));
+  const report = await run(fx, harness, fakeForge(fx), { budget: { tokens: 1000 } });
+  assert.equal(report.tickets[0].outcome, "ready-for-human");
+  assert.match(report.tickets[0].reason, /token budget/);
+  assert.equal(harness.calls.filter((c) => c.role === "verifier").length, 0);
+});
+
+test("a ticket over its time budget stops and goes to the human", async () => {
+  const fx = oneTicket();
+  let now = 0;
+  const harness = fakeHarness(happyRoles({ implementer: (ctx) => ((now += 61 * 60_000), implementer()(ctx)) }));
+  const report = await run(fx, harness, fakeForge(fx), { budget: { timeMs: 60 * 60_000 }, clock: () => now });
+  assert.equal(report.tickets[0].outcome, "ready-for-human");
+  assert.match(report.tickets[0].reason, /time budget/);
+});
+
+test("per-machine counters live outside the repository", async () => {
+  const fx = oneTicket();
+  await run(fx, fakeHarness(happyRoles({ verifier: ({ call }) => (call === 1 ? { verdict: "FAIL", evidence: "x" } : PASS()) })), fakeForge(fx));
+  const state = JSON.parse(fs.readFileSync(path.join(fx.stateDir, "demo.json"), "utf8"));
+  assert.equal(state.tickets["01"].rounds, 2);
+  assert.ok(state.tickets["01"].tokens > 0);
+  assert.equal(sh(fx.clone, "status", "--porcelain"), "", "the clone stays clean");
+});
+
+test("an implementer that leaves no handoff, or reports failure, gets a fix round before any review", async () => {
+  const fx = oneTicket();
+  const harness = fakeHarness(
+    happyRoles({
+      implementer: (ctx) => (ctx.call === 1 ? implementer({ handoff: false })(ctx) : ctx.call === 2 ? { ok: false, note: "tests would not run" } : implementer()(ctx)),
+    }),
+  );
+  const report = await run(fx, harness, fakeForge(fx));
+  const impl = harness.calls.filter((c) => c.role === "implementer");
+  assert.equal(impl.length, 3);
+  assert.match(impl[1].prompt, /^Finding to fix: the ticket has no ## Handoff section$/m);
+  assert.match(impl[2].prompt, /^Finding to fix: the implementer could not finish: tests would not run$/m);
+  assert.equal(harness.calls.filter((c) => c.role === "verifier").length, 1, "review waits for a complete attempt");
+  assert.equal(report.tickets[0].outcome, "merged");
+});
