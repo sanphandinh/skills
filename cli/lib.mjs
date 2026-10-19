@@ -225,11 +225,32 @@ export function saveUpstream(up) {
   fs.writeFileSync(up.file, `---\n${YAML.stringify(up.config, { lineWidth: 0 })}---\n${up.body}`);
 }
 
-export function applyRewrites(text, rewrites = []) {
+// A rule with `skillGroups` rewrites a match only when each listed capture names
+// a real skill, so paths (`/tmp`) and harness commands (`/clear`) pass through.
+export function applyRewrites(text, rewrites = [], { skills = new Set() } = {}) {
   for (const r of rewrites) {
-    text = r.pattern !== undefined ? text.replace(new RegExp(r.pattern, r.flags ?? "g"), r.replace) : text.split(r.from).join(r.to);
+    if (r.pattern === undefined) {
+      text = text.split(r.from).join(r.to);
+      continue;
+    }
+    const re = new RegExp(r.pattern, r.flags ?? "g");
+    text = r.skillGroups
+      ? text.replace(re, (match, ...groups) =>
+          r.skillGroups.every((n) => skills.has(groups[n - 1])) ? r.replace.replace(/\$(\d)/g, (_, n) => groups[n - 1] ?? "") : match,
+        )
+      : text.replace(re, r.replace);
   }
   return text;
+}
+
+// Skill names a rewrite may treat as real: this repo's skills plus every skill
+// folder upstream has at `commit`.
+function knownSkills(root, commit) {
+  const names = new Set(listSkills(root).map((s) => s.name));
+  for (const f of git(root, ["ls-tree", "-r", "--name-only", commit]).split("\n")) {
+    if (f.endsWith("/SKILL.md")) names.add(path.posix.basename(path.posix.dirname(f)));
+  }
+  return names;
 }
 
 function upstreamRef(cfg) {
@@ -251,9 +272,10 @@ export function exportUpstreamSkill(root, cfg, commit, upstreamPath, localName) 
   const tar = execFileSync("git", ["archive", commit, upstreamPath], { cwd: root, maxBuffer: 1 << 28 });
   execFileSync("tar", ["-x", "-C", tmp], { input: tar });
   const dir = path.join(tmp, upstreamPath);
+  const skills = knownSkills(root, commit);
   for (const rel of walk(dir).filter(isText)) {
     const f = path.join(dir, rel);
-    let text = applyRewrites(fs.readFileSync(f, "utf8"), cfg.rewrites);
+    let text = applyRewrites(fs.readFileSync(f, "utf8"), cfg.rewrites, { skills });
     if (rel === "SKILL.md") text = renameSkillText(text, localName);
     fs.writeFileSync(f, text);
   }

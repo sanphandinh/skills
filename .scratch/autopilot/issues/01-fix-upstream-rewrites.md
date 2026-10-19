@@ -6,9 +6,13 @@
 
 **Status:** ready-for-agent
 
-- [ ] A path-like token (`/tmp`, `/usr/bin`, any `/word` that is not the name of a skill in this repo) passes through the rewrites unchanged
-- [ ] A slash-prefixed skill name still becomes a plain reference to that skill
-- [ ] "the `/x` skill" and "the `/x`" both end with a single "the"
-- [ ] `improve-codebase-architecture` no longer mentions a `tmp` skill and has no doubled "the"
-- [ ] The rewrite behaviour is covered by tests in the repo CLI suite
-- [ ] `npm run validate` and `npm test` pass
+- [x] A path-like token (`/tmp`, `/usr/bin`, any `/word` that is not the name of a skill in this repo) passes through the rewrites unchanged
+- [x] A slash-prefixed skill name still becomes a plain reference to that skill
+- [x] "the `/x` skill" and "the `/x`" both end with a single "the"
+- [x] `improve-codebase-architecture` no longer mentions a `tmp` skill and has no doubled "the"
+- [x] The rewrite behaviour is covered by tests in the repo CLI suite
+- [x] `npm run validate` and `npm test` pass
+
+## Comments
+
+Done. Rules gain `skillGroups`; `/tmp`, `/clear`, `/compact`, `/settings` now pass through. Only `improve-codebase-architecture` had corrupted lines (three), all fixed.

@@ -21,6 +21,7 @@ rewrites:
     to: use whichever skills
   - pattern: the result of /([a-z][a-z0-9-]+) and /([a-z][a-z0-9-]+)
     replace: the result of the `$1` and `$2` skills
+    skillGroups: [1, 2]
   - pattern: Call the Skill tool with [`"]([a-z0-9-]+)[`"]
     replace: Use the `$1` skill
   - pattern: call the Skill tool with [`"]([a-z0-9-]+)[`"]
@@ -29,10 +30,16 @@ rewrites:
     to: should use
   - pattern: "`/([a-z][a-z0-9-]+)` skill"
     replace: "`$1` skill"
+    skillGroups: [1]
+  - pattern: \b([Tt]he) `/([a-z][a-z0-9-]+)`
+    replace: $1 `$2` skill
+    skillGroups: [2]
   - pattern: "`/([a-z][a-z0-9-]+)`"
     replace: the `$1` skill
+    skillGroups: [1]
   - pattern: \b([Uu]se) /([a-z][a-z0-9-]+)\b
     replace: $1 the `$2` skill
+    skillGroups: [2]
 ignore: []
 skills:
   grilling:
@@ -119,7 +126,10 @@ its frontmatter, `agents/openai.yaml` for Codex):
    the rest of the frontmatter stays byte-identical to upstream.
 2. **Rewrite.** The `rewrites` rules above run over every text file, in order.
    They turn agent-specific phrasing ("call the Skill tool with", `/skill`) into
-   plain references by name, and apply renames.
+   plain references by name, and apply renames. A rule with `skillGroups: [n]`
+   fires only when capture `n` names a skill (one in this repo, or a skill
+   folder upstream), so paths like `/tmp` and harness commands like `/clear`
+   stay as written.
 
 Hand edits on top of that (for example `setup-software-context` writing to
 `AGENTS.md` instead of choosing between `CLAUDE.md` and `AGENTS.md`) are local

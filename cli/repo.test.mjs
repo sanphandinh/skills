@@ -4,7 +4,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { upstreamAdd, upstreamPull, upstreamStatus, validate } from "./lib.mjs";
+import { fileURLToPath } from "node:url";
+import { loadUpstream, saveUpstream, upstreamAdd, upstreamPull, upstreamStatus, validate } from "./lib.mjs";
+
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const CATALOG = `plugins:
   core:
@@ -123,6 +126,7 @@ branch: main
 rewrites:
   - pattern: "\`/([a-z][a-z0-9-]+)\`"
     replace: the \`$1\` skill
+    skillGroups: [1]
 skills: {}
 ---
 # Upstream
@@ -136,6 +140,7 @@ function upstreamPair() {
     "skills/eng/foo/SKILL.md": UPSTREAM_SKILL,
     "skills/eng/foo/agents/openai.yaml": "interface:\n  display_name: Foo\n",
     "skills/eng/other/SKILL.md": skill("other"),
+    "skills/eng/bar/SKILL.md": skill("bar"),
   });
   git(up, "init", "-q", "-b", "main");
   git(up, "add", ".");
@@ -162,6 +167,32 @@ test("upstream add keeps the native layout and only renames and rewrites", () =>
   assert.ok(fs.existsSync(path.join(dir, "agents/openai.yaml")));
 });
 
+test("upstream add rewrites only slash names of real skills", () => {
+  const { up, local } = upstreamPair();
+  put(up, { "skills/eng/paths/SKILL.md": skill("paths") + "Fall back to `/tmp`, then `/clear` the session and run `/bar`.\n" });
+  git(up, "add", ".");
+  git(up, "commit", "-qm", "paths");
+  upstreamAdd(local, "skills/eng/paths", "core");
+  const md = fs.readFileSync(path.join(local, "plugins/core/skills/paths/SKILL.md"), "utf8");
+  assert.match(md, /Fall back to `\/tmp`, then `\/clear` the session and run the `bar` skill\./);
+});
+
+test("this repo's rewrite rules turn slash skills into plain references and leave the rest alone", () => {
+  const { up, local } = upstreamPair();
+  const cfg = loadUpstream(local);
+  cfg.config.rewrites = loadUpstream(REPO_ROOT).config.rewrites;
+  saveUpstream(cfg);
+  put(up, {
+    "skills/eng/prose/SKILL.md":
+      skill("prose") + "Use the `/bar` vocabulary and the `/bar` skill. Fall back to `/tmp`, run `/clear`, then use /bar.\n",
+  });
+  git(up, "add", ".");
+  git(up, "commit", "-qm", "prose");
+  upstreamAdd(local, "skills/eng/prose", "core");
+  const md = fs.readFileSync(path.join(local, "plugins/core/skills/prose/SKILL.md"), "utf8");
+  assert.match(md, /Use the `bar` skill vocabulary and the `bar` skill\. Fall back to `\/tmp`, run `\/clear`, then use the `bar` skill\./);
+});
+
 test("upstream pull keeps local edits and brings in upstream changes", () => {
   const { up, local, dir } = upstreamPair();
   const file = path.join(dir, "SKILL.md");
@@ -170,7 +201,7 @@ test("upstream pull keeps local edits and brings in upstream changes", () => {
 
   const st = upstreamStatus(local);
   assert.equal(st.rows.find((r) => r.name === "foo-local").state, "changed");
-  assert.deepEqual(st.candidates, ["skills/eng/other"]);
+  assert.deepEqual(st.candidates, ["skills/eng/bar", "skills/eng/other"]);
 
   const r = upstreamPull(local, "foo-local");
   assert.deepEqual(r.conflicts, []);
