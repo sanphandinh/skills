@@ -149,3 +149,31 @@ export function fakeForge(fx, { ci = () => "pass" } = {}) {
   };
   return forge;
 }
+
+// In-memory GitHub REST API for the issues endpoints the tracker uses.
+export function fakeGitHub(repo = "acme/app") {
+  const issues = new Map();
+  let commentId = 0;
+  const add = (i) => {
+    issues.set(i.number, { state: "open", state_reason: null, labels: [], body: "", comments: [], subIssues: [], blockedBy: [], ...i });
+    return issues.get(i.number);
+  };
+  const api = async (method, p, body) => {
+    const m = p.replace(/\?.*$/, "").match(new RegExp(`^repos/${repo}/issues/(\\d+)(?:/(.+))?$`));
+    if (!m) throw new Error(`fake GitHub: no route for ${method} ${p}`);
+    const i = issues.get(Number(m[1]));
+    if (!i) throw new Error(`fake GitHub: 404 issue ${m[1]}`);
+    const rest = m[2] ?? "";
+    const view = (x) => ({ number: x.number, title: x.title, body: x.body, state: x.state, state_reason: x.state_reason, labels: x.labels.map((name) => ({ name })) });
+    if (!rest && method === "GET") return view(i);
+    if (!rest && method === "PATCH") return Object.assign(i, body) && view(i);
+    if (rest === "comments" && method === "GET") return i.comments.map((c) => ({ ...c }));
+    if (rest === "comments" && method === "POST") return i.comments.push({ id: ++commentId, body: body.body }) && null;
+    if (rest === "sub_issues" && method === "GET") return i.subIssues.map((n) => view(issues.get(n)));
+    if (rest === "dependencies/blocked_by" && method === "GET") return i.blockedBy.map((n) => view(issues.get(n)));
+    if (rest === "labels" && method === "POST") return (i.labels = [...new Set([...i.labels, ...body.labels])]) && null;
+    if (rest.startsWith("labels/") && method === "DELETE") return (i.labels = i.labels.filter((l) => l !== decodeURIComponent(rest.slice(7)))) && null;
+    throw new Error(`fake GitHub: no route for ${method} ${p}`);
+  };
+  return { api, issues, add, repo };
+}

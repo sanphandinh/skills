@@ -6,6 +6,7 @@ import { createForge } from "./lib/forge.mjs";
 import { createHarness, detectHarness } from "./lib/harness.mjs";
 import { renderReport } from "./lib/report.mjs";
 import { runAutopilot } from "./lib/run.mjs";
+import { createTracker } from "./lib/trackers/index.mjs";
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -25,7 +26,7 @@ const { positionals, values } = parseArgs({
 
 const [command, spec] = positionals;
 if (values.help || command !== "run" || !spec) {
-  console.log("usage: autopilot.mjs run <spec> [--harness omp|claude] [--repo dir] [--remote origin] [--trunk main] [--concurrency n] [--as name] [--max-tokens n] [--max-minutes n] [--dry-run]");
+  console.log("usage: autopilot.mjs run <spec path | #issue | KEY-1> [--harness omp|claude] [--repo dir] [--remote origin] [--trunk main] [--concurrency n] [--as name] [--max-tokens n] [--max-minutes n] [--dry-run]");
   process.exit(values.help ? 0 : 1);
 }
 
@@ -42,6 +43,7 @@ const report = await runAutopilot({
   repoDir: values.repo,
   spec,
   harness: createHarness(harness.name, { repoDir: values.repo }),
+  tracker: createTracker({ repoDir: values.repo, remote: values.remote, trunk: values.trunk, spec }),
   forge: createForge({ repoDir: values.repo }),
   remote: values.remote,
   trunk: values.trunk,
