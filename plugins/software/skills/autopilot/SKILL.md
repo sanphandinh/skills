@@ -1,7 +1,7 @@
 ---
 name: autopilot
 description: "Build an approved spec unattended: one independently verified and reviewed pull request per ticket, auto-merged when the merge policy allows."
-argument-hint: "<spec> [--harness omp|claude]"
+argument-hint: "<spec path | #issue | KEY-1> [--harness omp|claude]"
 disable-model-invocation: true
 ---
 
@@ -11,8 +11,8 @@ Run the orchestrator script on an approved spec. The script holds the state mach
 
 Check each one and stop with the reason when one fails:
 
-- The issue tracker doc (`docs/agents/issue-tracker.md`) exists. If not, tell the user to run the `setup-software-context` skill.
-- The spec the user named exists on trunk and its status is `ready-for-agent`. Anything else means the human gate has not passed.
+- The issue tracker doc (`docs/agents/issue-tracker.md`) exists. If not, tell the user to run the `setup-software-context` skill. Its `Tracker:` line names where tickets live (local, GitHub, GitLab, or Jira); for Jira, `JIRA_EMAIL` and `JIRA_API_TOKEN` must be set.
+- The spec the user named (a `.scratch/` path, `#42`, or `KEY-42`) exists on the tracker and its status is `ready-for-agent`. Anything else means the human gate has not passed. A local spec must be pushed to trunk.
 - The working tree is clean, and the repository has the remote the tracker doc names for pull requests.
 - If `docs/agents/verify.md` is missing, warn that nothing will auto-merge until the `setup-verification` skill has written it, then continue.
 

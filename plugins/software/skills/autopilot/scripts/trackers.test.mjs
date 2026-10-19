@@ -238,3 +238,14 @@ test("jira: one run builds the epic's ready issues and opens pull requests on th
   assert.match(forge.prs[0].body, /Jira: APP-2/);
   assert.match(forge.prs[0].branch, /^autopilot\/jira-APP-1\/APP-2$/);
 });
+
+test("every seed tracker template names its tracker on a line autopilot reads", async () => {
+  const fs = await import("node:fs");
+  const { trackerConfig } = await import("./lib/trackers/index.mjs");
+  const seed = (name) => fs.readFileSync(new URL(`../../setup-software-context/issue-tracker-${name}.md`, import.meta.url), "utf8");
+  assert.equal(trackerConfig(seed("local")).kind, "local");
+  assert.equal(trackerConfig(seed("github")).kind, "github");
+  assert.equal(trackerConfig(seed("gitlab")).kind, "gitlab");
+  assert.deepEqual(trackerConfig(seed("jira")), { kind: "jira", site: "https://<site>.atlassian.net", project: "<PROJECT-KEY>" });
+  assert.deepEqual(jiraStatuses(seed("jira")), { "needs-triage": "Backlog", "ready-for-agent": "To Do", "ready-for-human": "Blocked", closed: "Done" });
+});

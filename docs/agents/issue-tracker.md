@@ -13,6 +13,8 @@ Issues and specs for this repo live as markdown files in `.scratch/`.
 
 ## Pull requests
 
+**Tracker:** local
+
 **Pull requests:** github sanphandinh/skills
 
 Code for a ticket still goes through a pull request on this repository, even though tickets live here. Every pull request operation names this repository explicitly; never let a tool infer it from git remotes, because a second remote (such as `upstream`) may point somewhere else.

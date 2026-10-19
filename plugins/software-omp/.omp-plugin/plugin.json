@@ -1,6 +1,6 @@
 {
   "name": "software-omp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Oh My Pi agents and rules for the software skills: implementer, verifier, and role-based reviewers, plus TDD guard rules.",
   "author": {
     "name": "San Phan"

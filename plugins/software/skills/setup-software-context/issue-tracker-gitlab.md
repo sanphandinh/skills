@@ -26,6 +26,12 @@ When set to `yes`, MRs run through the same labels and states as issues, using t
 
 Unlike GitHub, GitLab numbers issues and MRs separately, so `#42` is unambiguous once you know which surface the maintainer means.
 
+## Autopilot
+
+**Tracker:** gitlab <group>/<project>
+
+Read by the `autopilot` skill. A spec is an issue; its tickets are the issues linked to it (`relates_to`), blocked by `is_blocked_by` links or a `Blocked by:` line. Autopilot claims a ticket by posting an `autopilot:claim` comment (the earliest unreleased claim holds it), hands a ticket to a human by setting the `ready-for-human` label with a release comment, and after a merge posts the ticket's `## Handoff` comment and closes it. Read a blocker's handoff from its comments.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a GitLab issue.

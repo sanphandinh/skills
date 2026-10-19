@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: closed
 
 # Autopilot on GitHub, GitLab, and Jira trackers
 

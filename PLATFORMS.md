@@ -97,16 +97,29 @@ plugin's install folder with no dependencies.
 | Permissions | `--permission-mode bypassPermissions`: nobody can answer prompts, so each session runs inside a disposable worktree | `--auto-approve`, same reason |
 | Role models | Agent aliases (implementer `inherit`, others `opus`); the parent session runs on `sonnet` so the implementer never shares the reviewers' model. Remap aliases per project with `env` in `.claude/settings.json` (`templates/roles.claude-settings.json`) | Custom roles `implementer`, `verifier`, `reviewer` in the project's `.omp/config.yml` (`templates/roles.omp-config.yml`); unassigned ones fall back to `@task` and `@slow` |
 
+Tickets can live in any of four trackers, named by the `Tracker:` line in
+`docs/agents/issue-tracker.md` (no line means local):
+
+| Tracker | `Tracker:` line | Spec | Tickets | Claim and close | Pull requests |
+|---|---|---|---|---|---|
+| Local markdown | `local` | `.scratch/<feature>/spec.md` | files in `issues/` | commit pushed to trunk; closes on the ticket branch | `Pull requests:` line |
+| GitHub Issues | `github <owner>/<repo>` | `#42` or its URL | sub-issues | claim comment; `Closes` keyword and handoff comment | same repo unless `Pull requests:` says otherwise |
+| GitLab Issues | `gitlab <group>/<project>` | `#42` | linked issues (`relates_to`) | claim note; `Closes` keyword and handoff note | same project, as merge requests |
+| Jira Cloud | `jira <site URL> <KEY>` plus `Jira statuses:` | `KEY-42` (an epic) | child issues | claim comment; transition to the closed status and handoff comment | `Pull requests:` line (GitHub or GitLab) |
+
+GitHub uses `gh`, GitLab uses `glab`, both already signed in; Jira reads
+`JIRA_EMAIL` and `JIRA_API_TOKEN` from the environment and never stores them.
+
 A project also needs, from `setup-software-context` and `setup-verification`:
 
-- `docs/agents/issue-tracker.md` with the claim, close, and handoff conventions and a `Pull requests: github <owner>/<repo>` line. Every `gh` call passes that repository, so another remote never receives a pull request.
+- `docs/agents/issue-tracker.md` with its `Tracker:` line and, when tickets are local or on Jira, a `Pull requests: github|gitlab <owner>/<repo>` line. Every forge call passes that repository, so another remote never receives a pull request.
 - `docs/agents/merge-policy.md` (optional; the built-in defaults apply without it).
 - `docs/agents/verify.md`; without it nothing auto-merges.
 
 Run it from the repository root:
 
 ```bash
-node <plugin folder>/skills/autopilot/scripts/autopilot.mjs run .scratch/<feature>/spec.md
+node <plugin folder>/skills/autopilot/scripts/autopilot.mjs run <spec: .scratch/<feature>/spec.md | #42 | KEY-42>
 ```
 
 The harness is detected: the agent session the script runs inside (`omp` or `claude` among its parent processes, or `CLAUDECODE=1`), else the agent plugin the project installed, else the only agent CLI on PATH. `--harness` overrides it.

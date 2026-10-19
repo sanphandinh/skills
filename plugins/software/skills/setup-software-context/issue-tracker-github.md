@@ -26,6 +26,12 @@ When set to `yes`, PRs run through the same labels and states as issues, using t
 
 GitHub shares one number space across issues and PRs, so a bare `#42` may be either: resolve with `gh pr view 42` and fall back to `gh issue view 42`.
 
+## Autopilot
+
+**Tracker:** github <owner>/<repo>
+
+Read by the `autopilot` skill. A spec is an issue; its tickets are its sub-issues, blocked by native issue dependencies or a `Blocked by:` line. Autopilot claims a ticket by posting an `autopilot:claim` comment (the earliest unreleased claim holds it), hands a ticket to a human by setting the `ready-for-human` label with a release comment, and after a merge posts the ticket's `## Handoff` comment and closes it. Read a blocker's handoff from its comments.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a GitHub issue.
