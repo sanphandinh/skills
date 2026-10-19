@@ -7,7 +7,7 @@
     "validate": "node cli/repo.mjs validate",
     "upstream": "node cli/repo.mjs upstream",
     "list": "node cli/repo.mjs list",
-    "test": "node --test cli/*.test.mjs"
+    "test": "node --test cli/*.test.mjs plugins/*/skills/*/scripts/*.test.mjs"
   },
   "dependencies": {
     "yaml": "^2.8.1"

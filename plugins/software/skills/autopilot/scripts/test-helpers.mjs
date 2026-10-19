@@ -1,0 +1,142 @@
+// Fakes for the harness and forge ports, and a repository fixture with a bare
+// remote, so tests drive the orchestrator against real git.
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
+export function sh(cwd, ...args) {
+  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+}
+
+export function tmp(prefix = "autopilot-test-") {
+  return fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+}
+
+export function write(root, files) {
+  for (const [rel, content] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
+    fs.writeFileSync(path.join(root, rel), content);
+  }
+}
+
+export const SPEC = (status = "ready-for-agent") => `Status: ${status}\n\n# Demo spec\n\nBuild the demo.\n`;
+
+export const TICKET = (id, title, { blockedBy = "None (can start immediately)", status = "ready-for-agent", extra = "" } = {}) =>
+  `# ${id}: ${title}\n\n**What to build:** ${title}.\n\n**Blocked by:** ${blockedBy}\n\n**Status:** ${status}\n${extra}\n- [ ] It works\n`;
+
+// A bare remote seeded with `files`, plus a clone the orchestrator runs in.
+export function repoFixture(files, { verifyDoc = true } = {}) {
+  const base = tmp();
+  const remote = path.join(base, "remote.git");
+  const seed = path.join(base, "seed");
+  const clone = path.join(base, "clone");
+  sh(base, "init", "-q", "--bare", "-b", "main", remote);
+  fs.mkdirSync(seed);
+  sh(seed, "init", "-q", "-b", "main");
+  sh(seed, "config", "user.email", "seed@example.com");
+  sh(seed, "config", "user.name", "seed");
+  write(seed, { "README.md": "demo\n", ...(verifyDoc ? { "docs/agents/verify.md": "# Verify\n\nRun `node app.js`.\n" } : {}), ...files });
+  sh(seed, "add", ".");
+  sh(seed, "commit", "-qm", "seed");
+  sh(seed, "remote", "add", "origin", remote);
+  sh(seed, "push", "-q", "origin", "main");
+  sh(base, "clone", "-q", remote, clone);
+  for (const dir of [clone]) {
+    sh(dir, "config", "user.email", "autopilot@example.com");
+    sh(dir, "config", "user.name", "autopilot");
+  }
+  return { base, remote, clone, stateDir: path.join(base, "state") };
+}
+
+export function anotherClone(fx, name) {
+  const dir = path.join(fx.base, name);
+  sh(fx.base, "clone", "-q", fx.remote, dir);
+  sh(dir, "config", "user.email", `${name}@example.com`);
+  sh(dir, "config", "user.name", name);
+  return dir;
+}
+
+// Read a file as it is on the remote trunk.
+export function onTrunk(fx, rel) {
+  return sh(fx.remote, "show", `main:${rel}`);
+}
+
+export function ticketPathFromPrompt(prompt) {
+  return prompt.match(/^Ticket: (.+)$/m)?.[1];
+}
+
+// An implementer that adds a file named after the ticket, writes the handoff
+// into the ticket file, and commits.
+export function implementer({ handoff = true, prBody = PR_BODY(), output = {}, change } = {}) {
+  return ({ prompt, cwd }) => {
+    const ticket = ticketPathFromPrompt(prompt);
+    const id = path.basename(ticket).slice(0, 2);
+    if (change) change({ cwd, id, prompt });
+    else write(cwd, { [`src/${id}.js`]: `export const t${id} = true;\n` });
+    if (handoff) fs.appendFileSync(path.join(cwd, ticket), `\n## Handoff\n\n**Delivered:** ticket ${id}\n**Interfaces introduced:** \`t${id}\`\n`);
+    sh(cwd, "add", "-A");
+    sh(cwd, "commit", "-qm", `implement ${id}`);
+    return { ok: true, prBody, decisions: [{ decision: `built ${id}`, reason: "ticket asked for it" }], ...output };
+  };
+}
+
+export const PR_BODY = ({ door = "two-way", blast = "low" } = {}) =>
+  `## Summary\n\nDemo.\n\n## Merge Danger\n\n**Door:** ${door}\n\n**Blast Radius:** ${blast}\n`;
+
+export const PASS = () => ({ verdict: "PASS", evidence: "ran it" });
+export const FAIL = (evidence = "it broke") => () => ({ verdict: "FAIL", evidence });
+export const SPEC_OK = () => ({ verdict: "pass", findings: [] });
+export const STANDARDS_OK = () => ({ verdict: "pass", findings: [] });
+
+// Scripted harness: one handler per role, every call recorded.
+export function fakeHarness(handlers) {
+  const calls = [];
+  return {
+    calls,
+    async run({ role, prompt, cwd }) {
+      calls.push({ role, prompt, cwd });
+      const handler = handlers[role];
+      if (!handler) throw new Error(`fake harness has no handler for role ${role}`);
+      const output = await handler({ prompt, cwd, call: calls.filter((c) => c.role === role).length });
+      return { ok: output?.ok !== false, output, tokens: output?.tokens ?? 100 };
+    },
+  };
+}
+
+// Forge over the bare remote: pull requests are records, merges are real
+// squash merges pushed to trunk.
+export function fakeForge(fx, { ci = () => "pass" } = {}) {
+  const prs = [];
+  const forge = {
+    prs,
+    async openPr({ branch, base, title, body }) {
+      const pr = { number: prs.length + 1, branch, base, title, body, comments: [], state: "open" };
+      prs.push(pr);
+      return { number: pr.number, url: `https://example.test/pr/${pr.number}` };
+    },
+    async comment(number, body) {
+      prs[number - 1].comments.push(body);
+    },
+    async ciStatus(number) {
+      return ci(prs[number - 1]);
+    },
+    async merge(number) {
+      const pr = prs[number - 1];
+      const work = path.join(fx.base, `merge-${number}-${Date.now()}`);
+      sh(fx.base, "clone", "-q", fx.remote, work);
+      sh(work, "config", "user.email", "forge@example.com");
+      sh(work, "config", "user.name", "forge");
+      sh(work, "fetch", "-q", "origin", pr.branch);
+      sh(work, "merge", "-q", "--squash", "FETCH_HEAD");
+      sh(work, "commit", "-qm", `${pr.title} (#${number})`);
+      sh(work, "push", "-q", "origin", "HEAD:main");
+      fs.rmSync(work, { recursive: true, force: true });
+      pr.state = "merged";
+    },
+    async isMerged(number) {
+      return prs[number - 1].state === "merged";
+    },
+  };
+  return forge;
+}

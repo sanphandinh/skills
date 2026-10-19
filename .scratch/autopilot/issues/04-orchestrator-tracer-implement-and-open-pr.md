@@ -4,13 +4,17 @@
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] The `autopilot` skill is user-invoked on every platform and only checks preconditions and calls the CLI
-- [ ] The CLI's one public operation runs a spec; it refuses a spec whose status is not `ready-for-agent`
-- [ ] The ticket is claimed with a tracker-only commit before work starts
-- [ ] The ticket branch is cut from current trunk; the implementer prompt points at the spec and ticket rather than pasting them
-- [ ] The handoff section and the closing status are committed on the ticket branch, not on trunk
-- [ ] A pull request is opened on the fake forge with a body written by the `pr` skill, including Merge Danger
-- [ ] Tests drive one run through the public operation against a temporary git repository and `.scratch/` tracker, asserting only observable outcomes
-- [ ] `npm run validate` and `npm test` pass
+- [x] The `autopilot` skill is user-invoked on every platform and only checks preconditions and calls the CLI
+- [x] The CLI's one public operation runs a spec; it refuses a spec whose status is not `ready-for-agent`
+- [x] The ticket is claimed with a tracker-only commit before work starts
+- [x] The ticket branch is cut from current trunk; the implementer prompt points at the spec and ticket rather than pasting them
+- [x] The handoff section and the closing status are committed on the ticket branch, not on trunk
+- [x] A pull request is opened on the fake forge with a body written by the `pr` skill, including Merge Danger
+- [x] Tests drive one run through the public operation against a temporary git repository and `.scratch/` tracker, asserting only observable outcomes
+- [x] `npm run validate` and `npm test` pass
+
+## Comments
+
+Done. The CLI also has `--dry-run` (frontier only, no writes). Harness and forge factories are stubs until tickets 08, 09, and 14 add real adapters.
