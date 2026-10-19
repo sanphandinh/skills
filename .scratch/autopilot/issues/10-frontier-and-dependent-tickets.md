@@ -4,12 +4,16 @@
 
 **Blocked by:** 05
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] The frontier is computed from merged state on trunk, not from closed flags alone
-- [ ] A dependent ticket's branch is cut from trunk after its blockers merged; no stacked pull requests
-- [ ] The implementer prompt points at every blocker's handoff
-- [ ] A handoff that contradicts the ticket is followed and recorded; one that touches the ticket's acceptance criteria makes the ticket `ready-for-human`
-- [ ] A ticket whose blocker went to `ready-for-human` stays blocked and is reported as such
-- [ ] Tests cover A then B, a contradiction, and a blocker handed to the human
-- [ ] `npm run validate` and `npm test` pass
+- [x] The frontier is computed from merged state on trunk, not from closed flags alone
+- [x] A dependent ticket's branch is cut from trunk after its blockers merged; no stacked pull requests
+- [x] The implementer prompt points at every blocker's handoff
+- [x] A handoff that contradicts the ticket is followed and recorded; one that touches the ticket's acceptance criteria makes the ticket `ready-for-human`
+- [x] A ticket whose blocker went to `ready-for-human` stays blocked and is reported as such
+- [x] Tests cover A then B, a contradiction, and a blocker handed to the human
+- [x] `npm run validate` and `npm test` pass
+
+## Comments
+
+Done. A followed divergence is posted on the pull request as "Handoff divergence"; ticket 13 also writes it to the decision trail.

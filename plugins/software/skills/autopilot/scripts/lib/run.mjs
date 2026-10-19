@@ -37,7 +37,19 @@ export async function runAutopilot(opts) {
     if (!claim(ctx, ticket)) continue;
     outcomes.set(ticket.id, await work(ctx, ticket));
   }
-  return { status: "done", tickets: [...outcomes.values()] };
+  return { status: "done", tickets: [...outcomes.values(), ...blocked(readTickets(ctx), outcomes)] };
+}
+
+// Tickets still waiting on a blocker that did not close.
+function blocked(tickets, outcomes) {
+  const byId = new Map(tickets.map((t) => [t.id, t]));
+  return tickets
+    .filter((t) => t.status === "ready-for-agent" && !outcomes.has(t.id))
+    .map((t) => {
+      const waiting = t.blockedBy.filter((b) => byId.get(b)?.status !== "closed").map((b) => `${b} (${byId.get(b)?.status ?? "missing"})`);
+      return waiting.length ? { id: t.id, title: t.title, outcome: "blocked", reason: `waiting on ${waiting.join(", ")}` } : null;
+    })
+    .filter(Boolean);
 }
 
 function context({
@@ -131,6 +143,12 @@ function claim(ctx, ticket) {
   );
 }
 
+// The blockers' ticket files, whose handoff sections are on trunk once merged.
+function blockerRels(ctx, ticket) {
+  const files = listTree(ctx.repo, ctx.trunkRef, ctx.issuesDir);
+  return ticket.blockedBy.map((b) => files.find((f) => f.startsWith(`${b}-`))).filter(Boolean).map((f) => path.posix.join(ctx.issuesDir, f));
+}
+
 class OverBudget extends Error {}
 
 // Per-machine bookkeeping, kept outside the repository.
@@ -189,9 +207,11 @@ async function work(ctx, ticket) {
       const result = await agent({
         role: "implementer",
         cwd: wt.dir,
-        prompt: implementerPrompt({ spec: ctx.spec, ticket: ticket.rel, branch, trackerDoc: TRACKER_DOC, blockers: [], findings }),
+        prompt: implementerPrompt({ spec: ctx.spec, ticket: ticket.rel, branch, trackerDoc: TRACKER_DOC, blockers: blockerRels(ctx, ticket), findings }),
       });
       const out = result.output ?? {};
+      const conflict = out.handoffConflict;
+      if (conflict?.touchesAcceptance) return handToHuman(ctx, ticket, pr, `a blocker's handoff contradicts the acceptance criteria: ${conflict.note}`, done);
       const incomplete = incompleteAttempt(wt.dir, ticket, result);
       if (incomplete) {
         findings = [incomplete];
@@ -207,6 +227,7 @@ async function work(ctx, ticket) {
       fetch(ctx);
       prBody = out.prBody ?? prBody;
       pr ??= await ctx.forge.openPr({ branch, base: ctx.trunk, title: `${ticket.id}: ${ticket.title}`, body: prBody });
+      if (conflict?.note) await ctx.forge.comment(pr.number, `Handoff divergence: ${conflict.note}`);
 
       gate = await gates(ctx, agent, ticket, pr, head);
       if (!gate.blocking.length) break;

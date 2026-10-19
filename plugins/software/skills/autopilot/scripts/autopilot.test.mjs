@@ -350,3 +350,58 @@ test("a push by someone else to the ticket branch stops the run instead of being
   assert.match(report.tickets[0].reason, /someone else pushed/);
   assert.equal(sh(fx.remote, "show", "autopilot/demo/01:src/theirs.js"), "theirs", "their commit survives");
 });
+
+// ---------- 10: frontier and dependent tickets ----------
+
+const T2 = (id, slug) => `.scratch/demo/issues/${id}-${slug}.md`;
+
+function chain(extra = {}) {
+  return repoFixture({
+    [SPEC_PATH]: SPEC(),
+    [T2("01", "base")]: TICKET("01", "Base"),
+    [T2("02", "on-top")]: TICKET("02", "On top", { blockedBy: "01" }),
+    ...extra,
+  });
+}
+
+test("a dependent ticket starts only after its blocker merged, and reads the blocker's handoff", async () => {
+  const fx = chain();
+  let blockerClosedWhenBStarted = null;
+  const harness = fakeHarness(
+    happyRoles({
+      implementer: (ctx) => {
+        if (/^Ticket: .*02-on-top/m.test(ctx.prompt)) blockerClosedWhenBStarted = /\*\*Status:\*\* closed/.test(onTrunk(fx, T2("01", "base")));
+        return implementer()(ctx);
+      },
+    }),
+  );
+  const report = await run(fx, harness, fakeForge(fx));
+  assert.equal(blockerClosedWhenBStarted, true);
+  const bPrompt = harness.calls.find((c) => c.role === "implementer" && /02-on-top/.test(c.prompt)).prompt;
+  assert.match(bPrompt, new RegExp(`^Blocker handoff: ${T2("01", "base")}$`, "m"));
+  assert.match(onTrunk(fx, "src/02.js"), /t02/);
+  assert.deepEqual(report.tickets.map((t) => [t.id, t.outcome]), [["01", "merged"], ["02", "merged"]]);
+});
+
+test("a handoff conflict is followed and recorded, unless it touches the acceptance criteria", async () => {
+  const minor = chain();
+  const minorForge = fakeForge(minor);
+  await run(minor, fakeHarness(happyRoles({ implementer: (ctx) => /02-on-top/.test(ctx.prompt) ? implementer({ output: { handoffConflict: { touchesAcceptance: false, note: "A named it totalCents" } } })(ctx) : implementer()(ctx) })), minorForge);
+  assert.equal(minorForge.prs[1].state, "merged");
+  assert.match(minorForge.prs[1].comments.join("\n"), /Handoff divergence: A named it totalCents/);
+
+  const major = chain();
+  const report = await run(major, fakeHarness(happyRoles({ implementer: (ctx) => /02-on-top/.test(ctx.prompt) ? implementer({ output: { handoffConflict: { touchesAcceptance: true, note: "A dropped the refund path B extends" } } })(ctx) : implementer()(ctx) })), fakeForge(major));
+  const b = report.tickets.find((t) => t.id === "02");
+  assert.equal(b.outcome, "ready-for-human");
+  assert.match(b.reason, /A dropped the refund path/);
+});
+
+test("a ticket whose blocker went to the human stays blocked and is reported", async () => {
+  const fx = chain();
+  const harness = fakeHarness(happyRoles({ verifier: () => ({ verdict: "FAIL", evidence: "broken" }) }));
+  const report = await run(fx, harness, fakeForge(fx), { maxFixRounds: 0 });
+  assert.equal(harness.calls.filter((c) => c.role === "implementer").length, 1, "02 never started");
+  assert.deepEqual(report.tickets.map((t) => [t.id, t.outcome]), [["01", "ready-for-human"], ["02", "blocked"]]);
+  assert.match(report.tickets[1].reason, /01 \(ready-for-human\)/);
+});
