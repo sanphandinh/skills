@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: closed
 
 # Autopilot: unattended build from an approved spec to merged pull requests
 

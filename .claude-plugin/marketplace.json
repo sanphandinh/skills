@@ -12,12 +12,12 @@
     {
       "name": "software",
       "source": "./plugins/software",
-      "description": "Software factory skills: spec, tickets, TDD implementation, code review, diagnosis, and project setup."
+      "description": "Software factory skills: spec, tickets, TDD implementation, unattended autopilot builds, verification, code review, diagnosis, and project setup."
     },
     {
       "name": "software-claude",
       "source": "./plugins/software-claude",
-      "description": "Claude Code agents for the software skills: review-standards and review-spec."
+      "description": "Claude Code agents for the software skills: implementer, verifier, review-standards, and review-spec."
     }
   ]
 }

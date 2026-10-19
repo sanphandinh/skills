@@ -1,0 +1,8 @@
+# Copy into .omp/config.yml (project) or ~/.omp/agent/config.yml (yours).
+# Each key is a role from ROLES.md; agents fall back to a built-in role when a
+# key is missing.
+modelRoles:
+  task: anthropic/claude-sonnet-5-5:high # worker: implementer
+  verifier: anthropic/claude-opus-5-5:high
+  reviewer: anthropic/claude-opus-5-5:xhigh
+  judge: anthropic/claude-haiku-4-5:low # judged rules such as tdd-no-weakened-assertions

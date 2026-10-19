@@ -22,7 +22,7 @@ roles:
     codex: high
   judge:
     purpose: quick pass or fail checks against a written standard
-    omp: "@tiny"
+    omp: "@judge"
     claude: haiku
     codex: low
   reviewer:
@@ -55,7 +55,7 @@ role to a model. Change models in your config, not in this repo.
 | worker | implementation, TDD loops | `@task` | `inherit` | medium |
 | thinker | diagnosis, deep analysis | `@slow` | `opus` | high |
 | architect | specs, tickets, interface design | `@plan` | `opus` | high |
-| judge | quick pass or fail checks | `@tiny` | `haiku` | low |
+| judge | quick pass or fail checks (OMP judged rules use this role) | `@judge` | `haiku` | low |
 | reviewer (custom) | code review | `@reviewer`, falls back to `@slow` | `opus` | high |
 | verifier (custom) | proving a change works, not its author | `@verifier`, falls back to `@slow` | `opus` | high |
 | writer (custom) | copy and articles | `@writer`, falls back to `@default` | `sonnet` | medium |

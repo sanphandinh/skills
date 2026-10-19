@@ -57,14 +57,15 @@ Skills listed in `UPSTREAM.md` came from mattpocock/skills. Edit them freely; `n
 `software` (shared):
 
 - Factory pipeline (idea, grilling, spec, tickets, implement with TDD, review, PR, handoff): `setup-software-context`, `grill-with-docs`, `to-spec`, `to-tickets` (user-invoked); `implement` for one ticket or small work, `implement-spec` for a whole spec with parallel implementers on an integration branch (both user-invoked); `tdd`, `code-review`, `pr`.
+- Unattended build: `autopilot` (user-invoked) takes an approved spec to merged pull requests, one per ticket, through a tested orchestrator script (`scripts/` in the skill); a human sees only the spec and the pull requests the merge policy refuses. `setup-verification` (user-invoked) writes the `docs/agents/verify.md` its verifiers follow. Use `implement` for a single ticket by hand and `implement-spec` for one integration branch per spec.
 - Large or unclear efforts: `wayfinder` (user-invoked) maps decision tickets on the tracker, then hands off to `to-spec`.
 - Issue intake: `triage` (user-invoked) moves issues and external PRs through the triage roles and writes agent briefs for `ready-for-agent`.
 - Design and debugging: `codebase-design`, `domain-modeling`, `improve-codebase-architecture` (user-invoked), `diagnosing-bugs`.
 - Project setup: `frontend-web-project-setup`, `portless-web-project-setup`, `setup-pre-commit`, `github-repo-setup`.
 
-`software-claude`: agents `review-standards`, `review-spec` (opus).
+`software-claude`: agents `implementer` (inherit), `verifier`, `review-standards`, `review-spec` (opus).
 
-`software-omp`: agents `review-standards`, `review-spec` (`@reviewer` falling back to `@slow`, typed output); rules `tdd-no-skipped-tests` (interrupts on skip/only), `tdd-no-weakened-assertions` (judge question on test edits).
+`software-omp`: agents `implementer` (`@task`), `verifier` (`@verifier` falling back to `@slow`), `review-standards`, `review-spec` (`@reviewer` falling back to `@slow`), all with typed output; rules `tdd-no-skipped-tests` (interrupts on skip/only), `tdd-no-weakened-assertions` (judge question on test edits).
 
 ## Agent skills
 

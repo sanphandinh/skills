@@ -7,20 +7,20 @@
     {
       "name": "core",
       "source": "./plugins/core",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Cross-domain process skills: grilling, research, handoff, and writing for agents."
     },
     {
       "name": "software",
       "source": "./plugins/software",
-      "version": "0.3.0",
-      "description": "Software factory skills: spec, tickets, TDD implementation, code review, diagnosis, and project setup."
+      "version": "0.4.0",
+      "description": "Software factory skills: spec, tickets, TDD implementation, unattended autopilot builds, verification, code review, diagnosis, and project setup."
     },
     {
       "name": "software-omp",
       "source": "./plugins/software-omp",
-      "version": "0.1.0",
-      "description": "Oh My Pi agents and rules for the software skills: role-based reviewers and TDD guard rules."
+      "version": "0.2.0",
+      "description": "Oh My Pi agents and rules for the software skills: implementer, verifier, and role-based reviewers, plus TDD guard rules."
     }
   ]
 }

@@ -83,3 +83,31 @@ Commit `.claude/settings.json` and `.codex/config.toml`; add `.omp/plugins/` to
 3. If a shared skill should use it, mention it by name in the skill with a
    fallback for platforms that do not have it.
 4. `npm run validate`.
+
+## Running autopilot
+
+`autopilot` runs one fresh, non-interactive agent session per role, through
+the harness you name. Its script needs only Node 20+ and git; it runs from the
+plugin's install folder with no dependencies.
+
+| | Claude Code | Oh My Pi |
+|---|---|---|
+| Plugins | `software`, `software-claude` | `software`, `software-omp` |
+| Session | `claude -p --output-format json` delegating to `software-claude:<agent>` | `omp -p --mode json` delegating to `<agent>` |
+| Permissions | `--permission-mode bypassPermissions`: nobody can answer prompts, so each session runs inside a disposable worktree | `--auto-approve`, same reason |
+| Role models | Agent aliases (implementer `inherit`, others `opus`); the parent session runs on `sonnet` so the implementer never shares the reviewers' model. Remap aliases per project with `env` in `.claude/settings.json` (`templates/roles.claude-settings.json`) | Roles from `ROLES.md`; assign `task`, `verifier`, `reviewer` in `.omp/config.yml` (`templates/roles.omp-config.yml`) |
+
+A project also needs, from `setup-software-context` and `setup-verification`:
+
+- `docs/agents/issue-tracker.md` with the claim, close, and handoff conventions and a `Pull requests: github <owner>/<repo>` line. Every `gh` call passes that repository, so another remote never receives a pull request.
+- `docs/agents/merge-policy.md` (optional; the built-in defaults apply without it).
+- `docs/agents/verify.md`; without it nothing auto-merges.
+
+Run it from the repository root:
+
+```bash
+node <plugin folder>/skills/autopilot/scripts/autopilot.mjs run .scratch/<feature>/spec.md --harness omp
+```
+
+The adapters' smoke tests call the real CLIs only when asked:
+`AUTOPILOT_SMOKE_OMP=1`, `AUTOPILOT_SMOKE_CLAUDE=1`, `AUTOPILOT_SMOKE_GH=1`.
