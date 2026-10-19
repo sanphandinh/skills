@@ -30,10 +30,11 @@ export function worktree(repo, ref, { branch } = {}) {
   return { dir, cleanup: () => (gitOk(repo, ["worktree", "remove", "--force", dir]), fs.rmSync(dir, { recursive: true, force: true })) };
 }
 
-// Patch identity of the code change between trunk and head. Tracker files under
-// `.scratch/` are excluded, so recording a decision never invalidates a verdict.
+// Patch identity of the code change between trunk and head. Tracker files
+// (`.scratch/`) and decision trails (`.autopilot/`) are excluded, so recording
+// a decision never invalidates a verdict.
 export function patchId(repo, base, head) {
-  const diff = git(repo, ["diff", `${base}...${head}`, "--", ".", ":(exclude).scratch"]);
+  const diff = git(repo, ["diff", `${base}...${head}`, "--", ".", ":(exclude).scratch", ":(exclude).autopilot"]);
   if (!diff) return "empty";
   return git(repo, ["patch-id", "--stable"], `${diff}\n`).split(" ")[0];
 }

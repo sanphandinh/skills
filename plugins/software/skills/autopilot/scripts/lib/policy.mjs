@@ -76,7 +76,7 @@ export function refusals(policy, facts) {
   if (!blast) out.push("the pull request states no blast radius");
   else if (!policy.allowedBlast.includes(blast.toLowerCase())) out.push(`blast radius "${blast}" is not allowed`);
   for (const file of facts.changedFiles) {
-    if (file.startsWith(".scratch/")) continue;
+    if (file.startsWith(".scratch/") || file.startsWith(".autopilot/")) continue;
     if (isProtected(file, policy.protectedPaths)) out.push(`protected path: ${file}`);
   }
   return out;

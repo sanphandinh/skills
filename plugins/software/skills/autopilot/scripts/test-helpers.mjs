@@ -66,18 +66,23 @@ export function ticketPathFromPrompt(prompt) {
   return prompt.match(/^Ticket: (.+)$/m)?.[1];
 }
 
-// An implementer that adds a file named after the ticket, writes the handoff
-// into the ticket file, and commits.
+// An implementer that adds a file named after the ticket, commits, and returns
+// its handoff for the tracker to place.
 export function implementer({ handoff = true, prBody = PR_BODY(), output = {}, change } = {}) {
   return ({ prompt, cwd }) => {
     const ticket = ticketPathFromPrompt(prompt);
-    const id = path.basename(ticket).slice(0, 2);
+    const id = path.basename(ticket).match(/\d+/)[0].padStart(2, "0");
     if (change) change({ cwd, id, prompt });
     else write(cwd, { [`src/${id}.js`]: `export const t${id} = true;\n` });
-    if (handoff) fs.appendFileSync(path.join(cwd, ticket), `\n## Handoff\n\n**Delivered:** ticket ${id}\n**Interfaces introduced:** \`t${id}\`\n`);
     sh(cwd, "add", "-A");
-    sh(cwd, "commit", "-qm", `implement ${id}`);
-    return { ok: true, prBody, decisions: [{ decision: `built ${id}`, reason: "ticket asked for it" }], ...output };
+    sh(cwd, "commit", "-qm", `implement ${id}`, "--allow-empty");
+    return {
+      ok: true,
+      prBody,
+      ...(handoff ? { handoff: `**Delivered:** ticket ${id}\n**Interfaces introduced:** \`t${id}\`` } : {}),
+      decisions: [{ decision: `built ${id}`, reason: "ticket asked for it" }],
+      ...output,
+    };
   };
 }
 

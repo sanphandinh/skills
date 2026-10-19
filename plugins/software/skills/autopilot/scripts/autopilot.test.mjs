@@ -313,7 +313,7 @@ test("per-machine counters live outside the repository", async () => {
   assert.equal(sh(fx.clone, "status", "--porcelain"), "", "the clone stays clean");
 });
 
-test("an implementer that leaves no handoff, or reports failure, gets a fix round before any review", async () => {
+test("an implementer that returns no handoff, or reports failure, gets a fix round before any review", async () => {
   const fx = oneTicket();
   const harness = fakeHarness(
     happyRoles({
@@ -323,7 +323,7 @@ test("an implementer that leaves no handoff, or reports failure, gets a fix roun
   const report = await run(fx, harness, fakeForge(fx));
   const impl = harness.calls.filter((c) => c.role === "implementer");
   assert.equal(impl.length, 3);
-  assert.match(impl[1].prompt, /^Finding to fix: the ticket has no ## Handoff section$/m);
+  assert.match(impl[1].prompt, /^Finding to fix: the implementer returned no handoff$/m);
   assert.match(impl[2].prompt, /^Finding to fix: the implementer could not finish: tests would not run$/m);
   assert.equal(harness.calls.filter((c) => c.role === "verifier").length, 1, "review waits for a complete attempt");
   assert.equal(report.tickets[0].outcome, "merged");
