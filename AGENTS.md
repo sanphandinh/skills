@@ -65,3 +65,17 @@ Skills listed in `UPSTREAM.md` came from mattpocock/skills. Edit them freely; `n
 `software-claude`: agents `review-standards`, `review-spec` (opus).
 
 `software-omp`: agents `review-standards`, `review-spec` (`@reviewer` falling back to `@slow`, typed output); rules `tdd-no-skipped-tests` (interrupts on skip/only), `tdd-no-weakened-assertions` (judge question on test edits).
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live as local markdown files under `.scratch/<feature-slug>/`, committed with the repo. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, recorded as a `Status:` line in each issue file, each string equal to its role name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.
