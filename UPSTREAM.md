@@ -98,6 +98,9 @@ skills:
   setup-pre-commit:
     path: skills/misc/setup-pre-commit
     commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
+  triage:
+    path: skills/engineering/triage
+    commit: 49dd158d1076134a641b33efb035946536778336
 ---
 # Upstream: mattpocock/skills
 
