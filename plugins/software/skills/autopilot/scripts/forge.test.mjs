@@ -5,30 +5,44 @@ import { test } from "node:test";
 import { createForge } from "./lib/forge.mjs";
 import { tmp, write } from "./test-helpers.mjs";
 
-// A stand-in `gh` that logs every call and answers from a small script.
+// A stand-in `gh` (plain sh) that logs every call and answers per subcommand
+// pair ("pr create", "pr checks", ...).
 function fakeGh(answers = {}) {
   const dir = tmp("autopilot-gh-");
   const bin = path.join(dir, "gh");
-  const log = path.join(dir, "calls.jsonl");
-  fs.writeFileSync(path.join(dir, "answers.json"), JSON.stringify(answers));
+  for (const [key, a] of Object.entries(answers)) {
+    const base = path.join(dir, key.replace(" ", "_"));
+    fs.writeFileSync(`${base}.out`, a.out ?? "");
+    fs.writeFileSync(`${base}.err`, a.err ?? "");
+    fs.writeFileSync(`${base}.code`, String(a.code ?? 0));
+  }
   fs.writeFileSync(
     bin,
-    `#!/usr/bin/env node
-const fs = require("node:fs");
-const args = process.argv.slice(2);
-let stdin = "";
-try { stdin = fs.readFileSync(0, "utf8"); } catch {}
-fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify({ args, stdin }) + "\\n");
-const answers = JSON.parse(fs.readFileSync(${JSON.stringify(path.join(dir, "answers.json"))}, "utf8"));
-const key = args.slice(0, 2).join(" ");
-const a = answers[key] ?? { out: "" };
-process.stdout.write(a.out ?? "");
-process.stderr.write(a.err ?? "");
-process.exit(a.code ?? 0);
+    `#!/bin/sh
+n=$(ls "${dir}" | grep -c '^call-' )
+call="${dir}/call-$(printf %03d "$n")"
+for a in "$@"; do printf '%s\\0' "$a" >> "$call.args"; done
+cat > "$call.stdin"
+key="${dir}/$1_$2"
+[ -f "$key.out" ] && cat "$key.out"
+[ -f "$key.err" ] && cat "$key.err" >&2
+[ -f "$key.code" ] && exit $(cat "$key.code")
+exit 0
 `,
   );
   fs.chmodSync(bin, 0o755);
-  return { bin, calls: () => fs.readFileSync(log, "utf8").trim().split("\n").map((l) => JSON.parse(l)) };
+  return {
+    bin,
+    calls: () =>
+      fs
+        .readdirSync(dir)
+        .filter((f) => f.startsWith("call-") && f.endsWith(".args"))
+        .sort()
+        .map((f) => ({
+          args: fs.readFileSync(path.join(dir, f), "utf8").split("\0").slice(0, -1),
+          stdin: fs.readFileSync(path.join(dir, f.replace(".args", ".stdin")), "utf8"),
+        })),
+  };
 }
 
 function repoWithTracker(line) {

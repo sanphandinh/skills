@@ -7,6 +7,14 @@ import { spawn } from "node:child_process";
 
 const adapters = {
   omp: (opts) => cliHarness({ ...opts, command: opts.command ?? "omp", args: ompArgs, parse: parseOmp }),
+  claude: (opts) =>
+    cliHarness({
+      ...opts,
+      command: opts.command ?? "claude",
+      args: claudeArgs(opts),
+      parse: parseClaude,
+      agentName: (role) => `software-claude:${role}`,
+    }),
 };
 
 export function createHarness(name, options = {}) {
@@ -35,13 +43,14 @@ export function lastJsonBlock(text) {
 export const delegated = (role, prompt) =>
   `Delegate the whole task below to the \`${role}\` agent, wait for it to finish, and reply with its final JSON result unchanged in one fenced json block.\n\n${prompt}`;
 
-function cliHarness({ command, args, parse, timeoutMs = 2 * 60 * 60_000, env }) {
+function cliHarness({ command, args, parse, agentName = (role) => role, timeoutMs = 2 * 60 * 60_000, env }) {
   return {
     async run({ role, prompt, cwd, delegate = true }) {
-      const text = delegate ? delegated(role, prompt) : prompt;
+      const text = delegate ? delegated(agentName(role), prompt) : prompt;
       const proc = await exec(command, args(text), { cwd, timeoutMs, env });
       if (proc.code !== 0) return { ok: false, output: { ok: false, error: `${command} exited with ${proc.code}: ${proc.stderr.slice(-500)}` }, tokens: 0 };
-      const { reply, tokens } = parse(proc.stdout);
+      const { reply, tokens, error } = parse(proc.stdout);
+      if (error) return { ok: false, output: { ok: false, error }, tokens };
       const output = lastJsonBlock(reply);
       if (!output) return { ok: false, output: { ok: false, error: "the agent ended without a JSON result" }, tokens };
       return { ok: output.ok !== false, output, tokens };
@@ -58,7 +67,7 @@ function exec(command, argv, { cwd, timeoutMs, env }) {
     child.stderr.on("data", (d) => (stderr += d));
     const timer = setTimeout(() => child.kill("SIGTERM"), timeoutMs);
     child.on("error", (err) => (clearTimeout(timer), resolve({ code: -1, stdout, stderr: String(err) })));
-    child.on("close", (code) => (clearTimeout(timer), resolve({ code: code ?? -1, stdout, stderr })));
+    child.on("close", (code, signal) => (clearTimeout(timer), resolve({ code: code ?? -1, stdout, stderr: signal ? `${stderr}killed by ${signal}` : stderr })));
   });
 }
 
@@ -85,4 +94,27 @@ function parseOmp(stdout) {
     reply = (event.message.content ?? []).filter((c) => c.type === "text").map((c) => c.text).join("\n");
   }
   return { reply, tokens };
+}
+
+// ---------- Claude Code ----------
+
+// The parent session runs on `sessionModel`, so an agent with `model: inherit`
+// (the implementer) never shares the reviewers' alias. Unattended runs cannot
+// answer permission prompts, so the session skips them; it only ever runs in a
+// disposable worktree.
+const claudeArgs =
+  ({ sessionModel = "sonnet", permissionMode = "bypassPermissions" } = {}) =>
+  (prompt) => ["-p", "--output-format", "json", "--model", sessionModel, "--permission-mode", permissionMode, prompt];
+
+function parseClaude(stdout) {
+  let result;
+  try {
+    result = JSON.parse(stdout);
+  } catch {
+    return { reply: "", tokens: 0, error: "claude printed no JSON result" };
+  }
+  const u = result.usage ?? {};
+  const tokens = (u.input_tokens ?? 0) + (u.output_tokens ?? 0);
+  if (result.is_error) return { reply: "", tokens, error: `claude reported ${result.subtype ?? "an error"}: ${String(result.result ?? "").slice(0, 300)}` };
+  return { reply: result.result ?? "", tokens };
 }
