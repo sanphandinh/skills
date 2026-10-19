@@ -31,6 +31,12 @@ roles:
     omp: ["@reviewer", "@slow"]
     claude: opus
     codex: high
+  implementer:
+    purpose: building one autopilot ticket test-first (software)
+    custom: true
+    omp: ["@implementer", "@task"]
+    claude: inherit
+    codex: medium
   verifier:
     purpose: proving a change works on the real product, independent of its author (software)
     custom: true
@@ -57,6 +63,7 @@ role to a model. Change models in your config, not in this repo.
 | architect | specs, tickets, interface design | `@plan` | `opus` | high |
 | judge | quick pass or fail checks (OMP judged rules use this role) | `@judge` | `haiku` | low |
 | reviewer (custom) | code review | `@reviewer`, falls back to `@slow` | `opus` | high |
+| implementer (custom) | building one autopilot ticket | `@implementer`, falls back to `@task` | `inherit` | medium |
 | verifier (custom) | proving a change works, not its author | `@verifier`, falls back to `@slow` | `opus` | high |
 | writer (custom) | copy and articles | `@writer`, falls back to `@default` | `sonnet` | medium |
 
@@ -75,14 +82,20 @@ resolves, so an unassigned custom role falls back cleanly:
 model: ["@reviewer", "@slow"]
 ```
 
-Assign the custom roles once, in `~/.omp/agent/config.yml`, or per project in
-`.omp/config.yml` (project values override yours):
+Assign custom roles per project in `.omp/config.yml`, which overrides your
+`~/.omp/agent/config.yml`. Add only the custom keys: setting a built-in role
+such as `task` or `slow` there changes every subagent, not just these agents.
+Pick model ids from `omp models`:
 
 ```yaml
 modelRoles:
-  reviewer: anthropic/claude-opus-5-5:xhigh
-  writer: anthropic/claude-sonnet-5-5:high
+  implementer: <provider>/<model>:<level>
+  verifier: <provider>/<model>:<level>
+  reviewer: <provider>/<model>:<level>
 ```
+
+An unassigned custom role falls back to the next role in the agent's list, so
+leaving them out is safe.
 
 To change one agent without touching its role, use `task.agentModelOverrides`
 in the same file.

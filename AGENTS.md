@@ -65,7 +65,7 @@ Skills listed in `UPSTREAM.md` came from mattpocock/skills. Edit them freely; `n
 
 `software-claude`: agents `implementer` (inherit), `verifier`, `review-standards`, `review-spec` (opus).
 
-`software-omp`: agents `implementer` (`@task`), `verifier` (`@verifier` falling back to `@slow`), `review-standards`, `review-spec` (`@reviewer` falling back to `@slow`), all with typed output; rules `tdd-no-skipped-tests` (interrupts on skip/only), `tdd-no-weakened-assertions` (judge question on test edits).
+`software-omp`: agents `implementer` (`@implementer` falling back to `@task`), `verifier` (`@verifier` falling back to `@slow`), `review-standards`, `review-spec` (`@reviewer` falling back to `@slow`), all with typed output; rules `tdd-no-skipped-tests` (interrupts on skip/only), `tdd-no-weakened-assertions` (judge question on test edits).
 
 ## Agent skills
 

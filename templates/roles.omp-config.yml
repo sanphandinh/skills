@@ -1,8 +1,8 @@
-# Copy into .omp/config.yml (project) or ~/.omp/agent/config.yml (yours).
-# Each key is a role from ROLES.md; agents fall back to a built-in role when a
-# key is missing.
+# Copy into the project's .omp/config.yml. Add only autopilot's custom roles:
+# a built-in role (task, slow, default, ...) set here changes every subagent in
+# the project. Pick ids from `omp models`; leave a role out to use its fallback
+# (implementer -> @task, verifier and reviewer -> @slow).
 modelRoles:
-  task: anthropic/claude-sonnet-5-5:high # worker: implementer
-  verifier: anthropic/claude-opus-5-5:high
-  reviewer: anthropic/claude-opus-5-5:xhigh
-  judge: anthropic/claude-haiku-4-5:low # judged rules such as tdd-no-weakened-assertions
+  implementer: <provider>/<model>:<level>
+  verifier: <provider>/<model>:<level> # not the implementer's model
+  reviewer: <provider>/<model>:<level> # not the implementer's model

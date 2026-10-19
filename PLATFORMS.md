@@ -95,7 +95,7 @@ plugin's install folder with no dependencies.
 | Plugins | `software`, `software-claude` | `software`, `software-omp` |
 | Session | `claude -p --output-format json` delegating to `software-claude:<agent>` | `omp -p --mode json` delegating to `<agent>` |
 | Permissions | `--permission-mode bypassPermissions`: nobody can answer prompts, so each session runs inside a disposable worktree | `--auto-approve`, same reason |
-| Role models | Agent aliases (implementer `inherit`, others `opus`); the parent session runs on `sonnet` so the implementer never shares the reviewers' model. Remap aliases per project with `env` in `.claude/settings.json` (`templates/roles.claude-settings.json`) | Roles from `ROLES.md`; assign `task`, `verifier`, `reviewer` in `.omp/config.yml` (`templates/roles.omp-config.yml`) |
+| Role models | Agent aliases (implementer `inherit`, others `opus`); the parent session runs on `sonnet` so the implementer never shares the reviewers' model. Remap aliases per project with `env` in `.claude/settings.json` (`templates/roles.claude-settings.json`) | Custom roles `implementer`, `verifier`, `reviewer` in the project's `.omp/config.yml` (`templates/roles.omp-config.yml`); unassigned ones fall back to `@task` and `@slow` |
 
 A project also needs, from `setup-software-context` and `setup-verification`:
 
