@@ -4,12 +4,16 @@
 
 **Blocked by:** 04
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] The verifier runs as a separate role from the implementer and returns `PASS`, `PASS+NOTES`, or `FAIL` with evidence and the patch identity it checked
-- [ ] The verdict and the review findings are posted on the pull request so another machine can read them
-- [ ] `review-spec` and `review-standards` run as separate roles; neither is the implementer
-- [ ] The implementer never runs `code-review` on its own work inside autopilot
-- [ ] A ticket with a passing verdict, no hard findings, and green CI is merged; its handoff and closing status are on trunk after the merge
-- [ ] Tests cover the happy path through the public operation with fake harness and forge
-- [ ] `npm run validate` and `npm test` pass
+- [x] The verifier runs as a separate role from the implementer and returns `PASS`, `PASS+NOTES`, or `FAIL` with evidence and the patch identity it checked
+- [x] The verdict and the review findings are posted on the pull request so another machine can read them
+- [x] `review-spec` and `review-standards` run as separate roles; neither is the implementer
+- [x] The implementer never runs `code-review` on its own work inside autopilot
+- [x] A ticket with a passing verdict, no hard findings, and green CI is merged; its handoff and closing status are on trunk after the merge
+- [x] Tests cover the happy path through the public operation with fake harness and forge
+- [x] `npm run validate` and `npm test` pass
+
+## Comments
+
+Done. The verifier and both reviewers share one fresh read-only checkout of the pushed head, separate from the implementer's. Patch identity excludes `.scratch/`, so tracker edits never invalidate a verdict. Failures hand the ticket to the human for now; ticket 07 adds the fix rounds that the loop already counts.

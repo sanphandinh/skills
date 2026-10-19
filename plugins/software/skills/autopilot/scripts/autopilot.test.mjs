@@ -101,3 +101,61 @@ test("a dry run reports the frontier and changes nothing", async () => {
   assert.equal(harness.calls.length, 0);
   assert.equal(sh(fx.remote, "rev-parse", "main"), before);
 });
+
+// ---------- 05: independent verify, review, merge ----------
+
+test("a ticket that passes every gate is verified and reviewed by other roles, then merged with its handoff on trunk", async () => {
+  const fx = oneTicket();
+  const harness = fakeHarness(happyRoles());
+  const forge = fakeForge(fx);
+  const report = await run(fx, harness, forge);
+  assert.deepEqual(harness.calls.map((c) => c.role).sort(), ["implementer", "review-spec", "review-standards", "verifier"]);
+  const cwd = (role) => harness.calls.find((c) => c.role === role).cwd;
+  assert.notEqual(cwd("verifier"), cwd("implementer"), "the verifier works in its own checkout");
+  assert.match(harness.calls.find((c) => c.role === "verifier").prompt, /^Verification doc: docs\/agents\/verify\.md$/m);
+  const comments = forge.prs[0].comments.join("\n");
+  assert.match(comments, /Verdict: PASS/);
+  assert.match(comments, /Patch: [0-9a-f]{40}/);
+  assert.match(comments, /review-spec: pass/);
+  assert.match(comments, /review-standards: pass/);
+  assert.equal(forge.prs[0].state, "merged");
+  assert.deepEqual(report.tickets.map((t) => [t.id, t.outcome]), [["01", "merged"]]);
+  const trunkTicket = onTrunk(fx, T("01"));
+  assert.match(trunkTicket, /## Handoff/);
+  assert.match(trunkTicket, /\*\*Status:\*\* closed/);
+  assert.match(onTrunk(fx, "src/01.js"), /t01/);
+});
+
+test("a failed verification keeps the pull request open and hands the ticket to the human", async () => {
+  const fx = oneTicket();
+  const forge = fakeForge(fx);
+  const report = await run(fx, fakeHarness(happyRoles({ verifier: () => ({ verdict: "FAIL", evidence: "button does nothing" }) })), forge, { maxFixRounds: 0 });
+  assert.equal(forge.prs[0].state, "open");
+  assert.equal(report.tickets[0].outcome, "ready-for-human");
+  assert.match(report.tickets[0].reason, /button does nothing/);
+  const trunkTicket = onTrunk(fx, T("01"));
+  assert.match(trunkTicket, /\*\*Status:\*\* ready-for-human/);
+  assert.doesNotMatch(trunkTicket, /^Autopilot:/m);
+  assert.match(trunkTicket, /button does nothing/);
+});
+
+test("a hard standards finding blocks the merge", async () => {
+  const fx = oneTicket();
+  const forge = fakeForge(fx);
+  const report = await run(
+    fx,
+    fakeHarness(happyRoles({ "review-standards": () => ({ verdict: "fail", findings: [{ severity: "hard", rule: "AGENTS.md: no tool names", detail: "names a tool" }] }) })),
+    forge,
+    { maxFixRounds: 0 },
+  );
+  assert.equal(forge.prs[0].state, "open");
+  assert.equal(report.tickets[0].outcome, "ready-for-human");
+  assert.match(report.tickets[0].reason, /no tool names/);
+});
+
+test("judgement-only standards findings do not block the merge", async () => {
+  const fx = oneTicket();
+  const forge = fakeForge(fx);
+  await run(fx, fakeHarness(happyRoles({ "review-standards": () => ({ verdict: "pass", findings: [{ severity: "judgement", rule: "Feature Envy" }] }) })), forge);
+  assert.equal(forge.prs[0].state, "merged");
+});
