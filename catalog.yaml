@@ -1,0 +1,27 @@
+# Plugin catalog read by cli/repo.mjs (list, validate, upstream).
+# Installing is done by each agent's own plugin system from the marketplace files:
+#   .claude-plugin/marketplace.json   Claude Code: shared + claude plugins
+#   .agents/plugins/marketplace.json  Codex: shared plugins
+#   .omp-plugin/marketplace.json      Oh My Pi: shared + omp plugins
+#
+# platform: shared  skills every agent loads; frontmatter limited to the portable keys
+#           claude  Claude Code only (agents with opus/sonnet/haiku, hooks, Claude-only skill keys)
+#           omp     Oh My Pi only (agents with @role models, rules, commands, tools, extensions)
+# prefix:   required on every skill name in the plugin, so domain triggers do not collide.
+plugins:
+  core:
+    platform: shared
+    description: "Cross-domain process skills: grilling, research, handoff, writing for agents."
+    prefix: ""
+  software:
+    platform: shared
+    description: "Software factory skills: spec, tickets, implement with TDD, review, diagnose, project setup."
+    prefix: ""
+  software-claude:
+    platform: claude
+    description: "Claude Code agents for the software skills (review-standards, review-spec)."
+    prefix: ""
+  software-omp:
+    platform: omp
+    description: "Oh My Pi agents and rules for the software skills: role-based reviewers, TDD guard rules."
+    prefix: ""

@@ -1,14 +1,26 @@
 {
-  "name": "personal-skills",
+  "name": "sanphan-skills",
   "interface": {
-    "displayName": "Personal Skills"
+    "displayName": "San Phan Skills"
   },
   "plugins": [
     {
-      "name": "personal-skills",
+      "name": "core",
       "source": {
         "source": "local",
-        "path": "./plugins/personal-skills"
+        "path": "./plugins/core"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "software",
+      "source": {
+        "source": "local",
+        "path": "./plugins/software"
       },
       "policy": {
         "installation": "AVAILABLE",

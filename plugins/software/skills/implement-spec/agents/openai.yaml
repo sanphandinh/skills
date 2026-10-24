@@ -1,0 +1,5 @@
+interface:
+  display_name: "Implement Spec"
+  short_description: "Implement the result of the `to-spec` and `to-tickets` skills in code."
+policy:
+  allow_implicit_invocation: false

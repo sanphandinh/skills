@@ -1,0 +1,22 @@
+{
+  "name": "software",
+  "version": "0.5.0",
+  "description": "Software factory skills: spec, tickets, TDD implementation, unattended autopilot builds, verification, code review, diagnosis, and project setup.",
+  "author": {
+    "name": "San Phan"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Software Skills",
+    "shortDescription": "Spec, tickets, TDD, review, PRs, project setup.",
+    "longDescription": "The software factory pipeline (idea, grilling, spec, tickets, implement with TDD, review, PR, handoff), large-effort planning with wayfinder, architecture improvement, plus project setup: frontend stack selection, Portless dev URLs, pre-commit hooks, and GitHub repository governance.",
+    "developerName": "San Phan",
+    "category": "Productivity",
+    "capabilities": [
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Turn this conversation into a spec."
+    ]
+  }
+}

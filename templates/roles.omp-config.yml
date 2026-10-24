@@ -1,0 +1,8 @@
+# Copy into the project's .omp/config.yml. Add only autopilot's custom roles:
+# a built-in role (task, slow, default, ...) set here changes every subagent in
+# the project. Pick ids from `omp models`; leave a role out to use its fallback
+# (implementer -> @task, verifier and reviewer -> @slow).
+modelRoles:
+  implementer: <provider>/<model>:<level>
+  verifier: <provider>/<model>:<level> # not the implementer's model
+  reviewer: <provider>/<model>:<level> # not the implementer's model

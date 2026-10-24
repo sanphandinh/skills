@@ -1,0 +1,5 @@
+interface:
+  display_name: "Autopilot"
+  short_description: "Build an approved spec unattended, one verified pull request per ticket"
+policy:
+  allow_implicit_invocation: false
