@@ -1,0 +1,9 @@
+# Autopilot tick every five minutes. Install with `crontab -e` and replace
+# every <...> placeholder. Cron starts with an almost empty environment, so
+# PATH must reach node, git, gh (or glab) and the agent CLI, and HOME must be
+# the user whose `gh auth login` and agent login the tick should use.
+SHELL=/bin/sh
+HOME=<HOME>
+PATH=<DIR OF node>:<DIR OF gh>:<DIR OF claude OR omp>:/usr/local/bin:/usr/bin:/bin
+
+*/5 * * * * cd <REPO> && node <AUTOPILOT SKILL DIR>/scripts/autopilot.mjs tick --as <FACTORY NAME> >> <REPO LOG DIR>/cron.log 2>&1

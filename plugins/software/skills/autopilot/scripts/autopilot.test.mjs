@@ -79,19 +79,21 @@ test("the implementer gets pointers to the spec and ticket, not their contents",
   assert.doesNotMatch(prompt, /Build the demo\./, "spec body is not pasted");
 });
 
-test("the ticket branch carries the handoff and the closed status, and a pull request opens with the pr body", async () => {
+test("the ticket branch carries the handoff file, and a draft pull request opens with the pr body", async () => {
   const fx = oneTicket();
   const forge = fakeForge(fx);
-  await run(fx, fakeHarness(happyRoles()), forge);
+  let draftWhileGating = null;
+  await run(fx, fakeHarness(happyRoles({ verifier: () => ((draftWhileGating = forge.prs[0].draft), PASS()) })), forge);
   assert.equal(forge.prs.length, 1);
   const pr = forge.prs[0];
   assert.equal(pr.base, "main");
   assert.match(pr.branch, /^autopilot\/demo\/01$/);
   assert.match(pr.body, /\*\*Door:\*\* two-way/);
-  const onBranch = sh(fx.remote, "show", `${pr.branch}:${T("01")}`);
-  assert.match(onBranch, /## Handoff/);
-  assert.match(onBranch, /\*\*Status:\*\* closed/);
-  assert.doesNotMatch(onBranch, /^Autopilot:/m, "the progress line is gone once the ticket closes");
+  assert.equal(draftWhileGating, true, "the pull request is a draft while the machine works");
+  assert.equal(pr.draft, false, "gates passing marks it ready");
+  assert.match(sh(fx.remote, "show", `${pr.branch}:.scratch/demo/handoff/01.md`), /\*\*Delivered:\*\* ticket 01/);
+  assert.doesNotMatch(sh(fx.remote, "show", `${pr.branch}:${T("01")}`), /## Handoff/, "the ticket file is left to the tracker until the merge");
+  assert.doesNotMatch(onTrunk(fx, T("01")), /^Autopilot:/m, "no progress line on the ticket");
 });
 
 test("a dry run reports the frontier and changes nothing", async () => {
@@ -331,19 +333,22 @@ test("an implementer that returns no handoff, or reports failure, gets a fix rou
 
 // ---------- 09: pushes only with a lease on the run's own branch ----------
 
-test("a push by someone else to the ticket branch stops the run instead of being overwritten", async () => {
+test("a push by someone else to the ticket branch while a run works stops the run instead of being overwritten", async () => {
   const fx = oneTicket();
+  const rival = anotherClone(fx, "rival");
   const harness = fakeHarness(
     happyRoles({
-      verifier: ({ cwd, call }) => {
-        if (call === 1) {
-          fs.writeFileSync(path.join(cwd, "src/theirs.js"), "theirs\n");
-          sh(cwd, "add", "-A");
-          sh(cwd, "commit", "-qm", "someone else");
-          sh(cwd, "push", "-q", "origin", "HEAD:autopilot/demo/01");
-          return { verdict: "FAIL", evidence: "needs a fix" };
+      verifier: ({ call }) => (call === 1 ? { verdict: "FAIL", evidence: "needs a fix" } : PASS()),
+      implementer: (ctx) => {
+        if (ctx.call === 2) {
+          sh(rival, "fetch", "-q", "origin");
+          sh(rival, "checkout", "-q", "-B", "theirs", "origin/autopilot/demo/01");
+          write(rival, { "src/theirs.js": "theirs\n" });
+          sh(rival, "add", "-A");
+          sh(rival, "commit", "-qm", "someone else");
+          sh(rival, "push", "-q", "origin", "HEAD:autopilot/demo/01");
         }
-        return PASS();
+        return implementer()(ctx);
       },
     }),
   );
@@ -542,6 +547,19 @@ test("a split that touches anything outside the issues folder is refused", async
 });
 
 // ---------- 13: decision trail and final report ----------
+
+test("the decision trail is on the branch before CI checks the head that merges", async () => {
+  const fx = oneTicket();
+  const forge = fakeForge(fx);
+  const heads = [];
+  forge.ciStatus = async (n) => (heads.push(sh(fx.remote, "rev-parse", forge.prs[n - 1].branch)), "pass");
+  const merge = forge.merge;
+  let mergedHead = null;
+  forge.merge = async (n) => ((mergedHead = sh(fx.remote, "rev-parse", forge.prs[n - 1].branch)), merge(n));
+  await run(fx, fakeHarness(happyRoles()), forge);
+  assert.equal(mergedHead, heads.at(-1), "no commit lands between the CI check and the merge");
+  assert.match(sh(fx.remote, "show", `${mergedHead}:.scratch/demo/trail/01.tsv`), /\tautopilot\tmerge\t/);
+});
 
 test("each ticket's decision trail lands with it, and the report sorts every ticket by what it needs", async () => {
   const { renderReport } = await import("./lib/report.mjs");

@@ -1,8 +1,10 @@
 // Tracker adapter for Jira Cloud (REST v3). A spec is an epic; its tickets are
-// the issues whose parent is the epic; blockers come from "Blocks" links (the
+// the issues whose parent is the epic. With no spec, the adapter serves the
+// standalone tickets: open issues with no parent that are not epics. Blockers come from "Blocks" links (the
 // inward "is blocked by" side) or a `Blocked by:` line; status is the Jira
 // workflow status mapped by the tracker doc's `Jira statuses:` line, moved with
 // transitions. Pull requests live on a separate forge.
+import { latestHumanNote } from "../tracker.mjs";
 import { claimWith, holder, releaseBody } from "./claims.mjs";
 
 const DEFAULT_STATUSES = { "needs-triage": "Backlog", "ready-for-agent": "To Do", "ready-for-human": "Blocked", closed: "Done" };
@@ -53,6 +55,13 @@ const adf = (text) => ({
 
 const field = (text, name) => String(text ?? "").match(new RegExp(`^(?:\\*\\*)?${name}:(?:\\*\\*)?\\s*(.+)$`, "mi"))?.[1]?.trim() ?? null;
 
+// Open epics in the project: ["APP-1", ...].
+export async function jiraSpecs({ project, api }) {
+  const jql = `project = ${project} AND issuetype = Epic AND statusCategory != Done ORDER BY key ASC`;
+  const r = await api("GET", `search/jql?jql=${encodeURIComponent(jql)}&fields=summary&maxResults=100`);
+  return (r?.issues ?? []).map((i) => i.key);
+}
+
 export function jiraTracker({ project, spec, api, statuses = DEFAULT_STATUSES, cwd = process.cwd() }) {
   const roleOf = (status) => {
     const name = status?.name;
@@ -73,7 +82,7 @@ export function jiraTracker({ project, spec, api, statuses = DEFAULT_STATUSES, c
   }
 
   async function list() {
-    const jql = `parent = ${spec} ORDER BY key ASC`;
+    const jql = spec ? `parent = ${spec} ORDER BY key ASC` : `project = ${project} AND parent is EMPTY AND issuetype != Epic AND statusCategory != Done ORDER BY key ASC`;
     const r = await api("GET", `search/jql?jql=${encodeURIComponent(jql)}&fields=summary,status,issuelinks,description&maxResults=100`);
     const out = [];
     for (const i of r?.issues ?? []) {
@@ -88,17 +97,22 @@ export function jiraTracker({ project, spec, api, statuses = DEFAULT_STATUSES, c
         blockedBy: native.length ? native : line && !/^none/i.test(line) ? line.split(/[\s,]+/).filter((k) => /^[A-Z][A-Z0-9]*-\d+$/.test(k)) : [],
         claimedBy: holder(await comments(i.key))?.who ?? null,
         door: field(text, "Door")?.toLowerCase() ?? null,
+        body: text,
       });
     }
     return out;
   }
 
+  const key = spec ? `jira-${spec}` : `jira-${project}`;
+
   return {
     kind: "jira",
-    key: `jira-${spec}`,
-    trailDir: `.autopilot/jira-${spec}/trail`,
+    key,
+    trailDir: `.autopilot/${key}/trail`,
+    stateDir: `.autopilot/${key}`,
 
     async spec() {
+      if (!spec) return { ref: null, status: "ready-for-agent", standalone: true };
       try {
         const i = await api("GET", `issue/${spec}?fields=summary,status`);
         return { ref: spec, status: roleOf(i.fields.status), title: i.fields.summary };
@@ -109,6 +123,14 @@ export function jiraTracker({ project, spec, api, statuses = DEFAULT_STATUSES, c
 
     tickets: list,
 
+    async statusOf(id) {
+      try {
+        return roleOf((await api("GET", `issue/${id}?fields=status`)).fields.status);
+      } catch {
+        return null;
+      }
+    },
+
     claim: (ticket, who) => claimWith({ comments: () => comments(ticket.id), post: (body) => post(ticket.id, body) }, who),
 
     async handToHuman(ticket, reason) {
@@ -117,13 +139,39 @@ export function jiraTracker({ project, spec, api, statuses = DEFAULT_STATUSES, c
       await post(ticket.id, releaseBody(held?.who ?? "autopilot", reason));
     },
 
+    async setStatus(ticket, role, note) {
+      await moveTo(ticket.id, role);
+      if (note) await post(ticket.id, note);
+    },
+
+    async comment(ticket, body) {
+      const key = ticket ? ticket.id : spec;
+      if (key) await post(key, body);
+    },
+
+    async humanNote(ticket) {
+      return latestHumanNote((await comments(ticket.id)).map((c) => c.body));
+    },
+
     pointer: (ticket) => `jira ${ticket.ref}`,
     prLink: (ticket) => `Jira: ${ticket.id}`,
-    onBranch() {},
 
     async afterMerge(ticket, { handoff, pr }) {
-      await post(ticket.id, `## Handoff\n\n${handoff.trim()}\n\nMerged in ${pr.url}`);
+      await post(ticket.id, `## Handoff\n\n${String(handoff ?? "").trim()}\n\nMerged in ${pr.url}`);
       await moveTo(ticket.id, "closed");
+    },
+
+    async closeSpec(summary) {
+      if (!spec) return;
+      await post(spec, summary);
+      await moveTo(spec, "closed");
+    },
+
+    async createTicket({ title, body }) {
+      const created = await api("POST", "issue", { fields: { project: { key: project }, summary: title, issuetype: { name: "Task" }, description: adf(body) } });
+      const ticket = (await list()).find((t) => t.id === created.key);
+      if (ticket && ticket.status !== "ready-for-agent") await moveTo(created.key, "ready-for-agent");
+      return { ...(ticket ?? { id: created.key, ref: created.key, title, blockedBy: [], claimedBy: null, body }), status: "ready-for-agent" };
     },
 
     splitPrompt: {

@@ -10,6 +10,8 @@ These gates are mandatory and no line here can turn them off:
 - CI is green
 - the pull request's Merge Danger section says `Door: two-way`, and its blast radius is in the list below
 - no changed file is under a protected path
+- trunk's CI is green (nothing merges while trunk is red)
+- it is not a fix or revert pull request for a red trunk; those always wait for a human
 
 Auto-merge: on
 

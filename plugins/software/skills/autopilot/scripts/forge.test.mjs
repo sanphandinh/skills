@@ -11,7 +11,7 @@ function fakeGh(answers = {}) {
   const dir = tmp("autopilot-gh-");
   const bin = path.join(dir, "gh");
   for (const [key, a] of Object.entries(answers)) {
-    const base = path.join(dir, key.replace(" ", "_"));
+    const base = path.join(dir, key.replace(" ", "_").replace(/[^A-Za-z0-9_]/g, "_"));
     fs.writeFileSync(`${base}.out`, a.out ?? "");
     fs.writeFileSync(`${base}.err`, a.err ?? "");
     fs.writeFileSync(`${base}.code`, String(a.code ?? 0));
@@ -23,7 +23,7 @@ n=$(ls "${dir}" | grep -c '^call-' )
 call="${dir}/call-$(printf %03d "$n")"
 for a in "$@"; do printf '%s\\0' "$a" >> "$call.args"; done
 cat > "$call.stdin"
-key="${dir}/$1_$2"
+key="${dir}/$(printf '%s_%s' "$1" "$2" | tr -c 'A-Za-z0-9_' '_')"
 [ -f "$key.out" ] && cat "$key.out"
 [ -f "$key.err" ] && cat "$key.err" >&2
 [ -f "$key.code" ] && exit $(cat "$key.code")
@@ -94,4 +94,32 @@ test("the forge host comes from the Pull requests line, else from a GitHub or Gi
   assert.deepEqual(forgeConfig(repoWithTracker("Tracker: github acme/app")), { kind: "github", repo: "acme/app" });
   assert.deepEqual(forgeConfig(repoWithTracker("Tracker: jira https://acme.atlassian.net APP\nPull requests: github acme/app")), { kind: "github", repo: "acme/app" });
   assert.throws(() => forgeConfig(repoWithTracker("Tracker: jira https://acme.atlassian.net APP")), /Pull requests:/);
+});
+
+test("GitHub: drafts, comments, ready, trunk checks, reruns and the pull request behind a commit, every call pinned", async () => {
+  const gh = fakeGh({
+    "pr create": { out: "https://github.com/acme/app/pull/7\n" },
+    "pr list": { out: JSON.stringify([{ number: 7, url: "https://github.com/acme/app/pull/7", state: "OPEN", isDraft: true, body: "b" }]) },
+    "pr view": { out: JSON.stringify({ author: { login: "bot" }, comments: [{ body: "one", author: { login: "bot" } }, { body: "two", author: { login: "stranger" }, authorAssociation: "NONE" }] }) },
+    "api repos/acme/app/commits/main/check-runs?per_page=100": { out: JSON.stringify({ check_runs: [{ head_sha: "abc", status: "completed", conclusion: "failure", html_url: "https://github.com/acme/app/runs/1" }] }) },
+    "run list": { out: JSON.stringify([{ databaseId: 11, conclusion: "failure" }, { databaseId: 12, conclusion: "success" }]) },
+  });
+  const forge = createForge({ repoDir: repoWithTracker("Pull requests: github acme/app"), command: gh.bin });
+  await forge.openPr({ branch: "autopilot/gh/3", base: "main", title: "3: x", body: "b", draft: true });
+  assert.deepEqual(await forge.findPr("autopilot/gh/3"), { number: 7, url: "https://github.com/acme/app/pull/7", state: "open", draft: true, body: "b", author: null });
+  assert.deepEqual(await forge.comments(7), [{ body: "one", author: "bot", trusted: true }, { body: "two", author: "stranger", trusted: false }]);
+  await forge.markReady(7);
+  await forge.updatePr(7, { body: "## New body" });
+  assert.deepEqual(await forge.trunkStatus("main"), { sha: "abc", state: "fail", url: "https://github.com/acme/app/runs/1" });
+  await forge.rerunFailed("abc");
+  const calls = gh.calls();
+  assert.ok(calls[0].args.includes("--draft"));
+  assert.ok(calls.some((c) => c.args.join(" ").startsWith("pr ready 7")));
+  assert.equal(calls.find((c) => c.args.join(" ").startsWith("pr edit 7")).stdin, "## New body", "the new body goes through stdin");
+  assert.ok(calls.some((c) => c.args.join(" ").startsWith("run rerun 11 --failed")));
+  assert.ok(!calls.some((c) => c.args.join(" ").startsWith("run rerun 12")));
+  for (const c of calls) {
+    if (c.args[0] === "api") assert.match(c.args[1], /^repos\/acme\/app\//, "api calls name the repository in the path");
+    else assert.equal(c.args[c.args.indexOf("--repo") + 1], "acme/app", `${c.args.join(" ")} is pinned`);
+  }
 });

@@ -68,6 +68,8 @@ Work the **frontier**: any ticket whose blockers are all done. For a purely line
 
 Do NOT close or modify any parent issue.
 
+Every acceptance criterion gets a `Verify:` line under it: the command to run or the action to take that proves it, the way a verifier who never saw the conversation would check it. A criterion you cannot write a `Verify:` line for is not done being specified; sharpen it before publishing. The `autopilot` skill refuses to build a ticket without them.
+
 <local-ticket-template>
 
 # <NN>: <Ticket title>
@@ -79,7 +81,9 @@ Do NOT close or modify any parent issue.
 **Status:** ready-for-agent
 
 - [ ] Acceptance criterion 1
+  Verify: the command or action that proves it
 - [ ] Acceptance criterion 2
+  Verify: the command or action that proves it
 
 </local-ticket-template>
 
@@ -96,7 +100,9 @@ The end-to-end behaviour this ticket makes work, from the user's perspective, no
 ## Acceptance criteria
 
 - [ ] Criterion 1
+  Verify: the command or action that proves it
 - [ ] Criterion 2
+  Verify: the command or action that proves it
 
 ## Blocked by
 

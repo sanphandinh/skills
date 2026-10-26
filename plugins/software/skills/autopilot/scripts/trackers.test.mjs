@@ -6,13 +6,14 @@ import { labelMap } from "./lib/trackers/labels.mjs";
 import { runAutopilot } from "./lib/run.mjs";
 import { PASS, SPEC_OK, STANDARDS_OK, fakeForge, fakeGitHub, fakeHarness, implementer, onTrunk, repoFixture } from "./test-helpers.mjs";
 
+const V = "- [ ] It works\n  Verify: run it";
 const LABELS = labelMap("| `ready-for-agent` | `agent:ready` | x |\n| `ready-for-human` | `human` | x |\n| `needs-triage` | `triage` | x |");
 
 function github() {
   const gh = fakeGitHub();
   gh.add({ number: 1, title: "Spec", labels: ["agent:ready"], subIssues: [2, 3, 4] });
-  gh.add({ number: 2, title: "Base", labels: ["agent:ready"], body: "**Door:** two-way" });
-  gh.add({ number: 3, title: "On top", labels: ["agent:ready"], blockedBy: [2] });
+  gh.add({ number: 2, title: "Base", labels: ["agent:ready"], body: `**Door:** two-way\n\n${V}` });
+  gh.add({ number: 3, title: "On top", labels: ["agent:ready"], blockedBy: [2], body: V });
   gh.add({ number: 4, title: "Fallback edge", labels: ["triage"], body: "Blocked by: #2, #3\n\n**Door:** one-way" });
   return { gh, tracker: githubTracker({ repo: gh.repo, spec: "#1", api: gh.api, labels: LABELS }) };
 }
@@ -110,8 +111,8 @@ import { fakeGitLab } from "./test-helpers.mjs";
 function gitlab() {
   const gl = fakeGitLab("acme/sub/app");
   gl.add({ iid: 1, title: "Spec", labels: ["agent:ready"], links: [{ iid: 2, type: "relates_to" }, { iid: 3, type: "relates_to" }] });
-  gl.add({ iid: 2, title: "Base", labels: ["agent:ready"] });
-  gl.add({ iid: 3, title: "On top", labels: ["agent:ready"], links: [{ iid: 2, type: "is_blocked_by" }], description: "**Door:** two-way" });
+  gl.add({ iid: 2, title: "Base", labels: ["agent:ready"], description: V });
+  gl.add({ iid: 3, title: "On top", labels: ["agent:ready"], links: [{ iid: 2, type: "is_blocked_by" }], description: `**Door:** two-way\n\n${V}` });
   return { gl, tracker: gitlabTracker({ repo: gl.repo, spec: "#1", api: gl.api, labels: LABELS }) };
 }
 
@@ -134,7 +135,7 @@ test("gitlab forge: merge requests on the configured project, with pipeline stat
   const forge = gitlabForge({ repo: gl.repo, api: gl.api });
   const pr = await forge.openPr({ branch: "autopilot/gl-1/2", base: "main", title: "2: Base", body: "Closes acme/sub/app#2" });
   assert.deepEqual(pr, { number: 1, url: "https://gitlab.test/acme/sub/app/-/merge_requests/1" });
-  assert.deepEqual(await forge.findPr("autopilot/gl-1/2"), pr);
+  assert.deepEqual(await forge.findPr("autopilot/gl-1/2"), { ...pr, state: "open", draft: false, body: "Closes acme/sub/app#2", author: null });
   assert.equal(await forge.ciStatus(1), "pass", "no pipeline counts as passing");
   gl.mrs[0].head_pipeline = { status: "running" };
   assert.equal(await forge.ciStatus(1), "pending");
@@ -165,14 +166,14 @@ test("gitlab: one run builds the linked issues in order and closes them", async 
 
 // ---------- Jira ----------
 
-import { adfText, jiraApi, jiraStatuses, jiraTracker } from "./lib/trackers/jira.mjs";
+import { adfText, jiraApi, jiraSpecs, jiraStatuses, jiraTracker } from "./lib/trackers/jira.mjs";
 import { fakeJira } from "./test-helpers.mjs";
 
 function jira() {
   const j = fakeJira();
-  j.add({ key: "APP-1", summary: "Spec epic", status: "To Do" });
-  j.add({ key: "APP-2", summary: "Base", parent: "APP-1" });
-  j.add({ key: "APP-3", summary: "On top", parent: "APP-1", links: ["APP-2"], description: "**Door:** two-way" });
+  j.add({ key: "APP-1", summary: "Spec epic", status: "To Do", epic: true });
+  j.add({ key: "APP-2", summary: "Base", parent: "APP-1", description: V });
+  j.add({ key: "APP-3", summary: "On top", parent: "APP-1", links: ["APP-2"], description: `**Door:** two-way\n\n${V}` });
   j.add({ key: "APP-4", summary: "Fallback", parent: "APP-1", status: "Backlog", description: "Blocked by: APP-2, APP-3" });
   return { j, tracker: jiraTracker({ project: "APP", spec: "APP-1", api: j.api, statuses: jiraStatuses("Jira statuses: ready-for-human=Blocked") }) };
 }
@@ -248,4 +249,99 @@ test("every seed tracker template names its tracker on a line autopilot reads", 
   assert.equal(trackerConfig(seed("gitlab")).kind, "gitlab");
   assert.deepEqual(trackerConfig(seed("jira")), { kind: "jira", site: "https://<site>.atlassian.net", project: "<PROJECT-KEY>" });
   assert.deepEqual(jiraStatuses(seed("jira")), { "needs-triage": "Backlog", "ready-for-agent": "To Do", "ready-for-human": "Blocked", closed: "Done" });
+});
+
+// ---------- whole-tracker scope ----------
+
+test("github: spec-labelled issues are specs, other open issues with a triage role are standalone tickets, and fix tickets can be filed", async () => {
+  const { githubSpecs } = await import("./lib/trackers/github.mjs");
+  const gh = fakeGitHub();
+  const labels = labelMap("| `ready-for-agent` | `agent:ready` | x |\n| `ready-for-human` | `human` | x |\n| `spec` | `kind:spec` | x |");
+  gh.add({ number: 1, title: "Spec", labels: ["kind:spec", "agent:ready"], subIssues: [2] });
+  gh.add({ number: 2, title: "Owned", labels: ["agent:ready"], body: V });
+  gh.add({ number: 3, title: "Loose bug", labels: ["agent:ready"], body: V });
+  gh.add({ number: 4, title: "Waiting", labels: ["human"] });
+  gh.add({ number: 5, title: "Untriaged", labels: [] });
+  assert.deepEqual(await githubSpecs({ repo: gh.repo, api: gh.api, labels }), ["#1"]);
+  const standalone = githubTracker({ repo: gh.repo, spec: null, api: gh.api, labels });
+  assert.deepEqual(await standalone.spec(), { ref: null, status: "ready-for-agent", standalone: true });
+  assert.equal(standalone.key, "gh");
+  assert.deepEqual((await standalone.tickets()).map((t) => [t.id, t.status]), [["3", "ready-for-agent"], ["4", "ready-for-human"]]);
+  const fix = await standalone.createTicket({ title: "Fix trunk", body: "<!-- autopilot:fix first-red=abc -->\nbody" });
+  assert.equal(fix.status, "ready-for-agent");
+  assert.deepEqual(gh.issues.get(Number(fix.id)).labels, ["agent:ready"]);
+
+  const spec = githubTracker({ repo: gh.repo, spec: "#1", api: gh.api, labels });
+  await spec.closeSpec("## Autopilot finished this spec");
+  assert.equal(gh.issues.get(1).state, "closed");
+  assert.match(gh.issues.get(1).comments.at(-1).body, /finished this spec/);
+});
+
+test("github: the human's note is their comment after autopilot's last one, and status changes come with a note", async () => {
+  const { gh, tracker } = github();
+  const [t2] = await tracker.tickets();
+  await tracker.handToHuman(t2, "stuck");
+  assert.equal(await tracker.humanNote(t2), null);
+  await gh.api("POST", `repos/${gh.repo}/issues/2/comments`, { body: "Use cents." });
+  assert.equal(await tracker.humanNote(t2), "Use cents.");
+  await tracker.setStatus(t2, "needs-triage", "needs a Verify line");
+  assert.deepEqual(gh.issues.get(2).labels, ["triage"]);
+  assert.match(gh.issues.get(2).comments.at(-1).body, /Verify line/);
+});
+
+test("gitlab: spec-labelled issues are specs, unlinked issues with a triage role are standalone, and specs close with a note", async () => {
+  const { gitlabSpecs } = await import("./lib/trackers/gitlab.mjs");
+  const gl = fakeGitLab("acme/app");
+  const labels = labelMap("| `ready-for-agent` | `agent:ready` | x |\n| `spec` | `spec` | x |");
+  gl.add({ iid: 1, title: "Spec", labels: ["spec", "agent:ready"], links: [{ iid: 2, type: "relates_to" }] });
+  gl.add({ iid: 2, title: "Owned", labels: ["agent:ready"], description: V });
+  gl.add({ iid: 3, title: "Loose", labels: ["agent:ready"], description: V });
+  assert.deepEqual(await gitlabSpecs({ repo: gl.repo, api: gl.api, labels }), ["#1"]);
+  const standalone = gitlabTracker({ repo: gl.repo, spec: null, api: gl.api, labels });
+  assert.deepEqual((await standalone.tickets()).map((t) => t.id), ["3"]);
+  const fix = await standalone.createTicket({ title: "Fix trunk", body: "x" });
+  assert.deepEqual(gl.issues.get(Number(fix.id)).labels, ["agent:ready"]);
+  await gitlabTracker({ repo: gl.repo, spec: "#1", api: gl.api, labels }).closeSpec("done");
+  assert.equal(gl.issues.get(1).state, "closed");
+  assert.equal(gl.issues.get(1).notes.at(-1).body, "done");
+});
+
+test("gitlab forge: drafts, notes, trunk pipeline and its retry, and the merge request behind a commit", async () => {
+  const gl = fakeGitLab("acme/app");
+  const forge = gitlabForge({ repo: gl.repo, api: gl.api });
+  const pr = await forge.openPr({ branch: "autopilot/gl/3", base: "main", title: "3: Loose", body: "b", draft: true });
+  assert.equal((await forge.findPr("autopilot/gl/3")).draft, true);
+  await forge.markReady(pr.number);
+  assert.equal((await forge.findPr("autopilot/gl/3")).draft, false);
+  await forge.comment(pr.number, "one");
+  assert.deepEqual(await forge.comments(pr.number), [{ body: "one", author: null, trusted: true }]);
+  assert.deepEqual(await forge.trunkStatus("main"), { sha: "main", state: "pass", url: null });
+  gl.trunk.status = "failed";
+  assert.equal((await forge.trunkStatus("main")).state, "fail");
+  await forge.rerunFailed("abc");
+  assert.deepEqual(gl.retried, [7]);
+});
+
+test("jira: open epics are specs, parentless issues are standalone, and fix tickets are filed as ready tasks", async () => {
+  const { j } = jira();
+  j.add({ key: "APP-9", summary: "Loose", description: V });
+  assert.deepEqual(await jiraSpecs({ project: "APP", api: j.api }), ["APP-1"]);
+  const standalone = jiraTracker({ project: "APP", spec: null, api: j.api });
+  assert.equal(standalone.key, "jira-APP");
+  assert.deepEqual((await standalone.tickets()).map((t) => t.id), ["APP-9"]);
+  const fix = await standalone.createTicket({ title: "Fix trunk", body: "x" });
+  assert.equal(j.issues.get(fix.id).status, "To Do");
+  const spec = jiraTracker({ project: "APP", spec: "APP-1", api: j.api });
+  await spec.closeSpec("done");
+  assert.equal(j.issues.get("APP-1").status, "Done");
+});
+
+test("scanning a local tracker finds every spec folder and every standalone folder, plus the fixes folder", async () => {
+  const { scanTrackers } = await import("./lib/trackers/index.mjs");
+  const { SPEC: S, TICKET: TK } = await import("./test-helpers.mjs");
+  const fx = repoFixture({ ".scratch/a/spec.md": S(), ".scratch/a/issues/01-x.md": TK("01", "X"), ".scratch/bugs/issues/01-y.md": TK("01", "Y"), ".scratch/notes.md": "x" });
+  const { trackers, standalone } = await scanTrackers({ repoDir: fx.clone });
+  assert.deepEqual(trackers.map((t) => t.key), ["a", "bugs", "autopilot-fixes"]);
+  assert.equal(standalone.key, "autopilot-fixes");
+  assert.deepEqual(await trackers[1].spec(), { ref: null, status: "ready-for-agent", standalone: true });
 });
