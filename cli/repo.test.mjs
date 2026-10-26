@@ -89,6 +89,18 @@ test("a URL path that starts with a skill name is not a skill invocation", () =>
   assert.equal(messages(repo({ "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Mount it under `/alpha/<name>`.\n") })), "");
 });
 
+test("every manifest of a plugin, and the OMP catalog entry for it, carry the same version", () => {
+  const manifests = (v) => ({
+    "plugins/core/.claude-plugin/plugin.json": JSON.stringify({ name: "core", version: v.claude }),
+    "plugins/core/.codex-plugin/plugin.json": JSON.stringify({ name: "core", version: v.codex }),
+    ".omp-plugin/marketplace.json": JSON.stringify({ name: "x", plugins: [{ name: "core", source: "./plugins/core", version: v.catalog }] }),
+  });
+  assert.equal(messages(repo(manifests({ claude: "0.4.0", codex: "0.4.0", catalog: "0.4.0" }))), "");
+  const msgs = messages(repo(manifests({ claude: "0.4.0", codex: "0.3.0", catalog: "0.3.0" })));
+  assert.match(msgs, /plugins\/core\/\.codex-plugin\/plugin\.json: version 0\.3\.0 differs from 0\.4\.0 in plugins\/core\/\.claude-plugin\/plugin\.json/);
+  assert.match(msgs, /\.omp-plugin\/marketplace\.json: core is listed at 0\.3\.0 but its manifest says 0\.4\.0; OMP compares this version to decide upgrades/);
+});
+
 test("platform skills may use their platform's frontmatter", () => {
   assert.equal(messages(repo({ "plugins/core-claude/skills/deep/SKILL.md": skill("deep", "context: fork\nagent: Explore\nmodel: opus\n") })), "");
 });

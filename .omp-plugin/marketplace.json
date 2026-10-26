@@ -7,13 +7,13 @@
     {
       "name": "core",
       "source": "./plugins/core",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "description": "Cross-domain process skills: grilling, research, handoff, and writing for agents."
     },
     {
       "name": "software",
       "source": "./plugins/software",
-      "version": "0.5.0",
+      "version": "0.6.0",
       "description": "Software factory skills: spec, tickets, TDD implementation, unattended autopilot builds, verification, code review, diagnosis, and project setup."
     },
     {
