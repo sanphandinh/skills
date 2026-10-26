@@ -180,6 +180,31 @@ export function validate(root) {
     }
   }
 
+  // One version per plugin: every manifest agrees, and so does the OMP
+  // catalog, which is what OMP compares when it decides to upgrade.
+  const MANIFESTS = [".claude-plugin", ".codex-plugin", ".omp-plugin"].map((d) => path.join(d, "plugin.json"));
+  const versionOf = new Map();
+  for (const plugin of fs.existsSync(path.join(root, "plugins")) ? fs.readdirSync(path.join(root, "plugins")) : []) {
+    for (const rel of MANIFESTS) {
+      const file = path.join(root, "plugins", plugin, rel);
+      if (!fs.existsSync(file)) continue;
+      const version = JSON.parse(fs.readFileSync(file, "utf8")).version;
+      if (!version) continue;
+      const first = versionOf.get(plugin);
+      if (!first) versionOf.set(plugin, { version, file });
+      else if (first.version !== version) add(file, `version ${version} differs from ${first.version} in ${path.relative(root, first.file)}`);
+    }
+  }
+  const ompCatalog = path.join(root, ".omp-plugin", "marketplace.json");
+  if (fs.existsSync(ompCatalog)) {
+    for (const entry of JSON.parse(fs.readFileSync(ompCatalog, "utf8")).plugins ?? []) {
+      const manifest = versionOf.get(path.basename(String(entry.source ?? entry.name)));
+      if (entry.version && manifest && entry.version !== manifest.version) {
+        add(ompCatalog, `${entry.name} is listed at ${entry.version} but its manifest says ${manifest.version}; OMP compares this version to decide upgrades`);
+      }
+    }
+  }
+
   const ompRoles = new Set(OMP_BUILTIN_ROLES);
   for (const r of Object.values(roles?.roles ?? {})) for (const sel of [r.omp ?? []].flat()) ompRoles.add(String(sel).replace(/^@/, ""));
   const agentNames = new Map();
