@@ -1,7 +1,7 @@
 {
   "name": "core",
-  "version": "0.3.0",
-  "description": "Cross-domain process skills: grilling, research, handoff, and writing for agents.",
+  "version": "0.4.0",
+  "description": "Cross-domain process skills: grilling, research, handoff, writing for agents, and product opportunity audits.",
   "author": {
     "name": "San Phan"
   },
