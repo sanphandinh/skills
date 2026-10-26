@@ -61,6 +61,7 @@ Skills listed in `UPSTREAM.md` came from mattpocock/skills. Edit them freely; `n
 - Large or unclear efforts: `wayfinder` (user-invoked) maps decision tickets on the tracker, then hands off to `to-spec`.
 - Issue intake: `triage` (user-invoked) moves issues and external PRs through the triage roles and writes agent briefs for `ready-for-agent`.
 - Design and debugging: `codebase-design`, `domain-modeling`, `improve-codebase-architecture` (user-invoked), `diagnosing-bugs`.
+- Around the build: `prototype` answers a design question with throwaway code before `to-spec`; `wizard` scripts the steps only a human can take (credentials, CI secrets, third-party dashboards, cutovers); `retro` (user-invoked) turns a finished session into changes to the agent's environment (checks, coding standards, steering files).
 - Project setup: `frontend-web-project-setup`, `portless-web-project-setup`, `setup-pre-commit`, `github-repo-setup`.
 
 `software-claude`: agents `implementer` (inherit), `verifier`, `review-standards`, `review-spec` (opus).
