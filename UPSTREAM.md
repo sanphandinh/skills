@@ -46,11 +46,20 @@ rewrites:
     replace: $1 the `$2` skill
     skillGroups:
       - 2
-ignore: []
+ignore:
+  - skills/in-progress/claude-handoff
+  - skills/in-progress/loop-me
+  - skills/in-progress/writing-beats
+  - skills/in-progress/writing-fragments
+  - skills/in-progress/writing-shape
+  - skills/misc/migrate-to-shoehorn
+  - skills/misc/scaffold-exercises
+  - skills/productivity/teach
+  - skills/productivity/to-questionnaire
 skills:
   grilling:
     path: skills/productivity/grilling
-    commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
+    commit: 5beb35b040e3de97e54fa9e386d7e42d15c295c2
   grill-me:
     path: skills/productivity/grill-me
     commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
@@ -86,7 +95,7 @@ skills:
     commit: 49dd158d1076134a641b33efb035946536778336
   diagnosing-bugs:
     path: skills/engineering/diagnosing-bugs
-    commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
+    commit: 5beb35b040e3de97e54fa9e386d7e42d15c295c2
   domain-modeling:
     path: skills/engineering/domain-modeling
     commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
@@ -98,7 +107,7 @@ skills:
     commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
   wayfinder:
     path: skills/engineering/wayfinder
-    commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
+    commit: 5beb35b040e3de97e54fa9e386d7e42d15c295c2
   pr:
     path: skills/engineering/pr
     commit: 24fe0ef7737efae15c87225755e9f6f5965e4888
@@ -114,6 +123,15 @@ skills:
   triage:
     path: skills/engineering/triage
     commit: 49dd158d1076134a641b33efb035946536778336
+  retro:
+    path: skills/engineering/retro
+    commit: 5beb35b040e3de97e54fa9e386d7e42d15c295c2
+  prototype:
+    path: skills/engineering/prototype
+    commit: 5beb35b040e3de97e54fa9e386d7e42d15c295c2
+  wizard:
+    path: skills/engineering/wizard
+    commit: 5beb35b040e3de97e54fa9e386d7e42d15c295c2
 ---
 # Upstream: mattpocock/skills
 

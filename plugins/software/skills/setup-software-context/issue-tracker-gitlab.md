@@ -30,7 +30,7 @@ Unlike GitHub, GitLab numbers issues and MRs separately, so `#42` is unambiguous
 
 **Tracker:** gitlab <group>/<project>
 
-Read by the `autopilot` skill. A spec is an issue; its tickets are the issues linked to it (`relates_to`), blocked by `is_blocked_by` links or a `Blocked by:` line. Autopilot claims a ticket by posting an `autopilot:claim` comment (the earliest unreleased claim holds it), hands a ticket to a human by setting the `ready-for-human` label with a release comment, and after a merge posts the ticket's `## Handoff` comment and closes it. Read a blocker's handoff from its comments.
+Read by the `autopilot` skill. A spec is an issue with the `spec` label (its string is set in `triage-labels.md`); its tickets are the issues linked to it (`relates_to`). Open issues with a triage role that are not linked to an open spec are standalone tickets, built without a spec. Tickets are blocked by `is_blocked_by` links or a `Blocked by:` line. Autopilot claims a ticket by posting an `autopilot:claim` comment (the earliest unreleased claim holds it), hands a ticket to a human by setting the `ready-for-human` label with a release comment, and after a merge posts the ticket's `## Handoff` comment and closes it. Read a blocker's handoff from its comments.
 
 ## When a skill says "publish to the issue tracker"
 

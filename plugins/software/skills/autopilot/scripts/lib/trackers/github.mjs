@@ -1,8 +1,12 @@
-// Tracker adapter for GitHub Issues. A spec is an issue; its tickets are its
-// sub-issues; blockers come from native issue dependencies, else a
-// `Blocked by: #n` line; status is a triage label, or `closed` once the issue
-// is closed as completed. Claims use the shared comment lock.
+// Tracker adapter for GitHub Issues. A spec is an issue with the spec label;
+// its tickets are its sub-issues. With no spec, the adapter serves the
+// standalone tickets: open issues with a triage role that are neither a spec
+// nor a sub-issue of an open spec. Blockers come from native issue
+// dependencies, else a `Blocked by: #n` line; status is a triage label, or
+// `closed` once the issue is closed as completed. Claims use the shared
+// comment lock.
 import { spawnSync } from "node:child_process";
+import { latestHumanNote } from "../tracker.mjs";
 import { claimWith, holder, releaseBody } from "./claims.mjs";
 import { ALL_ROLES, roleOf } from "./labels.mjs";
 
@@ -19,15 +23,22 @@ export function ghApi({ command = "gh", cwd } = {}) {
 
 const number = (ref) => Number(String(ref).match(/(\d+)\s*$/)?.[1]);
 const field = (body, name) => String(body ?? "").match(new RegExp(`^(?:\\*\\*)?${name}:(?:\\*\\*)?\\s*(.+)$`, "mi"))?.[1]?.trim() ?? null;
+const labelNames = (i) => (i.labels ?? []).map((l) => (typeof l === "string" ? l : l.name));
+
+// Open spec issues: ["#12", ...].
+export async function githubSpecs({ repo, api, labels }) {
+  const found = (await api("GET", `repos/${repo}/issues?state=open&labels=${encodeURIComponent(labels.spec)}&per_page=100`)) ?? [];
+  return found.filter((i) => !i.pull_request).map((i) => `#${i.number}`);
+}
 
 export function githubTracker({ repo, spec, api, labels, cwd = process.cwd() }) {
-  const specNo = number(spec);
+  const specNo = spec ? number(spec) : null;
   const issue = (n) => `repos/${repo}/issues/${n}`;
   const comments = (n) => api("GET", `${issue(n)}/comments?per_page=100`).then((c) => c ?? []);
 
   const status = (i) => {
     if (i.state === "closed") return i.state_reason === "not_planned" ? "wontfix" : "closed";
-    return roleOf((i.labels ?? []).map((l) => (typeof l === "string" ? l : l.name)), labels);
+    return roleOf(labelNames(i), labels);
   };
 
   async function blockers(i) {
@@ -50,10 +61,23 @@ export function githubTracker({ repo, spec, api, labels, cwd = process.cwd() }) 
     if (role) await api("POST", `${issue(n)}/labels`, { labels: [labels[role]] });
   }
 
+  async function standaloneIssues() {
+    const specs = await githubSpecs({ repo, api, labels });
+    const owned = new Set();
+    for (const s of specs) for (const sub of (await api("GET", `${issue(number(s))}/sub_issues?per_page=100`)) ?? []) owned.add(sub.number);
+    const seen = new Map();
+    for (const role of ["ready-for-agent", "ready-for-human"]) {
+      for (const i of (await api("GET", `repos/${repo}/issues?state=open&labels=${encodeURIComponent(labels[role])}&per_page=100`)) ?? []) {
+        if (!i.pull_request && !labelNames(i).includes(labels.spec) && !owned.has(i.number)) seen.set(i.number, i);
+      }
+    }
+    return [...seen.values()];
+  }
+
   async function list() {
-    const subs = (await api("GET", `${issue(specNo)}/sub_issues?per_page=100`)) ?? [];
+    const issues = specNo ? ((await api("GET", `${issue(specNo)}/sub_issues?per_page=100`)) ?? []) : await standaloneIssues();
     const out = [];
-    for (const i of subs) {
+    for (const i of issues) {
       const claim = holder(await comments(i.number));
       out.push({
         id: String(i.number),
@@ -63,17 +87,22 @@ export function githubTracker({ repo, spec, api, labels, cwd = process.cwd() }) 
         blockedBy: await blockers(i),
         claimedBy: claim?.who ?? null,
         door: field(i.body, "Door")?.toLowerCase() ?? null,
+        body: i.body ?? "",
       });
     }
     return out.sort((a, b) => Number(a.id) - Number(b.id));
   }
 
+  const key = specNo ? `gh-${specNo}` : "gh";
+
   return {
     kind: "github",
-    key: `gh-${specNo}`,
-    trailDir: `.autopilot/gh-${specNo}/trail`,
+    key,
+    trailDir: `.autopilot/${key}/trail`,
+    stateDir: `.autopilot/${key}`,
 
     async spec() {
+      if (!specNo) return { ref: null, status: "ready-for-agent", standalone: true };
       try {
         const i = await api("GET", issue(specNo));
         return { ref: `#${specNo}`, status: status(i), title: i.title };
@@ -84,6 +113,15 @@ export function githubTracker({ repo, spec, api, labels, cwd = process.cwd() }) 
 
     tickets: list,
 
+    // Status of any issue, for a blocker outside this list.
+    async statusOf(id) {
+      try {
+        return status(await api("GET", issue(id)));
+      } catch {
+        return null;
+      }
+    },
+
     claim: (ticket, who) => claimWith({ comments: () => comments(ticket.id), post: (body) => api("POST", `${issue(ticket.id)}/comments`, { body }) }, who),
 
     async handToHuman(ticket, reason) {
@@ -92,16 +130,42 @@ export function githubTracker({ repo, spec, api, labels, cwd = process.cwd() }) 
       await api("POST", `${issue(ticket.id)}/comments`, { body: releaseBody(held?.who ?? "autopilot", reason) });
     },
 
+    async setStatus(ticket, role, note) {
+      await setRole(ticket.id, role);
+      if (note) await api("POST", `${issue(ticket.id)}/comments`, { body: note });
+    },
+
+    async comment(ticket, body) {
+      const n = ticket ? ticket.id : specNo;
+      if (n) await api("POST", `${issue(n)}/comments`, { body });
+    },
+
+    // Only owners, members and collaborators steer a rework.
+    async humanNote(ticket) {
+      const trusted = (c) => !c.author_association || ["OWNER", "MEMBER", "COLLABORATOR"].includes(c.author_association) || /autopilot:/.test(c.body ?? "");
+      return latestHumanNote((await comments(ticket.id)).filter(trusted).map((c) => c.body ?? ""));
+    },
+
     pointer: (ticket) => `github ${repo}${String(ticket.ref).startsWith("#") ? ticket.ref : `#${number(ticket.ref)}`}`,
     prLink: (ticket) => `Closes ${repo}#${ticket.id}`,
-    onBranch() {},
 
     // The handoff goes on the ticket once its code is on trunk; the issue is
     // closed if the pull request's closing keyword did not already do it.
     async afterMerge(ticket, { handoff, pr }) {
-      await api("POST", `${issue(ticket.id)}/comments`, { body: `## Handoff\n\n${handoff.trim()}\n\nMerged in ${pr.url}` });
+      await api("POST", `${issue(ticket.id)}/comments`, { body: `## Handoff\n\n${String(handoff ?? "").trim()}\n\nMerged in ${pr.url}` });
       const i = await api("GET", issue(ticket.id));
       if (i.state !== "closed") await api("PATCH", issue(ticket.id), { state: "closed", state_reason: "completed" });
+    },
+
+    async closeSpec(summary) {
+      if (!specNo) return;
+      await api("POST", `${issue(specNo)}/comments`, { body: summary });
+      await api("PATCH", issue(specNo), { state: "closed", state_reason: "completed" });
+    },
+
+    async createTicket({ title, body }) {
+      const i = await api("POST", `repos/${repo}/issues`, { title, body, labels: [labels["ready-for-agent"]] });
+      return (await list()).find((t) => t.id === String(i.number)) ?? { id: String(i.number), ref: `#${i.number}`, title, status: "ready-for-agent", blockedBy: [], claimedBy: null, body };
     },
 
     splitPrompt: {

@@ -85,6 +85,10 @@ test("validate flags non-portable skills", () => {
   assert.match(msgs, /prefix "mkt-"/);
 });
 
+test("a URL path that starts with a skill name is not a skill invocation", () => {
+  assert.equal(messages(repo({ "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Mount it under `/alpha/<name>`.\n") })), "");
+});
+
 test("platform skills may use their platform's frontmatter", () => {
   assert.equal(messages(repo({ "plugins/core-claude/skills/deep/SKILL.md": skill("deep", "context: fork\nagent: Explore\nmodel: opus\n") })), "");
 });

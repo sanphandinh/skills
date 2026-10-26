@@ -38,6 +38,34 @@ export function tickAll(text) {
   return text.replace(/^- \[ \]/gm, "- [x]");
 }
 
+// Every acceptance criterion (a checkbox line) names how to check it on a
+// `Verify:` line, on the same line or the next one. A ticket with no checkbox
+// needs at least one `Verify:` line.
+const VERIFY = /^\s*(?:[-*]\s+)?(?:\*\*)?Verify:/i;
+
+export function verifiable(text) {
+  const lines = String(text ?? "").split("\n");
+  const boxes = lines.map((l, i) => [l, i]).filter(([l]) => /^\s*[-*]\s+\[[ xX]\]/.test(l));
+  if (!boxes.length) return lines.some((l) => VERIFY.test(l));
+  return boxes.every(([l, i]) => /Verify:/i.test(l) || VERIFY.test(lines.slice(i + 1).find((x) => x.trim()) ?? ""));
+}
+
+// The handoff without a heading of its own: trackers add `## Handoff`.
+export const handoffBody = (text) => String(text ?? "").replace(/^\s*#{1,6}\s*Handoff\s*\n+/i, "").trim();
+
+// A fix ticket carries this marker with the first red trunk commit.
+export const FIX_MARK = /autopilot:fix first-red=([0-9a-f]+)/;
+
+// The human's latest words in a list of comment bodies (oldest first): the
+// comments after the last one autopilot wrote.
+export function latestHumanNote(bodies) {
+  const mine = (b) => /autopilot:|^Autopilot\b|^## Autopilot/m.test(b);
+  let last = -1;
+  bodies.forEach((b, i) => mine(b) && (last = i));
+  const after = bodies.slice(last + 1).map((b) => b.trim()).filter(Boolean);
+  return after.length ? after.join("\n\n") : null;
+}
+
 export function parseTicket(rel, text) {
   const file = path.posix.basename(rel);
   const id = file.match(/^(\d+)/)?.[1];

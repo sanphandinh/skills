@@ -173,7 +173,7 @@ export function validate(root) {
         const where = `${path.join(skill.dir, file)}:${i + 1}`;
         if (/^(<{7}|>{7})( |$)/.test(line)) add(where, "unresolved merge conflict marker");
         if (TOOL_NAMES.test(line)) add(where, `names a specific agent tool: ${line.match(TOOL_NAMES)[0]}`);
-        for (const m of line.matchAll(/(?:^|[\s`(])[/$]([a-z][a-z0-9-]+)\b/g)) {
+        for (const m of line.matchAll(/(?:^|[\s`(])[/$]([a-z][a-z0-9-]+)\b(?!\/)/g)) {
           if (names.has(m[1])) add(where, `invokes skill with agent syntax "${m[0].trim()}"; refer to it by name`);
         }
       });

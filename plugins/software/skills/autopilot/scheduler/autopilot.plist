@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Autopilot tick every five minutes on macOS. Replace every <...>
+     placeholder, save as ~/Library/LaunchAgents/dev.autopilot.<REPO NAME>.plist,
+     then `launchctl load` it. launchd starts with a minimal environment, so
+     PATH must reach node, git, gh (or glab) and the agent CLI. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.autopilot.<REPO NAME></string>
+  <key>WorkingDirectory</key>
+  <string><REPO></string>
+  <key>ProgramArguments</key>
+  <array>
+    <string><PATH TO node></string>
+    <string><AUTOPILOT SKILL DIR>/scripts/autopilot.mjs</string>
+    <string>tick</string>
+    <string>--as</string>
+    <string><FACTORY NAME></string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string><DIR OF node>:<DIR OF gh>:<DIR OF claude OR omp>:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>StartInterval</key>
+  <integer>300</integer>
+  <key>StandardOutPath</key>
+  <string><REPO LOG DIR>/launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string><REPO LOG DIR>/launchd.log</string>
+</dict>
+</plist>

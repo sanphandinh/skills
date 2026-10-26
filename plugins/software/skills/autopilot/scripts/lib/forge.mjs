@@ -1,8 +1,9 @@
-// Forge port: openPr, findPr, comment, ciStatus, merge, isMerged. The host and
-// the repository come from the tracker doc's `Pull requests:` line (else its
-// `Tracker:` line when that names GitHub or GitLab), and every call
-// names that repository explicitly, so a second remote (such as `upstream`)
-// can never receive a pull request or a merge.
+// Forge port: openPr, findPr, comment, comments, markReady, ciStatus, merge,
+// isMerged, trunkStatus, rerunFailed, prForCommit. The host and the
+// repository come from the tracker doc's `Pull requests:` line (else its
+// `Tracker:` line when that names GitHub or GitLab), and every call names that
+// repository explicitly, so a second remote (such as `upstream`) can never
+// receive a pull request or a merge.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -26,28 +27,60 @@ export function createForge({ repoDir, command, transport }) {
   return github({ repo: cfg.repo, command: command ?? "gh", cwd: repoDir });
 }
 
+// Worst of a set of check outcomes: fail, pending, pass, or none.
+export function rollUp(states) {
+  if (!states.length) return "none";
+  if (states.includes("fail")) return "fail";
+  if (states.includes("pending")) return "pending";
+  return "pass";
+}
+
+const TRUSTED = ["OWNER", "MEMBER", "COLLABORATOR"];
+
 function github({ repo, command, cwd }) {
-  const gh = (args, input) => {
-    const r = spawnSync(command, [...args, "--repo", repo], { cwd, input, encoding: "utf8" });
+  const call = (args, input) => {
+    const r = spawnSync(command, args, { cwd, input, encoding: "utf8" });
     return { code: r.status ?? -1, out: r.stdout ?? "", err: r.stderr ?? String(r.error ?? "") };
   };
+  // Every subcommand but `api` takes --repo; `api` names the repository in
+  // its path.
+  const gh = (args, input) => call(args[0] === "api" ? args : [...args, "--repo", repo], input);
   const must = (args, input) => {
     const r = gh(args, input);
     if (r.code !== 0) throw new Error(`gh ${args.slice(0, 2).join(" ")} failed: ${r.err.trim()}`);
     return r.out;
   };
+  const json = (args) => JSON.parse(must(args) || "null");
+  const STATE = { OPEN: "open", MERGED: "merged", CLOSED: "closed" };
+
   return {
     repo,
-    async openPr({ branch, base, title, body }) {
-      const url = must(["pr", "create", "--head", branch, "--base", base, "--title", title, "--body-file", "-"], body).trim().split("\n").at(-1);
+    async openPr({ branch, base, title, body, draft = false }) {
+      const url = must(["pr", "create", "--head", branch, "--base", base, "--title", title, "--body-file", "-", ...(draft ? ["--draft"] : [])], body).trim().split("\n").at(-1);
       return { number: Number(url.match(/\/pull\/(\d+)/)?.[1]), url };
     },
+    // The newest pull request for a branch, in any state.
     async findPr(branch) {
-      const [pr] = JSON.parse(must(["pr", "list", "--head", branch, "--state", "open", "--json", "number,url"]) || "[]");
-      return pr ?? null;
+      const [pr] = json(["pr", "list", "--head", branch, "--state", "all", "--limit", "1", "--json", "number,url,state,isDraft,body,author"]) ?? [];
+      return pr ? { number: pr.number, url: pr.url, state: STATE[pr.state] ?? "open", draft: Boolean(pr.isDraft), body: pr.body ?? "", author: pr.author?.login ?? null } : null;
     },
     async comment(number, body) {
       must(["pr", "comment", String(number), "--body-file", "-"], body);
+    },
+    // { body, author, trusted }: trusted when the pull request's author or a
+    // repository owner, member or collaborator wrote it.
+    async comments(number) {
+      const view = json(["pr", "view", String(number), "--json", "comments,author"]) ?? {};
+      return (view.comments ?? []).map((c) => {
+        const author = c.author?.login ?? null;
+        return { body: c.body ?? "", author, trusted: author === view.author?.login || TRUSTED.includes(c.authorAssociation) };
+      });
+    },
+    async markReady(number) {
+      must(["pr", "ready", String(number)]);
+    },
+    async updatePr(number, { body }) {
+      must(["pr", "edit", String(number), "--body-file", "-"], body);
     },
     async ciStatus(number) {
       const r = gh(["pr", "checks", String(number), "--json", "bucket"]);
@@ -65,6 +98,25 @@ function github({ repo, command, cwd }) {
     // queueing the merge.
     async isMerged(number) {
       return JSON.parse(must(["pr", "view", String(number), "--json", "state"])).state === "MERGED";
+    },
+    // CI of the newest commit on a branch: { sha, state: pass|fail|pending|none,
+    // url of a failed check }.
+    async trunkStatus(branch) {
+      const runs = json(["api", `repos/${repo}/commits/${encodeURIComponent(branch)}/check-runs?per_page=100`])?.check_runs ?? [];
+      const sha = runs[0]?.head_sha ?? json(["api", `repos/${repo}/commits/${encodeURIComponent(branch)}`])?.sha ?? null;
+      const failed = (c) => c.status === "completed" && ["failure", "cancelled", "timed_out", "action_required"].includes(c.conclusion);
+      const state = rollUp(runs.map((c) => (c.status !== "completed" ? "pending" : failed(c) ? "fail" : "pass")));
+      return { sha, state, url: runs.find(failed)?.html_url ?? null };
+    },
+    async rerunFailed(sha) {
+      for (const run of json(["run", "list", "--commit", sha, "--json", "databaseId,conclusion"]) ?? []) {
+        if (["failure", "cancelled", "timed_out"].includes(run.conclusion)) must(["run", "rerun", String(run.databaseId), "--failed"]);
+      }
+    },
+    // The pull request a commit came from: { number, branch } or null.
+    async prForCommit(sha) {
+      const [pr] = json(["api", `repos/${repo}/commits/${sha}/pulls`]) ?? [];
+      return pr ? { number: pr.number, branch: pr.head?.ref ?? "" } : null;
     },
   };
 }

@@ -20,7 +20,7 @@ Edit the right-hand names to match this project's workflow. Autopilot moves tick
 
 ## Autopilot
 
-Autopilot claims a ticket with an `[autopilot:claim ...]` comment (the earliest unreleased claim holds it), hands a ticket to a human by moving it to the `ready-for-human` status with a release comment, and after a merge comments the ticket's `## Handoff` and moves it to `closed`. Pull requests mention `Jira: <KEY>`.
+Open issues with no parent that are not epics are standalone tickets, built without a spec; autopilot files fix tickets for a red trunk as tasks in the project. Autopilot claims a ticket with an `[autopilot:claim ...]` comment (the earliest unreleased claim holds it), hands a ticket to a human by moving it to the `ready-for-human` status with a release comment, and after a merge comments the ticket's `## Handoff` and moves it to `closed`. Pull requests mention `Jira: <KEY>`.
 
 ## When a skill says "publish to the issue tracker"
 
