@@ -112,7 +112,8 @@ test("a tick works every approved spec and the standalone tickets, and leaves un
   assert.match(onTrunk(fx, T("01", "crash", "bugs")), /\*\*Status:\*\* closed/);
   assert.doesNotMatch(onTrunk(fx, T("01", "b", "b")), /Claimed-by/);
   const bugPrompt = harness.calls.find((c) => c.role === "implementer" && /crash/.test(c.prompt)).prompt;
-  assert.match(bugPrompt, new RegExp(`^Spec: ${T("01", "crash", "bugs")}$`, "m"), "a standalone ticket stands in for its own spec");
+  assert.match(bugPrompt, new RegExp(`^Ticket: ${T("01", "crash", "bugs")}$`, "m"), "a standalone ticket is its own contract");
+  assert.doesNotMatch(bugPrompt, /^Spec:/m);
 });
 
 test("a ticket without Verify lines goes to needs-triage with a brief and is never built", async () => {

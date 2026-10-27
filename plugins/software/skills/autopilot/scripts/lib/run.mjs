@@ -449,7 +449,7 @@ async function build(ctx, item, { kind, findings, counted, conflict, records = i
       const result = await agent({
         role: "implementer",
         cwd: wt.dir,
-        prompt: implementerPrompt({ spec: specPointer(item), ticket: tracker.pointer(ticket), branch, trackerDoc: TRACKER_DOC, blockers, findings: pending }),
+        prompt: implementerPrompt({ ticket: tracker.pointer(ticket), branch, trackerDoc: TRACKER_DOC, blockers, findings: pending }),
       });
       out = result.output ?? {};
       for (const d of out.decisions ?? []) rows.push(row(ctx, "implementer", d.decision, d.reason));
@@ -492,14 +492,13 @@ async function gates(ctx, { item }) {
   const patch = patchId(ctx.repo, ctx.trunkRef, head);
   const check = await ctx.workspaces.open({ ref: head, name: workspaceName(item, "gates"), comment: workspaceComment(item, "gates") });
   const ref = tracker.pointer(ticket);
-  const spec = specPointer(item);
   const agent = budgeted(ctx, item, usage(item.records), check);
   try {
     const verifyDoc = show(ctx.repo, ctx.trunkRef, VERIFY_DOC) === null ? null : VERIFY_DOC;
     const [verify, specReview, standards] = await Promise.all([
-      agent({ role: "verifier", cwd: check.dir, prompt: verifierPrompt({ spec, ticket: ref, verifyDoc }) }),
-      agent({ role: "review-spec", cwd: check.dir, prompt: reviewPrompt({ axis: "spec", spec, ticket: ref, base: ctx.trunkRef }) }),
-      agent({ role: "review-standards", cwd: check.dir, prompt: reviewPrompt({ axis: "standards", spec, ticket: ref, base: ctx.trunkRef }) }),
+      agent({ role: "verifier", cwd: check.dir, prompt: verifierPrompt({ ticket: ref, verifyDoc }) }),
+      agent({ role: "review-spec", cwd: check.dir, prompt: reviewPrompt({ axis: "spec", ticket: ref, base: ctx.trunkRef }) }),
+      agent({ role: "review-standards", cwd: check.dir, prompt: reviewPrompt({ axis: "standards", ticket: ref, base: ctx.trunkRef }) }),
     ]);
     const v = verify.output ?? {};
     const sp = specReview.output ?? {};
@@ -657,10 +656,6 @@ async function triage(ctx, { item }) {
   const why = item.decision.why;
   await item.tracker.setStatus(item.ticket, "needs-triage", brief("triage", { why }));
   return done(item, "needs-triage", { reason: why });
-}
-
-function specPointer(item) {
-  return item.group.spec.standalone ? item.tracker.pointer(item.ticket) : item.tracker.pointer({ ref: item.group.spec.ref });
 }
 
 function incompleteAttempt(result) {

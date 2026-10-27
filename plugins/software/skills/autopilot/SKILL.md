@@ -26,6 +26,10 @@ From the repository root, with `<script>` being `node <this skill's folder>/scri
 
 The script picks the harness itself (the session it runs inside, else the agent plugin the project installed, else the only agent CLI on PATH) and prints which one and why. Pass `--harness <omp|claude>` only when the user names one or the script asks for it. Pass `--as <name>` to give the factory one name on every machine; machines sharing a name continue each other's tickets. Pass `--max-tokens <n>` or `--max-minutes <n>` to change the per-ticket budget.
 
+## Ticket scope
+
+Each run is governed by its ticket: the acceptance criteria, the `Scope boundary`, and any `Invariants`. Gates verify that ticket only. They do not enforce the parent spec's end state; the parent spec is read when the breakdown is split and again at the final integration/close, not for every ticket. Do not ask a ticket's reviewer to migrate a sibling ticket's callers.
+
 ## Orca mode
 
 When the user wants to watch runs as they work or review them afterwards, and Orca is installed, pass `--harness orca` (with `--agent omp|claude|codex`, default omp when it is on PATH). Each run's checkout is then an Orca worktree named after the ticket and step, and each agent call an Orca worker terminal titled with the ticket and role. A worker that succeeded is released with its output archived and its worktree removed; any other is retained with its worktree kept, its comment saying so, for debugging. The run record on the pull request names its Orca dispatches; `orca orchestration worker-read --dispatch <id>` shows what one did.
