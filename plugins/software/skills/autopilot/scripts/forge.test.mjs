@@ -102,6 +102,9 @@ test("GitHub: drafts, comments, ready, trunk checks, reruns and the pull request
     "pr list": { out: JSON.stringify([{ number: 7, url: "https://github.com/acme/app/pull/7", state: "OPEN", isDraft: true, body: "b" }]) },
     "pr view": { out: JSON.stringify({ author: { login: "bot" }, comments: [{ body: "one", author: { login: "bot" } }, { body: "two", author: { login: "stranger" }, authorAssociation: "NONE" }] }) },
     "api repos/acme/app/commits/main/check-runs?per_page=100": { out: JSON.stringify({ check_runs: [{ head_sha: "abc", status: "completed", conclusion: "failure", html_url: "https://github.com/acme/app/runs/1" }] }) },
+    "api repos/acme/app/commits/main/status": { out: JSON.stringify({ sha: "abc", state: "failure", statuses: [{ state: "failure", target_url: "https://github.com/acme/app/status/1" }] }) },
+    "api repos/acme/app/commits/abc/check-runs?per_page=100": { out: JSON.stringify({ check_runs: [] }) },
+    "api repos/acme/app/commits/abc/status": { out: JSON.stringify({ sha: "abc", state: "failure", statuses: [{ state: "failure", target_url: "https://github.com/acme/app/status/1" }] }) },
     "run list": { out: JSON.stringify([{ databaseId: 11, conclusion: "failure" }, { databaseId: 12, conclusion: "success" }]) },
   });
   const forge = createForge({ repoDir: repoWithTracker("Pull requests: github acme/app"), command: gh.bin });
@@ -111,7 +114,8 @@ test("GitHub: drafts, comments, ready, trunk checks, reruns and the pull request
   await forge.markReady(7);
   await forge.updatePr(7, { body: "## New body" });
   assert.deepEqual(await forge.trunkStatus("main"), { sha: "abc", state: "fail", url: "https://github.com/acme/app/runs/1" });
-  await forge.rerunFailed("abc");
+  assert.deepEqual(await forge.statusFor("abc"), { state: "fail", url: "https://github.com/acme/app/status/1" });
+  assert.equal(await forge.rerunFailed("abc"), true);
   const calls = gh.calls();
   assert.ok(calls[0].args.includes("--draft"));
   assert.ok(calls.some((c) => c.args.join(" ").startsWith("pr ready 7")));

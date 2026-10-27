@@ -52,6 +52,21 @@ function github({ repo, command, cwd }) {
   };
   const json = (args) => JSON.parse(must(args) || "null");
   const STATE = { OPEN: "open", MERGED: "merged", CLOSED: "closed" };
+  const failedCheck = (c) => c.status === "completed" && ["failure", "cancelled", "timed_out", "action_required"].includes(c.conclusion);
+  const statusAt = async (ref) => {
+    const runs = json(["api", `repos/${repo}/commits/${encodeURIComponent(ref)}/check-runs?per_page=100`])?.check_runs ?? [];
+    const status = json(["api", `repos/${repo}/commits/${encodeURIComponent(ref)}/status`]) ?? {};
+    const contexts = status.statuses ?? [];
+    const states = [
+      ...runs.map((c) => (c.status !== "completed" ? "pending" : failedCheck(c) ? "fail" : "pass")),
+      ...contexts.map((s) => (s.state === "success" ? "pass" : s.state === "pending" ? "pending" : "fail")),
+    ];
+    return {
+      sha: runs[0]?.head_sha ?? status.sha ?? null,
+      state: rollUp(states),
+      url: runs.find(failedCheck)?.html_url ?? contexts.find((s) => s.state !== "success")?.target_url ?? null,
+    };
+  };
 
   return {
     repo,
@@ -102,16 +117,28 @@ function github({ repo, command, cwd }) {
     // CI of the newest commit on a branch: { sha, state: pass|fail|pending|none,
     // url of a failed check }.
     async trunkStatus(branch) {
-      const runs = json(["api", `repos/${repo}/commits/${encodeURIComponent(branch)}/check-runs?per_page=100`])?.check_runs ?? [];
-      const sha = runs[0]?.head_sha ?? json(["api", `repos/${repo}/commits/${encodeURIComponent(branch)}`])?.sha ?? null;
-      const failed = (c) => c.status === "completed" && ["failure", "cancelled", "timed_out", "action_required"].includes(c.conclusion);
-      const state = rollUp(runs.map((c) => (c.status !== "completed" ? "pending" : failed(c) ? "fail" : "pass")));
-      return { sha, state, url: runs.find(failed)?.html_url ?? null };
+      const s = await statusAt(branch);
+      const sha = s.sha ?? json(["api", `repos/${repo}/commits/${encodeURIComponent(branch)}`])?.sha ?? null;
+      return { sha, state: s.state, url: s.url };
+    },
+    // Status of one commit, for finding the oldest red commit in a range.
+    async statusFor(sha) {
+      const s = await statusAt(sha);
+      return { state: s.state, url: s.url };
     },
     async rerunFailed(sha) {
+      let reran = false;
       for (const run of json(["run", "list", "--commit", sha, "--json", "databaseId,conclusion"]) ?? []) {
-        if (["failure", "cancelled", "timed_out"].includes(run.conclusion)) must(["run", "rerun", String(run.databaseId), "--failed"]);
+        if (!["failure", "cancelled", "timed_out"].includes(run.conclusion)) continue;
+        if (gh(["run", "rerun", String(run.databaseId), "--failed"]).code === 0) reran = true;
       }
+      // A check run from an app (Xcode Cloud, a third-party CI) has no
+      // Actions run to rerun; re-request it directly.
+      for (const check of json(["api", `repos/${repo}/commits/${sha}/check-runs?per_page=100`])?.check_runs ?? []) {
+        if (!failedCheck(check) || !check.id) continue;
+        if (gh(["api", "-X", "POST", `repos/${repo}/check-runs/${check.id}/rerequest`]).code === 0) reran = true;
+      }
+      return reran;
     },
     // The pull request a commit came from: { number, branch } or null.
     async prForCommit(sha) {

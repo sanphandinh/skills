@@ -35,7 +35,9 @@ export function renderStatus(board) {
     lines.push("", `## ${heading}`, "", ...rows.map((r) => `- ${r.id}${r.title ? ` ${r.title}` : ""}${detail(r) ? `: ${detail(r)}` : ""}`));
   };
   section("In flight", board.inFlight, (r) => r.pr ?? r.step);
+  section("Ready", board.ready, (r) => r.pr ?? r.step);
   section("Waiting for you", board.waiting, (r) => r.pr ?? r.why);
+  section("Specs", board.specs, (r) => r.status);
   section("Blocked", board.blocked, (r) => r.why);
   section("Needs triage", board.needsTriage, () => "");
   section("Merged in the last day", board.merged, (r) => r.pr);

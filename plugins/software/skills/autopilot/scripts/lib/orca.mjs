@@ -10,6 +10,7 @@ import { delegated, lastJsonBlock } from "./harness.mjs";
 
 export const OUT_DIR = ".autopilot-out";
 const QUESTION_ANSWER = "No human is available for this unattended run. Decide yourself from the ticket and spec, or finish with outcome failed and say why.";
+const TERMINAL = new Set(["worker_done", "escalation"]);
 
 // `orca <args> --json` as a transport: resolves the parsed envelope's
 // `result`, or throws with Orca's error code and message.
@@ -146,6 +147,10 @@ class Mailbox {
       await this.orca(["orchestration", "reply", "--id", msg.id, "--body", QUESTION_ANSWER]).catch(() => null);
       return;
     }
+    // A heartbeat is a progress ping, not a result. Orca can deliver one even
+    // when `check --types` only names terminal messages, so filter here too;
+    // resolving a waiter on it would mark a live worker as finished.
+    if (!TERMINAL.has(msg.type)) return;
     if (!dispatchId) return;
     const done = { type: msg.type, body: msg.body ?? "", outcome: payload.outcome ?? (msg.type === "escalation" ? "failed" : null), reportPath: payload.reportPath ?? null };
     const waiter = this.waiters.get(dispatchId);
@@ -201,7 +206,9 @@ export function orcaHarness({ orca, agent = "omp", timeoutMs = 2 * 60 * 60_000, 
       }
       output ??= lastJsonBlock(done.body ?? "");
       const ok = !done.timedOut && done.outcome === "succeeded" && output && output.ok !== false;
-      if (done.timedOut) await orca(["orchestration", "worker-stop", "--dispatch", dispatchId]).catch(() => null);
+      // A failed attempt may still have a live terminal (a heartbeat is not a
+      // result). Stop it before the caller retries on the same worktree.
+      if (!ok) await orca(["orchestration", "worker-stop", "--dispatch", dispatchId]).catch(() => null);
       // Release archives a succeeded worker's output; anything else stays
       // for debugging, and so does its workspace.
       if (ok) await orca(["orchestration", "worker-release", "--dispatch", dispatchId]).catch(() => null);

@@ -61,7 +61,7 @@ const SITUATIONS = {
   },
 };
 
-export function brief(situation, { why, links = [] }) {
+export function brief(situation, { why, links = [], trunkRed = false }) {
   const s = SITUATIONS[situation] ?? SITUATIONS.stuck;
   const options = s.options.map(([o, effect], i) => `${i + 1}. ${o}: ${effect}.${i === s.recommend ? " **(recommended)**" : ""}`);
   return [
@@ -70,6 +70,7 @@ export function brief(situation, { why, links = [] }) {
     `**Decide:** ${s.decide}`,
     "",
     `**Why autopilot stopped:** ${why}`,
+    ...(trunkRed ? ["", "**Trunk:** CI is red; a fix pull request must merge before this one can."] : []),
     "",
     "**Options:**",
     "",

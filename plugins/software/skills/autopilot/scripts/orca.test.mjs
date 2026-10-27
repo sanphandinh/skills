@@ -94,6 +94,25 @@ test("a worker's question gets the no-human answer, and the run goes on", async 
   assert.equal(forge.prs[0].state, "merged");
 });
 
+test("a heartbeat is not a result: the run waits for worker_done and keeps the result", async () => {
+  const fx = oneTicket();
+  const { state, forge, ticks } = orcaMode(
+    fx,
+    roles({
+      implementer: async (ctx) => {
+        ctx.beat("still working");
+        await new Promise((r) => setTimeout(r, 120));
+        return implementer()(ctx);
+      },
+    }),
+  );
+  await ticks();
+  assert.equal(forge.prs[0].state, "merged");
+  assert.deepEqual(state.retained, [], "a live worker is not treated as failed");
+  assert.equal(state.workers.size, 4);
+  assert.ok([...state.workers.keys()].every((id) => state.released.includes(id)));
+});
+
 test("a worker that never reports fails the attempt within the time budget and is stopped and retained", async () => {
   const fx = oneTicket({ "docs/agents/autopilot.md": "Fix rounds per ticket: 0\n" });
   const { state, ticks } = orcaMode(fx, roles({ implementer: () => ({ silent: true }) }), { timeoutMs: 200 });

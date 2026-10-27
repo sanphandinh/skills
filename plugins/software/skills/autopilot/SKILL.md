@@ -11,8 +11,8 @@ Autopilot is a set of tasks (decompose, implement, gates, rework, merge, fix) ru
 
 Check each one and stop with the reason when one fails:
 
-- The issue tracker doc (`docs/agents/issue-tracker.md`) exists. If not, tell the user to run the `setup-software-context` skill. Its `Tracker:` line names where tickets live (local, GitHub, GitLab, or Jira); for Jira, `JIRA_EMAIL` and `JIRA_API_TOKEN` must be set. On GitHub and GitLab a spec is an issue with the spec label from `docs/agents/triage-labels.md`.
-- The working tree is clean, and the repository has the remote the tracker doc names for pull requests.
+- The issue tracker doc (`docs/agents/issue-tracker.md`) exists. If not, tell the user to run the `setup-software-context` skill. Its `Tracker:` line names where tickets live (local, GitHub, GitLab, or Jira); for Jira, `JIRA_EMAIL` and `JIRA_API_TOKEN` must be set. On GitHub and GitLab a spec is an issue with the spec label from `docs/agents/triage-labels.md`; that file must have a `spec` row and the tracker must have the label. If either is missing, stop: an older setup would treat the spec and its tickets as standalone tickets.
+- The working tree is clean, and the repository has the remote the tracker doc names for pull requests. If the tree is dirty, stop and report the files; never commit unrelated or generated files just to make this precondition true.
 - If `docs/agents/verify.md` is missing, warn that nothing will auto-merge until the `setup-verification` skill has written it, then continue.
 - If `docs/agents/autopilot.md` is missing, say the defaults apply (two tickets in flight, stop starting new work once three pull requests wait for a human, two fix rounds) and that `setup-software-context` seeds the file.
 
@@ -34,7 +34,7 @@ Preconditions: Orca is running and the repository is added to it (`orca repo add
 
 ## Running continuously
 
-When the user wants the factory to run on its own, set up the scheduler template that fits the machine, from this skill's `scheduler/` folder: `autopilot.cron` (crontab) or `autopilot.plist` (macOS launchd). Fill every placeholder with the user, especially PATH: a scheduler starts with almost no environment, and the tick needs `node`, `git`, `gh` or `glab`, and the agent CLI, logged in as the user. Suggest starting slow: small limits in `docs/agents/autopilot.md`, then loosen them.
+When the user wants the factory to run on its own, set up the scheduler template that fits the machine, from this skill's `scheduler/` folder: `autopilot.cron` (crontab) or `autopilot.plist` (macOS launchd). Fill every placeholder with the user, especially PATH: a scheduler starts with almost no environment, and the tick needs `node`, `git`, `gh` or `glab`, and the agent CLI, logged in as the user. Suggest starting slow: small limits in `docs/agents/autopilot.md`, then loosen them. If the verification doc leases a single simulator or device, keep `Runs per tick: 1`; parallel runs will wait on each other's lease.
 
 Each tick writes one line to `ticks.log` in the machine's state directory (under `$XDG_STATE_HOME/autopilot/` or `~/.local/state/autopilot/`), and every agent call's output is kept there for 14 days; the run records on pull requests point at those files.
 
@@ -46,7 +46,7 @@ Autopilot leaves a brief (what to decide, why it stopped, options with a recomme
 - set the ticket back to `ready-for-agent` with a comment: the next tick reworks it with that comment, with fresh fix rounds;
 - close the pull request or the ticket: autopilot leaves it alone.
 
-While trunk's CI is red nothing merges. A red that survives one rerun files a fix ticket and, when the red commit is an autopilot merge that reverts cleanly, a revert pull request. Neither the fix nor the revert ever auto-merges.
+While trunk's CI is red nothing merges. A red files a fix ticket and, when the red commit is an autopilot merge that reverts cleanly, a revert pull request. Neither the fix nor the revert ever auto-merges: a human must merge or close the fix (or revert) before any other pull request can merge. Say this explicitly in the brief for every other waiting pull request.
 
 ## Report
 

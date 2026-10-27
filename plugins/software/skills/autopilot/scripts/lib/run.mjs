@@ -95,8 +95,11 @@ export async function status(opts) {
   fetch(ctx);
   const scanned = opts.tracker ? { trackers: [opts.tracker] } : await scanTrackers({ repoDir: ctx.repo, remote: ctx.remote, trunk: ctx.trunk, transport: opts.transport });
   const trunk = ctx.forge.trunkStatus ? await ctx.forge.trunkStatus(ctx.trunk) : { state: "none" };
-  const { items } = await survey(ctx, scanned.trackers);
+  const { groups, items } = await survey(ctx, scanned.trackers);
   const row = (i) => ({ id: i.ticket.id, title: i.ticket.title, group: i.tracker.key, pr: i.pr?.url ?? null, why: i.decision.why ?? null, step: i.decision.step });
+  const specs = groups
+    .filter((g) => !g.spec.standalone)
+    .map((g) => ({ id: g.spec.ref, title: g.spec.title, status: g.spec.status ?? "missing" }));
   const since = ctx.clock() - 24 * 60 * 60_000;
   const merged = ctx.machine
     .logLines()
@@ -106,7 +109,9 @@ export async function status(opts) {
   return {
     paused: ctx.config.paused,
     trunk: trunk.state,
+    specs,
     inFlight: items.filter((i) => i.ticket.status === "ready-for-agent" && i.ticket.claimedBy).map(row),
+    ready: items.filter((i) => i.ticket.status === "ready-for-agent" && !i.ticket.claimedBy && i.decision.step !== "none").map(row),
     waiting: items.filter((i) => i.ticket.status === "ready-for-human").map(row),
     blocked: items.filter((i) => i.decision.step === "none" && /^waiting on/.test(i.decision.why ?? "")).map(row),
     needsTriage: items.filter((i) => i.ticket.status === "needs-triage").map(row),
@@ -144,6 +149,7 @@ function context(opts) {
   const machine = new Machine(stateDir ?? defaultStateDir(repoDir), clock);
   const limits = {
     fixRounds: maxFixRounds ?? config.fixRounds,
+    gateRetries: 2,
     tokens: budget.tokens ?? 3_000_000,
     timeMs: budget.timeMs ?? 2 * 60 * 60_000,
   };
@@ -186,7 +192,7 @@ const workspaceComment = (item, step) => `autopilot · ${item.ticket.id} ${item.
 
 // ---------- one tick ----------
 
-const PROGRESS = new Set(["built", "gates-passed", "gates-failed", "updated", "merged", "ready-for-human", "needs-triage", "split", "spec-closed", "fix-filed", "rerun"]);
+const PROGRESS = new Set(["built", "gates-passed", "gates-failed", "gate-error", "updated", "merged", "ready-for-human", "needs-triage", "split", "spec-closed", "fix-filed", "rerun"]);
 const REPORTED = new Set(["merged", "ready-for-human", "needs-triage", "wait-ci", "line-stopped"]);
 
 async function tickOnce(ctx, { trackers, standalone }, { fileFixes }) {
@@ -373,6 +379,53 @@ async function rework(ctx, { item }) {
   return build(ctx, item, { kind: "rework", findings: d.findings, counted: d.counted !== false, conflict: d.conflict, records });
 }
 
+// Persist an implementer attempt before any hand-off: the handoff file, the
+// push, and the pull request body. A spec conflict must never strand work in a
+// worktree that is about to be deleted.
+async function persistWork(ctx, item, wt, out, { openPr = true } = {}) {
+  const { tracker, ticket, branch } = item;
+  const handoff = handoffBody(out.handoff);
+  if (handoff) {
+    const file = path.join(wt.dir, handoffPath(item));
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, `${handoff}\n`);
+    git(wt.dir, ["add", handoffPath(item)]);
+    if (!gitOk(wt.dir, ["diff", "--cached", "--quiet"])) git(wt.dir, ["commit", "-qm", `autopilot: handoff for ${ticket.id}`]);
+  }
+  const base = gitOk(ctx.repo, ["rev-parse", "--verify", "-q", item.head]) ? item.head : ctx.trunkRef;
+  const ahead = Number(git(wt.dir, ["rev-list", "--count", `${base}..HEAD`])) || 0;
+  const local = git(wt.dir, ["rev-parse", "HEAD"]);
+  const remote = gitOk(ctx.repo, ["rev-parse", "--verify", "-q", item.head]) ? git(ctx.repo, ["rev-parse", item.head]) : null;
+  if (ahead && local !== remote) {
+    // Build on what is there and never force: a rejected push means someone
+    // else pushed while this run worked.
+    if (!gitOk(wt.dir, ["push", "-q", ctx.remote, `HEAD:refs/heads/${branch}`])) {
+      return { error: `someone else pushed to ${branch}; autopilot will not overwrite it` };
+    }
+    item.branchExists = true;
+    fetch(ctx);
+  }
+  let pr = item.pr?.state === "open" ? item.pr : null;
+  // A fix round's body replaces the old one, so a corrected Merge Danger
+  // section reaches the merge policy.
+  if (pr && out.prBody && ctx.forge.updatePr) {
+    const link = tracker.prLink(ticket);
+    const body = link ? `${out.prBody}\n\n${link}\n` : out.prBody;
+    if (body !== pr.body) {
+      await ctx.forge.updatePr(pr.number, { body });
+      pr = { ...pr, body };
+    }
+  }
+  if (!pr && openPr && (ahead || item.pr?.state === "open")) {
+    const link = tracker.prLink(ticket);
+    const body = out.prBody ?? "";
+    const opened = await ctx.forge.openPr({ branch, base: ctx.trunk, title: `${ticket.id}: ${ticket.title}`, body: link ? `${body}\n\n${link}\n` : body, draft: true });
+    pr = { ...opened, state: "open", draft: true, body };
+  }
+  if (pr) item.pr = pr;
+  return { pr, ahead, pushed: Boolean(ahead && local !== remote) };
+}
+
 // Implement or rework: one implementer run on the ticket branch, retried
 // while the attempt is incomplete and fix rounds remain, then pushed.
 async function build(ctx, item, { kind, findings, counted, conflict, records = item.records }) {
@@ -401,7 +454,13 @@ async function build(ctx, item, { kind, findings, counted, conflict, records = i
       out = result.output ?? {};
       for (const d of out.decisions ?? []) rows.push(row(ctx, "implementer", d.decision, d.reason));
       const specProblem = out.specConflict?.note ?? (out.handoffConflict?.touchesAcceptance ? `a blocker's handoff contradicts the acceptance criteria: ${out.handoffConflict.note}` : null);
-      if (specProblem) return await specConflict(ctx, item, specProblem, rows);
+      if (specProblem) {
+        const saved = await persistWork(ctx, item, wt, out);
+        if (saved.error) return await human(ctx, item, `spec conflict: ${specProblem}; could not save the work: ${saved.error}`, "spec");
+        const cost = agent.cost();
+        ctx.machine.countTicket(tracker.key, ticket.id, { attempts, tokens: cost.tokens });
+        return await specConflict(ctx, item, specProblem, rows, cost);
+      }
       const incomplete = incompleteAttempt(result) ?? (git(wt.dir, ["ls-files", "-u"]) ? "conflicts were left unresolved" : null);
       if (!incomplete) break;
       const allowed = counted ? priorAttempts + attempts <= ctx.limits.fixRounds : attempts <= ctx.limits.fixRounds;
@@ -409,37 +468,10 @@ async function build(ctx, item, { kind, findings, counted, conflict, records = i
       pending = [incomplete];
     }
 
-    const handoff = handoffBody(out.handoff);
-    const file = path.join(wt.dir, handoffPath(item));
-    fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, `${handoff}\n`);
-    git(wt.dir, ["add", handoffPath(item)]);
-    if (!gitOk(wt.dir, ["diff", "--cached", "--quiet"])) git(wt.dir, ["commit", "-qm", `autopilot: handoff for ${ticket.id}`]);
-    // Build on what is there and never force: a rejected push means someone
-    // else pushed while this run worked.
-    if (!gitOk(wt.dir, ["push", "-q", ctx.remote, `HEAD:refs/heads/${branch}`])) {
-      return await human(ctx, item, `someone else pushed to ${branch}; autopilot will not overwrite it`);
-    }
-    fetch(ctx);
-    let pr = item.pr?.state === "open" ? item.pr : null;
-    // A fix round's body replaces the old one, so a corrected Merge Danger
-    // section reaches the merge policy.
-    if (pr && out.prBody && ctx.forge.updatePr) {
-      const link = tracker.prLink(ticket);
-      const body = link ? `${out.prBody}\n\n${link}\n` : out.prBody;
-      if (body !== pr.body) {
-        await ctx.forge.updatePr(pr.number, { body });
-        pr = { ...pr, body };
-        item.pr = pr;
-      }
-    }
-    if (!pr) {
-      const link = tracker.prLink(ticket);
-      const body = out.prBody ?? "";
-      const opened = await ctx.forge.openPr({ branch, base: ctx.trunk, title: `${ticket.id}: ${ticket.title}`, body: link ? `${body}\n\n${link}\n` : body, draft: true });
-      pr = { ...opened, state: "open", draft: true };
-      item.pr = pr;
-    }
+    const saved = await persistWork(ctx, item, wt, out);
+    if (saved.error) return await human(ctx, item, saved.error);
+    const pr = saved.pr;
+    if (!pr) return await human(ctx, item, "the implementer produced no change to push");
     if (out.handoffConflict?.note) {
       rows.push(row(ctx, "implementer", "followed a blocker's handoff over the ticket", out.handoffConflict.note));
       await ctx.forge.comment(pr.number, `Handoff divergence: ${out.handoffConflict.note}`);
@@ -480,6 +512,21 @@ async function gates(ctx, { item }) {
       row(ctx, "review-spec", sp.verdict ?? "no verdict", (sp.findings ?? []).map((f) => f.requirement ?? f.detail).join("; ")),
       row(ctx, "review-standards", st.verdict ?? "no verdict", (st.findings ?? []).map((f) => `${f.severity}: ${f.rule}`).join("; ")),
     ];
+    // A worker that died, timed out, or returned no JSON is an infrastructure
+    // error, not a verdict on the code. Retrying it must not burn a fix round
+    // or send the implementer back to work.
+    const infra = [];
+    if (!verify.ok || !v || !["PASS", "PASS+NOTES", "FAIL"].includes(v.verdict)) infra.push(`verifier: ${verify.output?.error ?? verify.output?.note ?? "no verdict"}`);
+    if (!specReview.ok || !sp || !["pass", "fail"].includes(sp.verdict)) infra.push(`review-spec: ${specReview.output?.error ?? specReview.output?.note ?? "no verdict"}`);
+    if (!standards.ok || !st || !["pass", "fail"].includes(st.verdict)) infra.push(`review-standards: ${standards.output?.error ?? standards.output?.note ?? "no verdict"}`);
+    if (infra.length) {
+      const error = `gates did not run: ${infra.join("; ")}`;
+      rows.push(row(ctx, "autopilot", "gate error", error));
+      const cost = agent.cost();
+      await record(ctx, item, pr, { kind: "gates", patch, verdict: null, error, ...cost, rows });
+      ctx.machine.countTicket(tracker.key, ticket.id, { tokens: cost.tokens });
+      return done(item, "gate-error", { pr: pr.url, reason: error });
+    }
     const specProblem = sp.specConflict?.note ?? st.specConflict?.note;
     if (specProblem) return await specConflict(ctx, item, specProblem, rows);
 
@@ -589,7 +636,7 @@ async function human(ctx, item, why, situation = "stuck") {
   const pr = item.pr?.state === "open" ? item.pr : null;
   landTrail(ctx, item, [...trailRows(item.records), row(ctx, "autopilot", "hand to human", why)]);
   await tracker.handToHuman(ticket, why);
-  const text = brief(situation, { why, links: [pr?.url, item.branchExists ? `branch ${item.branch}` : null] });
+  const text = brief(situation, { why, links: [pr?.url, item.branchExists ? `branch ${item.branch}` : null], trunkRed: ctx.trunkRed });
   if (pr) await ctx.forge.comment(pr.number, formatRecord({ kind: "brief", why, ticket: ticket.id, who: ctx.who, at: new Date(ctx.clock()).toISOString() }, text));
   else await tracker.comment?.(ticket, text);
   return done(item, "ready-for-human", { pr: pr?.url, reason: why });
@@ -597,10 +644,10 @@ async function human(ctx, item, why, situation = "stuck") {
 
 // The ticket or its spec is wrong: send it to the human, say so on the spec,
 // and spend no fix round.
-async function specConflict(ctx, item, note, rows = []) {
+async function specConflict(ctx, item, note, rows = [], extra = {}) {
   const why = note.startsWith("a blocker's handoff") ? note : `spec conflict: ${note}`;
   const pr = item.pr?.state === "open" ? item.pr : null;
-  if (pr) await record(ctx, item, pr, { kind: "spec-conflict", note, rows });
+  if (pr) await record(ctx, item, pr, { kind: "spec-conflict", note, rows, ...extra });
   const where = item.group.spec.standalone ? item.ticket : null;
   await item.tracker.comment?.(where, `Autopilot found a spec conflict on ${item.tracker.pointer(item.ticket)}: ${note}`);
   return human(ctx, { ...item, records: [...item.records, { rows }] }, why, "spec");
@@ -689,32 +736,37 @@ async function closeSpec(ctx, { group }) {
 async function watchTrunk(ctx, standalone, { fileFixes }) {
   if (!ctx.forge.trunkStatus) return { red: false, state: "none" };
   const s = await ctx.forge.trunkStatus(ctx.trunk);
-  const red = s.state === "fail" || (s.state === "pending" && ctx.machine.reran(blame(ctx, s.sha)));
+  const sha = s.state === "fail" || s.state === "pending" ? await firstRed(ctx, s.sha) : s.sha;
+  if (!sha) return { red: s.state === "fail", state: s.state };
+  const red = s.state === "fail" || (s.state === "pending" && ctx.machine.reran(sha));
   if (!red || !fileFixes || !standalone || !ctx.config.tasks.includes("fix") || s.state !== "fail") return { red, state: s.state };
-  // Tracker-only commits (claims, comments) cannot break CI: the red belongs
-  // to the newest commit that changed anything else.
-  const sha = blame(ctx, s.sha);
   const lease = takeLease(ctx.repo, ctx.remote, "trunk", { who: ctx.who, step: "fix", now: ctx.clock(), ttlMs: ctx.leaseTtlMs });
   if (!lease) return { red, state: s.state };
   try {
     const open = (await standalone.tickets()).find((t) => t.status !== "closed" && FIX_MARK.test(t.body ?? ""));
+    const redAt = blame(ctx, s.sha);
     if (open) {
-      if (!ctx.machine.noted(`red-${sha}`)) {
-        await standalone.comment(open, `Autopilot: trunk is still red at ${sha}.`);
-        ctx.machine.markNoted(`red-${sha}`);
+      if (!ctx.machine.noted(`red-${redAt}`)) {
+        await standalone.comment(open, `Autopilot: trunk is still red at ${redAt}.`);
+        ctx.machine.markNoted(`red-${redAt}`);
       }
       return { red, state: s.state };
     }
     if (!ctx.machine.reran(sha)) {
-      await ctx.forge.rerunFailed(s.sha);
+      const reran = await ctx.forge.rerunFailed(s.sha);
       ctx.machine.markRerun(sha);
-      ctx.machine.log(`trunk\trerun\t${sha}`);
-      return { red, state: s.state, run: { group: "trunk", outcome: "rerun", sha } };
+      if (reran) {
+        ctx.machine.log(`trunk\trerun\t${sha}`);
+        return { red, state: s.state, run: { group: "trunk", outcome: "rerun", sha } };
+      }
+      // A check-run-only CI may have no rerun endpoint. Do not claim a rerun
+      // that never happened; go straight to the fix ticket.
+      ctx.machine.log(`trunk\trerun-unavailable\t${sha}`);
     }
     const revert = await openRevert(ctx, sha);
     const body = [
       `<!-- autopilot:fix first-red=${sha} -->`,
-      `Trunk CI failed at ${sha} and stayed red after a rerun. Nothing merges until it is green.`,
+      `Trunk CI failed at ${sha}. ${sha !== s.sha ? `Main is now at ${s.sha}. ` : ""}Nothing merges until it is green.`,
       ...(s.url ? ["", `CI log: ${s.url}`] : []),
       "",
       "## What to build",
@@ -728,7 +780,7 @@ async function watchTrunk(ctx, standalone, { fileFixes }) {
       ...(revert ? ["", `A revert is ready if you would rather undo the change: ${revert.url}`] : []),
     ].join("\n");
     const ticket = await standalone.createTicket({ title: `Fix trunk: CI is red at ${sha.slice(0, 7)}`, body });
-    ctx.machine.markNoted(`red-${sha}`);
+    ctx.machine.markNoted(`red-${redAt}`);
     ctx.machine.log(`trunk\tfix-filed\t${sha}`);
     return { red, state: s.state, run: { group: "trunk", outcome: "fix-filed", id: ticket?.id, title: ticket?.title, revert: revert?.url ?? null } };
   } finally {
@@ -736,7 +788,50 @@ async function watchTrunk(ctx, standalone, { fileFixes }) {
   }
 }
 
-const trackerOnly = (f) => f.startsWith(".scratch/") || f.startsWith(".autopilot/");
+const trackerOnly = (f) => f.startsWith(".scratch/") || f.startsWith(".autopilot/") || f.startsWith("docs/agents/") || f.startsWith(".omp/");
+
+// The oldest commit in the contiguous red range at HEAD, not merely the
+// newest non-tracker commit. A red that predates today's chore commit is
+// attributed to the code that introduced it, so a revert targets the right
+// merge (and a pre-existing red does not blame a setup commit).
+async function firstRed(ctx, head) {
+  if (!head || !ctx.forge.statusFor) return blame(ctx, head);
+  let shas;
+  try {
+    shas = git(ctx.repo, ["rev-list", "--first-parent", "-n", "50", head]).split("\n").filter(Boolean);
+  } catch {
+    return head;
+  }
+  let oldest = null;
+  const onlyTracker = (c) => {
+    if (!gitOk(ctx.repo, ["rev-parse", "--verify", "-q", `${c}^`])) return false;
+    try {
+      return changedFiles(ctx.repo, `${c}^`, c).every(trackerOnly);
+    } catch {
+      return false;
+    }
+  };
+  for (const c of shas) {
+    // A claim, comment, close, or trail commit cannot break CI; keep walking
+    // to the code commit behind it.
+    if (onlyTracker(c)) continue;
+    let status;
+    try {
+      status = await ctx.forge.statusFor(c);
+    } catch {
+      break;
+    }
+    if (!status || status.state === "none") break;
+    if (status.state === "fail") {
+      oldest = c;
+      continue;
+    }
+    if (status.state === "pass") break;
+    // pending: the previous commit is the oldest proven red.
+    break;
+  }
+  return oldest ?? head;
+}
 
 function blame(ctx, sha) {
   if (!sha) return sha;
@@ -768,7 +863,7 @@ async function openRevert(ctx, sha) {
   } finally {
     wt.cleanup();
   }
-  const why = `trunk CI failed at ${sha.slice(0, 12)}, the merge of pull request #${pr.number}, and stayed red after a rerun`;
+  const why = `trunk CI failed at ${sha.slice(0, 12)}, the merge of pull request #${pr.number}`;
   return ctx.forge.openPr({ branch, base: ctx.trunk, title: `Revert ${sha.slice(0, 7)}: trunk CI is red`, body: brief("fix", { why }), draft: false });
 }
 
