@@ -1,6 +1,6 @@
 {
   "name": "software",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Software factory skills: spec, tickets, TDD implementation, unattended autopilot builds, verification, code review, diagnosis, and project setup.",
   "author": {
     "name": "San Phan"
