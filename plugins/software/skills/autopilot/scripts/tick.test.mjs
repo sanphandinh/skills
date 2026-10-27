@@ -449,6 +449,19 @@ test("status shows what is in flight, what waits for the human, what is blocked,
   assert.match(text, /Trunk: pass/);
 });
 
+test("a docs commit with no CI status does not hide a red code commit", async () => {
+  const fx = oneTicket();
+  const code = sh(fx.remote, "rev-parse", "main");
+  asHuman(fx, "docs/agents/autopilot.md", () => "# Autopilot\n\nPaused: no\n");
+  const docs = sh(fx.remote, "rev-parse", "main");
+  const forge = fakeForge(fx, {
+    trunk: (sha) => (sha === docs ? "none" : sha === code ? "fail" : "pass"),
+    statusFor: (sha) => (sha === docs ? "none" : sha === code ? "fail" : "pass"),
+  });
+  const board = await status(options(fx, fakeHarness(happyRoles()), forge));
+  assert.equal(board.trunk, "fail", "the last commit with a CI status is red");
+});
+
 test("the autopilot seed template parses to the built-in defaults", async () => {
   const { DEFAULTS, loadConfig } = await import("./lib/config.mjs");
   const seed = fs.readFileSync(new URL("../../setup-software-context/autopilot.md", import.meta.url), "utf8");

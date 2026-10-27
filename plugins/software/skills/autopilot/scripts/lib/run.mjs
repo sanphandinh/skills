@@ -94,7 +94,7 @@ export async function status(opts) {
   const ctx = context(opts);
   fetch(ctx);
   const scanned = opts.tracker ? { trackers: [opts.tracker] } : await scanTrackers({ repoDir: ctx.repo, remote: ctx.remote, trunk: ctx.trunk, transport: opts.transport });
-  const trunk = ctx.forge.trunkStatus ? await ctx.forge.trunkStatus(ctx.trunk) : { state: "none" };
+  const trunk = ctx.forge.trunkStatus ? await trunkState(ctx) : { state: "none" };
   const { groups, items } = await survey(ctx, scanned.trackers);
   const row = (i) => ({ id: i.ticket.id, title: i.ticket.title, group: i.tracker.key, pr: i.pr?.url ?? null, why: i.decision.why ?? null, step: i.decision.step });
   const specs = groups
@@ -733,9 +733,35 @@ async function closeSpec(ctx, { group }) {
 // Trunk's CI: red blocks merges. A first red result is rerun once; a red that
 // survives the rerun files one fix ticket (later reds comment on it) and,
 // when it is safe, a revert pull request that never auto-merges.
+// The newest CI status on trunk. A tracker, docs, or setup commit can sit on
+// top of the last code commit and have no check runs of its own; looking only
+// at HEAD would report "none" and let merges through while the last code
+// commit is still red.
+async function trunkState(ctx) {
+  const head = await ctx.forge.trunkStatus(ctx.trunk);
+  if (head.state !== "none" || !head.sha || !ctx.forge.statusFor) return head;
+  let shas;
+  try {
+    shas = git(ctx.repo, ["rev-list", "--first-parent", "-n", "50", head.sha]).split("\n").filter(Boolean);
+  } catch {
+    return head;
+  }
+  for (const c of shas) {
+    let status;
+    try {
+      status = await ctx.forge.statusFor(c);
+    } catch {
+      break;
+    }
+    if (!status || status.state === "none") continue;
+    return { ...head, sha: c, state: status.state, url: status.url ?? head.url };
+  }
+  return head;
+}
+
 async function watchTrunk(ctx, standalone, { fileFixes }) {
   if (!ctx.forge.trunkStatus) return { red: false, state: "none" };
-  const s = await ctx.forge.trunkStatus(ctx.trunk);
+  const s = await trunkState(ctx);
   const sha = s.state === "fail" || s.state === "pending" ? await firstRed(ctx, s.sha) : s.sha;
   if (!sha) return { red: s.state === "fail", state: s.state };
   const red = s.state === "fail" || (s.state === "pending" && ctx.machine.reran(sha));
