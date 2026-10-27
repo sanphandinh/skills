@@ -69,14 +69,28 @@ test("a ticket is claimed on trunk before the implementer starts", async () => {
   assert.deepEqual(sh(fx.remote, "show", "--name-only", "--format=", claimCommit).split("\n"), [T("01")], "the claim touches only the ticket");
 });
 
-test("the implementer gets pointers to the spec and ticket, not their contents", async () => {
+test("the implementer gets the ticket pointer only, not the parent spec", async () => {
   const fx = oneTicket();
   const harness = fakeHarness(happyRoles());
   await run(fx, harness, fakeForge(fx));
   const prompt = harness.calls.find((c) => c.role === "implementer").prompt;
-  assert.match(prompt, new RegExp(`^Spec: ${SPEC_PATH}$`, "m"));
   assert.match(prompt, new RegExp(`^Ticket: ${T("01")}$`, "m"));
+  assert.doesNotMatch(prompt, /^Spec:/m, "the parent spec is not a per-ticket contract");
+  assert.doesNotMatch(prompt, /spec\.md/, "the parent spec path is not pasted");
   assert.doesNotMatch(prompt, /Build the demo\./, "spec body is not pasted");
+});
+
+test("the verifier and both reviewers get the ticket only, never the parent spec", async () => {
+  const fx = oneTicket();
+  const harness = fakeHarness(happyRoles());
+  await run(fx, harness, fakeForge(fx));
+  const prompts = harness.calls.filter((c) => ["verifier", "review-spec", "review-standards"].includes(c.role)).map((c) => c.prompt);
+  assert.equal(prompts.length, 3);
+  for (const prompt of prompts) {
+    assert.match(prompt, new RegExp(`^Ticket: ${T("01")}$`, "m"));
+    assert.doesNotMatch(prompt, /^Spec:/m);
+    assert.doesNotMatch(prompt, /spec\.md/);
+  }
 });
 
 test("the ticket branch carries the handoff file, and a draft pull request opens with the pr body", async () => {

@@ -41,6 +41,11 @@ export function nextStep(facts) {
 
   const gate = latestGate(records, facts.patch);
   if (!gate) return { step: "gates" };
+  if (gate.error) {
+    const errors = records.filter((r) => r.kind === "gates" && r.patch === facts.patch && r.error).length;
+    if (errors > (limits.gateRetries ?? 2)) return { step: "human", why: `gates could not run: ${gate.error}` };
+    return { step: "gates" };
+  }
   if (gate.blocking?.length) {
     if (used.fixRounds >= limits.fixRounds) return { step: "human", why: gate.blocking.join("; ") };
     return { step: "rework", counted: true, findings: gate.blocking };

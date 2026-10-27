@@ -112,7 +112,8 @@ test("a tick works every approved spec and the standalone tickets, and leaves un
   assert.match(onTrunk(fx, T("01", "crash", "bugs")), /\*\*Status:\*\* closed/);
   assert.doesNotMatch(onTrunk(fx, T("01", "b", "b")), /Claimed-by/);
   const bugPrompt = harness.calls.find((c) => c.role === "implementer" && /crash/.test(c.prompt)).prompt;
-  assert.match(bugPrompt, new RegExp(`^Spec: ${T("01", "crash", "bugs")}$`, "m"), "a standalone ticket stands in for its own spec");
+  assert.match(bugPrompt, new RegExp(`^Ticket: ${T("01", "crash", "bugs")}$`, "m"), "a standalone ticket is its own contract");
+  assert.doesNotMatch(bugPrompt, /^Spec:/m);
 });
 
 test("a ticket without Verify lines goes to needs-triage with a brief and is never built", async () => {
@@ -277,6 +278,31 @@ test("a pull request opened by the previous autopilot, with no run records, wait
 
 // ---------- working with the human ----------
 
+test("a harness failure in gates is retried, not turned into a rework", async () => {
+  const fx = oneTicket(CONFIG(["Fix rounds per ticket: 0"]));
+  let calls = 0;
+  const harness = fakeHarness(happyRoles({ verifier: () => (++calls === 1 ? { ok: false, error: "heartbeat without a result" } : PASS()) }));
+  const forge = fakeForge(fx);
+  const runs = await ticks(fx, harness, forge);
+  assert.ok(runs.some((r) => r.outcome === "gate-error"));
+  assert.equal(harness.calls.filter((c) => c.role === "implementer").length, 1, "an infra error does not send the implementer back to work");
+  assert.equal(forge.prs[0].state, "merged", "the retry reaches a real verdict");
+});
+
+test("an implementer's spec conflict is pushed before the human brief", async () => {
+  const fx = oneTicket();
+  const harness = fakeHarness(happyRoles({ implementer: implementer({ output: { specConflict: { note: "ticket and spec contradict" } } }) }));
+  const forge = fakeForge(fx);
+  const runs = await ticks(fx, harness, forge);
+  assert.deepEqual(runs.map((r) => [r.id, r.outcome]), [["01", "ready-for-human"]]);
+  const pr = forge.prs[0];
+  assert.ok(pr, "the work is visible on a pull request");
+  assert.match(sh(fx.remote, "show", `${pr.branch}:src/01.js`), /t01/, "the work reached the remote branch");
+  assert.match(pr.body, /## Summary/, "the implementer's pull request body replaced the old one");
+  assert.ok(records(forge).some((r) => r.kind === "spec-conflict"));
+  assert.match(onTrunk(fx, T("01")), /\*\*Status:\*\* ready-for-human/);
+});
+
 test("a hand-off comes with a brief, and handing the ticket back reworks it with the human's comment and fresh fix rounds", async () => {
   const fx = oneTicket(CONFIG(["Fix rounds per ticket: 0"]));
   const harness = fakeHarness(happyRoles({ verifier: ({ call }) => (call === 1 ? { verdict: "FAIL", evidence: "total is off by one" } : PASS()) }));
@@ -373,11 +399,13 @@ test("a rerun that turns trunk green files nothing", async () => {
 test("a red autopilot merge gets a revert pull request, and neither it nor the fix pull request auto-merges", async () => {
   const fx = oneTicket();
   let red = false;
-  const forge = fakeForge(fx, { trunk: () => (red ? "fail" : "pass") });
+  let failSha = null;
+  const forge = fakeForge(fx, { trunk: () => (red ? "fail" : "pass"), statusFor: (sha) => (sha === failSha ? "fail" : "pass") });
   const harness = fakeHarness(happyRoles());
   await ticks(fx, harness, forge);
   assert.equal(forge.prs[0].state, "merged");
 
+  failSha = forge.prs[0].mergeSha;
   red = true;
   await ticks(fx, harness, forge, {}, 2);
   const revert = forge.prs.find((p) => p.branch.startsWith("autopilot/revert/"));
@@ -413,11 +441,26 @@ test("status shows what is in flight, what waits for the human, what is blocked,
   assert.deepEqual(board.waiting.map((r) => [r.id, r.pr]), [["02", "https://example.test/pr/2"]]);
   assert.deepEqual(board.blocked.map((r) => r.id), ["03"]);
   assert.deepEqual(board.merged.map((r) => r.id), ["01"]);
+  assert.deepEqual(board.specs.map((r) => [r.id, r.status]), [[SPEC_PATH, "ready-for-agent"]]);
   assert.ok(board.tokensToday > 0);
   const { renderStatus } = await import("./lib/report.mjs");
   const text = renderStatus(board);
   assert.match(text, /## Waiting for you\n\n- 02 Breaks: https:\/\/example\.test\/pr\/2/);
+  assert.match(text, /## Specs\n\n- \.scratch\/demo\/spec\.md Demo spec: ready-for-agent/);
   assert.match(text, /Trunk: pass/);
+});
+
+test("a docs commit with no CI status does not hide a red code commit", async () => {
+  const fx = oneTicket();
+  const code = sh(fx.remote, "rev-parse", "main");
+  asHuman(fx, "docs/agents/autopilot.md", () => "# Autopilot\n\nPaused: no\n");
+  const docs = sh(fx.remote, "rev-parse", "main");
+  const forge = fakeForge(fx, {
+    trunk: (sha) => (sha === docs ? "none" : sha === code ? "fail" : "pass"),
+    statusFor: (sha) => (sha === docs ? "none" : sha === code ? "fail" : "pass"),
+  });
+  const board = await status(options(fx, fakeHarness(happyRoles()), forge));
+  assert.equal(board.trunk, "fail", "the last commit with a CI status is red");
 });
 
 test("the autopilot seed template parses to the built-in defaults", async () => {

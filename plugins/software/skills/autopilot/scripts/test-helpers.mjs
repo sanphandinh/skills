@@ -111,7 +111,7 @@ export function fakeHarness(handlers) {
 
 // Forge over the bare remote: pull requests are records, merges are real
 // squash merges pushed to trunk. `trunk` answers the trunk CI state.
-export function fakeForge(fx, { ci = () => "pass", trunk = () => "pass" } = {}) {
+export function fakeForge(fx, { ci = () => "pass", trunk = () => "pass", statusFor = (sha) => trunk(sha) } = {}) {
   const prs = [];
   const reruns = [];
   const view = (pr) => ({ number: pr.number, url: `https://example.test/pr/${pr.number}`, state: pr.state, draft: pr.draft, body: pr.body, author: pr.author });
@@ -167,8 +167,13 @@ export function fakeForge(fx, { ci = () => "pass", trunk = () => "pass" } = {}) 
       const state = trunk(sha);
       return { sha, state, url: state === "fail" ? `https://example.test/ci/${sha}` : null };
     },
+    async statusFor(sha) {
+      const state = statusFor(sha);
+      return { state, url: state === "fail" ? `https://example.test/ci/${sha}` : null };
+    },
     async rerunFailed(sha) {
       reruns.push(sha);
+      return true;
     },
     async prForCommit(sha) {
       const pr = prs.find((p) => p.mergeSha === sha);
@@ -386,7 +391,7 @@ export function fakeOrca(fx, handlers, { repoPath = fx.clone, delayMs = 5 } = {}
       setTimeout(async () => {
         const handler = handlers[role];
         const call = [...state.workers.values()].filter((w) => w.role === role).length;
-        const output = handler ? await handler({ prompt: spec, cwd, call, ask: (q) => post({ run, type: "question", from_handle: handle, body: q }) }) : null;
+        const output = handler ? await handler({ prompt: spec, cwd, call, ask: (q) => post({ run, type: "question", from_handle: handle, body: q }), beat: (body = "alive") => post({ run, type: "heartbeat", from_handle: handle, body, payload: JSON.stringify({ dispatchId }) }) }) : null;
         if (output?.silent) return;
         const reportPath = spec.match(/to the file (\S+?), creating/)?.[1];
         if (output && reportPath) {

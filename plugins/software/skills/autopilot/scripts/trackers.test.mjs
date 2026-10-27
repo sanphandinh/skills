@@ -277,6 +277,17 @@ test("github: spec-labelled issues are specs, other open issues with a triage ro
   assert.match(gh.issues.get(1).comments.at(-1).body, /finished this spec/);
 });
 
+test("github: a parent with sub-issues is a spec even before the spec label exists", async () => {
+  const { githubSpecs } = await import("./lib/trackers/github.mjs");
+  const gh = fakeGitHub();
+  const labels = labelMap("| `ready-for-agent` | `agent:ready` | x |");
+  gh.add({ number: 1, title: "Spec", labels: ["agent:ready"], subIssues: [2] });
+  gh.add({ number: 2, title: "Owned", labels: ["agent:ready"], body: V });
+  assert.deepEqual(await githubSpecs({ repo: gh.repo, api: gh.api, labels }), ["#1"]);
+  const standalone = githubTracker({ repo: gh.repo, spec: null, api: gh.api, labels });
+  assert.deepEqual((await standalone.tickets()).map((t) => t.id), [], "the inferred parent is not a standalone ticket");
+});
+
 test("github: the human's note is their comment after autopilot's last one, and status changes come with a note", async () => {
   const { gh, tracker } = github();
   const [t2] = await tracker.tickets();

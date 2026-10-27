@@ -228,9 +228,15 @@ export function gitlabForge({ repo, api }) {
       const c = await api("GET", `${project}/repository/commits/${encodeURIComponent(branch)}`);
       return { sha: c?.id ?? null, state: pipeline(c?.last_pipeline?.status), url: c?.last_pipeline?.web_url ?? null };
     },
+    async statusFor(sha) {
+      const c = await api("GET", `${project}/repository/commits/${encodeURIComponent(sha)}`);
+      return { state: pipeline(c?.last_pipeline?.status), url: c?.last_pipeline?.web_url ?? null };
+    },
     async rerunFailed(sha) {
       const c = await api("GET", `${project}/repository/commits/${sha}`);
-      if (c?.last_pipeline?.id) await api("POST", `${project}/pipelines/${c.last_pipeline.id}/retry`);
+      if (!c?.last_pipeline?.id) return false;
+      await api("POST", `${project}/pipelines/${c.last_pipeline.id}/retry`);
+      return true;
     },
     async prForCommit(sha) {
       const [m] = (await api("GET", `${project}/repository/commits/${sha}/merge_requests`)) ?? [];

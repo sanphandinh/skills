@@ -25,10 +25,22 @@ const number = (ref) => Number(String(ref).match(/(\d+)\s*$/)?.[1]);
 const field = (body, name) => String(body ?? "").match(new RegExp(`^(?:\\*\\*)?${name}:(?:\\*\\*)?\\s*(.+)$`, "mi"))?.[1]?.trim() ?? null;
 const labelNames = (i) => (i.labels ?? []).map((l) => (typeof l === "string" ? l : l.name));
 
-// Open spec issues: ["#12", ...].
+// Open spec issues: ["#12", ...]. Older setups do not create the `spec`
+// label even though the current autopilot expects it. When no issue carries
+// the label, treat an open issue with sub-issues and a triage role as a spec,
+// so its tickets are never silently built as standalone tickets.
 export async function githubSpecs({ repo, api, labels }) {
   const found = (await api("GET", `repos/${repo}/issues?state=open&labels=${encodeURIComponent(labels.spec)}&per_page=100`)) ?? [];
-  return found.filter((i) => !i.pull_request).map((i) => `#${i.number}`);
+  const labelled = found.filter((i) => !i.pull_request).map((i) => `#${i.number}`);
+  if (labelled.length) return labelled;
+  const open = (await api("GET", `repos/${repo}/issues?state=open&per_page=100`)) ?? [];
+  const inferred = [];
+  for (const i of open) {
+    if (i.pull_request || !roleOf(labelNames(i), labels)) continue;
+    const subIssues = (await api("GET", `repos/${repo}/issues/${i.number}/sub_issues?per_page=100`)) ?? [];
+    if (subIssues.length) inferred.push(`#${i.number}`);
+  }
+  return inferred;
 }
 
 export function githubTracker({ repo, spec, api, labels, cwd = process.cwd() }) {
@@ -63,12 +75,13 @@ export function githubTracker({ repo, spec, api, labels, cwd = process.cwd() }) 
 
   async function standaloneIssues() {
     const specs = await githubSpecs({ repo, api, labels });
+    const specNumbers = new Set(specs.map(number));
     const owned = new Set();
     for (const s of specs) for (const sub of (await api("GET", `${issue(number(s))}/sub_issues?per_page=100`)) ?? []) owned.add(sub.number);
     const seen = new Map();
-    for (const role of ["ready-for-agent", "ready-for-human"]) {
+    for (const role of ["ready-for-agent", "ready-for-human", "needs-triage"]) {
       for (const i of (await api("GET", `repos/${repo}/issues?state=open&labels=${encodeURIComponent(labels[role])}&per_page=100`)) ?? []) {
-        if (!i.pull_request && !labelNames(i).includes(labels.spec) && !owned.has(i.number)) seen.set(i.number, i);
+        if (!i.pull_request && !specNumbers.has(i.number) && !labelNames(i).includes(labels.spec) && !owned.has(i.number)) seen.set(i.number, i);
       }
     }
     return [...seen.values()];
