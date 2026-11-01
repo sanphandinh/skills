@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Software factory · luồng làm việc</title>
+<style>
+  :root {
+    --bg: #f6f8fa; --surface: #ffffff; --fg: #1f2328; --muted: #59636e; --border: #d1d9e0;
+    --accent: #0969da; --warning: #bf8700;
+    --c2: #8250df; --c3: #1a7f37; --c4: #bc4c00; --c5: #0a7b83;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --surface: #151b23; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d;
+      --accent: #4493f8; --warning: #d29922;
+      --c2: #ab7df8; --c3: #3fb950; --c4: #db6d28; --c5: #39c5cf;
+    }
+  }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 72px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 20px; margin: 44px 0 12px; }
+  h3 { font-size: 16px; margin: 24px 0 8px; }
+  .lede { color: var(--muted); margin: 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+          padding: 16px; overflow-x: auto; }
+  .card svg { display: block; width: 100%; height: auto; min-width: 960px; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 6px 0; }
+  code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg);
+         border: 1px solid var(--border); border-radius: 6px; padding: 1px 5px; }
+
+  /* Shared diagram styles */
+  svg text { fill: var(--fg); font-size: 12px; }
+  .n { font-size: 14px; font-weight: 600; }
+  .t { font-size: 13px; font-weight: 600; }
+  .x { font-size: 11px; }
+  .s { fill: var(--muted); }
+  .m { text-anchor: middle; }
+  .r { text-anchor: end; }
+  .hum { fill: var(--surface); stroke: var(--warning); stroke-width: 1.6; }
+  .gh { fill: var(--surface); stroke: var(--c4); stroke-width: 1.6; }
+  .coord { fill: var(--surface); stroke: var(--accent); stroke-width: 2.2; }
+  .orca { fill: none; stroke: var(--c2); stroke-width: 2; }
+  .orcab { fill: var(--surface); stroke: var(--c2); stroke-width: 1.8; }
+  .work { fill: var(--surface); stroke: var(--c3); stroke-width: 1.4; }
+  .doc { fill: var(--surface); stroke: var(--muted); stroke-width: 1.4; }
+  .mem { fill: var(--surface); stroke: var(--c5); stroke-width: 1.4; }
+  .life { stroke: var(--border); stroke-width: 1.2; stroke-dasharray: 4 4; }
+  .e { fill: none; stroke: var(--fg); stroke-width: 1.3; }
+  .ed { fill: none; stroke: var(--fg); stroke-width: 1.3; stroke-dasharray: 5 4; }
+  .frag { fill: none; stroke: var(--muted); stroke-width: 1.2; }
+  .fh { fill: var(--surface); stroke: var(--muted); stroke-width: 1.2; }
+  .head { fill: var(--fg); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Software factory · luồng làm việc</h1>
+  <p class="lede">Lớp 2 (factory) chạy trên Orca. Diagram 1 cho biết ai nói chuyện với ai; diagram 2 cho biết một ticket đi qua những bước nào, theo thứ tự nào.</p>
+
+  <h2>1. Kiến trúc: ai nói chuyện với ai</h2>
+  <div class="card">
+    <svg viewBox="0 0 1110 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kiến trúc factory">
+      <defs>
+        <marker id="h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path class="head" d="M0,0 L10,5 L0,10 z"/>
+        </marker>
+      </defs>
+
+      <rect class="hum" x="455" y="20" width="200" height="56" rx="12"/>
+      <text class="n m" x="555" y="44">Bạn</text>
+      <text class="s m" x="555" y="64">GitHub · Orca desktop, mobile</text>
+
+      <rect class="gh" x="20" y="160" width="260" height="170" rx="12"/>
+      <text class="n m" x="150" y="186">GitHub · sự thật</text>
+      <text class="s m" x="150" y="210">spec, ticket, blocked_by</text>
+      <text class="s m" x="150" y="230">PR, CI</text>
+      <text class="s m" x="150" y="250">commit status factory/*</text>
+      <text class="s m" x="150" y="270">label ready-for-agent, factory:hold</text>
+      <text class="s m" x="150" y="290">comment: plan, câu hỏi, handoff</text>
+
+      <rect class="coord" x="420" y="160" width="260" height="170" rx="12"/>
+      <text class="n m" x="550" y="186">Coordinator</text>
+      <text class="s m" x="550" y="210">agent chạy lâu, trong terminal Orca</text>
+      <text class="s m" x="550" y="230">làm theo skill factory</text>
+      <text class="s m" x="550" y="250">chỉ gọi thao tác INTERFACE</text>
+      <text class="s m" x="550" y="270">không đọc code, không viết code</text>
+      <text class="x m" x="550" y="310">lớp 2 · factory</text>
+
+      <rect class="orca" x="840" y="120" width="250" height="440" rx="14"/>
+      <text class="n m" x="965" y="146">Orca</text>
+      <text class="s m" x="965" y="166">references/orca.md dịch INTERFACE</text>
+      <text class="s m" x="965" y="184">mỗi task một worktree</text>
+      <rect class="work" x="860" y="200" width="210" height="56" rx="10"/>
+      <text class="t m" x="965" y="223">planner · Opus</text>
+      <text class="s m" x="965" y="243">plan, quyết định, door</text>
+      <rect class="work" x="860" y="268" width="210" height="56" rx="10"/>
+      <text class="t m" x="965" y="291">implementer · DeepSeek</text>
+      <text class="s m" x="965" y="311">tdd, push, mở PR</text>
+      <rect class="work" x="860" y="336" width="210" height="56" rx="10"/>
+      <text class="t m" x="965" y="359">verifier</text>
+      <text class="s m" x="965" y="379">theo verify.md · commit status</text>
+      <rect class="work" x="860" y="404" width="210" height="56" rx="10"/>
+      <text class="t m" x="965" y="427">reviewer</text>
+      <text class="s m" x="965" y="447">code-review · commit status</text>
+      <text class="x m" x="965" y="490">worker dùng lớp 1:</text>
+      <text class="x m" x="965" y="506">skill software + role agent</text>
+
+      <rect class="doc" x="20" y="420" width="260" height="140" rx="12"/>
+      <text class="n m" x="150" y="446">Docs của project</text>
+      <text class="s m" x="150" y="470">factory.md: manager, giới hạn</text>
+      <text class="s m" x="150" y="490">verify.md: cách chứng minh</text>
+      <text class="s m" x="150" y="510">issue-tracker.md: cách đọc ticket</text>
+      <text class="s m" x="150" y="530">AGENTS.md: kiến thức project</text>
+
+      <rect class="mem" x="420" y="420" width="260" height="90" rx="12"/>
+      <text class="n m" x="550" y="446">Wiki · thư mục ngoài repo</text>
+      <text class="s m" x="550" y="470">bài học, quyết định, có ngày</text>
+      <text class="s m" x="550" y="490">journal mỗi lần thức</text>
+
+      <path class="e" d="M455,58 L283,177" marker-end="url(#h)"/>
+      <text class="r" x="350" y="96">duyệt spec · trả lời · label</text>
+      <path class="e" d="M655,58 L837,137" marker-end="url(#h)"/>
+      <text x="745" y="84">xem · trả lời prompt</text>
+
+      <path class="e" d="M418,205 H282" marker-end="url(#h)"/>
+      <text class="x m" x="350" y="197">câu hỏi · label · merge</text>
+      <path class="e" d="M282,262 H418" marker-end="url(#h)"/>
+      <text class="x m" x="350" y="280">ticket · PR · CI</text>
+
+      <path class="e" d="M682,205 H838" marker-end="url(#h)"/>
+      <text class="m" x="760" y="197">INTERFACE</text>
+      <path class="ed" d="M838,262 H682" marker-end="url(#h)"/>
+      <text class="x m" x="760" y="280">done · blocked · question</text>
+
+      <path class="e" d="M550,332 V418" marker-start="url(#h)" marker-end="url(#h)"/>
+      <text x="560" y="380">đọc · ghi bài học</text>
+      <path class="e" d="M282,440 L440,332" marker-end="url(#h)"/>
+      <text class="r" x="340" y="372">luật của project</text>
+
+      <path class="e" d="M900,562 V584 H10 V245 H18" marker-end="url(#h)"/>
+      <text class="m" x="560" y="576">plan · PR · commit status · handoff</text>
+    </svg>
+  </div>
+  <ul>
+    <li>Mũi tên từ Coordinator sang Orca <strong>luôn</strong> là một thao tác trong INTERFACE. <code>references/orca.md</code> dịch thao tác đó sang lệnh của Orca, nên đổi sang Herdr chỉ phải đổi file reference này.</li>
+    <li><strong>Chỉ Orca được tạo worktree.</strong></li>
+    <li>Những gì cần nhớ lâu đều nằm trên GitHub hoặc trong wiki. Orca chỉ giữ những việc đang chạy.</li>
+  </ul>
+
+  <h2>2. Sequence: một ticket đi từ đầu tới cuối</h2>
+  <div class="card">
+    <svg viewBox="0 0 1100 1000" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sequence một ticket">
+      <defs>
+        <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path class="head" d="M0,0 L10,5 L0,10 z"/>
+        </marker>
+      </defs>
+
+      <rect class="hum" x="10" y="20" width="120" height="44" rx="10"/>
+      <text class="n m" x="70" y="47">Bạn</text>
+      <rect class="gh" x="165" y="20" width="120" height="44" rx="10"/>
+      <text class="n m" x="225" y="47">GitHub</text>
+      <rect class="coord" x="345" y="20" width="120" height="44" rx="10"/>
+      <text class="n m" x="405" y="47">Coordinator</text>
+      <rect class="orcab" x="525" y="20" width="120" height="44" rx="10"/>
+      <text class="n m" x="585" y="47">Orca</text>
+      <rect class="work" x="685" y="20" width="120" height="44" rx="10"/>
+      <text class="n m" x="745" y="47">Planner</text>
+      <rect class="work" x="825" y="20" width="120" height="44" rx="10"/>
+      <text class="n m" x="885" y="47">Implementer</text>
+      <rect class="work" x="955" y="20" width="140" height="44" rx="10"/>
+      <text class="t m" x="1025" y="47">Verifier, Reviewer</text>
+
+      <line class="life" x1="70" y1="64" x2="70" y2="990"/>
+      <line class="life" x1="225" y1="64" x2="225" y2="990"/>
+      <line class="life" x1="405" y1="64" x2="405" y2="990"/>
+      <line class="life" x1="585" y1="64" x2="585" y2="990"/>
+      <line class="life" x1="745" y1="64" x2="745" y2="990"/>
+      <line class="life" x1="885" y1="64" x2="885" y2="990"/>
+      <line class="life" x1="1025" y1="64" x2="1025" y2="990"/>
+
+      <path class="e" d="M70,100 H223" marker-end="url(#a)"/>
+      <text class="m" x="147" y="94">duyệt spec #60</text>
+      <path class="e" d="M405,132 H227" marker-end="url(#a)"/>
+      <text class="m" x="316" y="126">đọc ticket: #63 sẵn sàng</text>
+      <path class="e" d="M405,164 H583" marker-end="url(#a)"/>
+      <text class="m" x="495" y="158">open-workspace #63</text>
+      <path class="e" d="M405,196 H583" marker-end="url(#a)"/>
+      <text class="m" x="495" y="190">start-worker planner</text>
+      <path class="e" d="M585,228 H743" marker-end="url(#a)"/>
+      <text class="m" x="665" y="222">chạy trong worktree</text>
+      <path class="e" d="M745,260 H227" marker-end="url(#a)"/>
+      <text class="m" x="486" y="254">comment plan: quyết định, file, door</text>
+      <path class="ed" d="M745,292 H587" marker-end="url(#a)"/>
+      <text class="m" x="666" y="286">worker_done</text>
+      <path class="ed" d="M585,324 H407" marker-end="url(#a)"/>
+      <text class="m" x="496" y="318">done</text>
+
+      <rect class="frag" x="24" y="342" width="452" height="80"/>
+      <rect class="fh" x="24" y="342" width="150" height="20"/>
+      <text class="x" x="30" y="356">alt [door: one-way]</text>
+      <path class="e" d="M405,378 H227" marker-end="url(#a)"/>
+      <text class="m" x="316" y="372">label factory:hold + câu hỏi</text>
+      <path class="e" d="M70,410 H223" marker-end="url(#a)"/>
+      <text class="m" x="147" y="404">trả lời</text>
+
+      <path class="e" d="M405,452 H583" marker-end="url(#a)"/>
+      <text class="m" x="495" y="446">start-worker implementer</text>
+      <path class="e" d="M585,484 H883" marker-end="url(#a)"/>
+      <text class="m" x="735" y="478">chạy</text>
+      <path class="e" d="M885,516 H227" marker-end="url(#a)"/>
+      <text class="m" x="556" y="510">push nhánh, mở PR · Closes #63</text>
+      <path class="ed" d="M885,548 H587" marker-end="url(#a)"/>
+      <text class="m" x="736" y="542">worker_done</text>
+      <path class="ed" d="M585,580 H407" marker-end="url(#a)"/>
+      <text class="m" x="496" y="574">done</text>
+
+      <path class="e" d="M405,612 H583" marker-end="url(#a)"/>
+      <text class="m" x="495" y="606">start-worker ×2</text>
+      <path class="e" d="M585,644 H1023" marker-end="url(#a)"/>
+      <text class="m" x="805" y="638">verifier + reviewer chạy song song, theo verify.md</text>
+      <path class="e" d="M1025,676 H227" marker-end="url(#a)"/>
+      <text class="m" x="626" y="670">commit status factory/verify, factory/review trên đúng SHA</text>
+      <path class="ed" d="M1025,708 H587" marker-end="url(#a)"/>
+      <text class="m" x="806" y="702">worker_done</text>
+      <path class="ed" d="M585,740 H407" marker-end="url(#a)"/>
+      <text class="m" x="496" y="734">done</text>
+
+      <rect class="frag" x="330" y="758" width="320" height="58"/>
+      <rect class="fh" x="330" y="758" width="300" height="20"/>
+      <text class="x" x="336" y="772">loop [gate fail, ≤ 2 vòng; lỗi thiết kế → planner]</text>
+      <path class="e" d="M405,802 H583" marker-end="url(#a)"/>
+      <text class="m" x="495" y="796">start-worker sửa lỗi</text>
+
+      <path class="e" d="M405,840 H227" marker-end="url(#a)"/>
+      <text class="m" x="316" y="834">gh pr checks → xanh</text>
+      <path class="e" d="M405,872 H227" marker-end="url(#a)"/>
+      <text class="m" x="316" y="866">merge --match-head-commit</text>
+      <path class="e" d="M225,898 H262 V914 H229" marker-end="url(#a)"/>
+      <text x="268" y="910">tự đóng #63</text>
+      <path class="e" d="M405,940 H583" marker-end="url(#a)"/>
+      <text class="m" x="495" y="934">close-workspace #63</text>
+      <path class="e" d="M405,966 H442 V982 H409" marker-end="url(#a)"/>
+      <text class="x" x="448" y="978">ghi wiki · mở #64, #65</text>
+    </svg>
+  </div>
+
+  <h3>Hai tương tác có thể xảy ra bất cứ lúc nào</h3>
+  <ul>
+    <li><strong>Worker bị kẹt</strong> (cần duyệt, hoặc có câu hỏi): Orca báo cho coordinator qua <code>wait-events</code>. Nếu câu trả lời đã có trong brief hoặc plan, coordinator tự trả lời. Nếu không, nó dùng <code>flag-human</code>: câu hỏi hiện trên GitHub và trên Orca (desktop lẫn mobile), bạn trả lời ở đâu cũng được.</li>
+    <li><strong>Chờ CI:</strong> coordinator không đứng chờ bằng <code>--watch</code>, vì như vậy nó bị chặn, không nhận được sự kiện của các ticket khác. Mỗi lần thức, nó chạy <code>gh pr checks</code>: mã 0 là xanh, mã 8 là đang chạy, khi đó để lần thức sau xem lại.</li>
+  </ul>
+
+  <h2>3. Mỗi lần coordinator thức dậy</h2>
+  <ol>
+    <li><code>wait-events</code>, chờ tối đa 15 phút. Hết 15 phút mà không có sự kiện thì cũng thức, để kiểm comment, label và CI trên GitHub.</li>
+    <li>Đọc lại skill <code>factory</code>, <code>factory.md</code> và trang mục lục của wiki.</li>
+    <li>Xử lý các sự kiện vừa nhận: <code>done</code> thì đọc <code>result.json</code> của worker; <code>blocked</code> hoặc <code>question</code> thì tự trả lời, hoặc dùng <code>flag-human</code> để hỏi bạn.</li>
+    <li>Đọc ticket theo cách ghi trong <code>issue-tracker.md</code>. Với từng spec, theo thứ tự ưu tiên: tính frontier (các ticket đã hết bị chặn), chọn bước tiếp theo cho từng ticket, và giữ trong giới hạn số việc song song ghi ở <code>factory.md</code>.</li>
+    <li>Gọi các thao tác INTERFACE tương ứng. Ticket nào đã đủ điều kiện thì merge.</li>
+    <li>Ghi một dòng journal, rồi quay lại bước 1.</li>
+  </ol>
+  <p><strong>Khi có nhiều spec:</strong> dùng chung đúng vòng lặp trên. Thứ tự ưu tiên lấy theo label <code>priority:*</code>, giới hạn song song lấy trong <code>factory.md</code>. Ticket thuộc các spec khác nhau vẫn chạy song song được, miễn là plan của chúng không sửa cùng một file.</p>
+</main>
+</body>
+</html>
