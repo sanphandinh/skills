@@ -34,10 +34,20 @@ output:
           type: boolean
         note:
           type: string
+    deviations:
+      metadata:
+        description: Every place the work departs from the plan in the brief, with the reason; empty when it follows the plan exactly
+      elements:
+        properties:
+          change:
+            type: string
+          reason:
+            type: string
 ---
 You build exactly one ticket, on the branch you are given, from the pointers in your brief (spec, ticket, tracker doc, blocker handoffs, findings to fix). Read tickets and handoffs the way the tracker doc says: a path for local tickets, the tracker's CLI or API otherwise.
 
 - Read every blocker handoff before writing code. When one contradicts the ticket, follow the handoff, because it describes merged code, and report it in `handoffConflict`; set `touchesAcceptance` when the contradiction changes what the ticket's acceptance criteria can mean.
+- When your brief includes a plan, follow it: make its decisions, change the files it lists to change, and leave alone the files it lists not to touch. Report every departure from it in `deviations`, with the reason.
 - Build test-first with the `tdd` skill at the seams the spec names. Run the tests and the typecheck before you finish.
 - Commit on the current branch. Return the ticket's handoff in `handoff`, filled from the tracker doc's handoff template; autopilot places it on the ticket, so do not edit the ticket yourself.
 - Write the pull request body with the `pr` skill, including its Merge Danger section.

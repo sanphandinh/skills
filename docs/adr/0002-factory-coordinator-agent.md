@@ -1,0 +1,11 @@
+# The factory is a coordinator agent following a playbook, over an agent-manager interface
+
+ADR-0001 made autopilot a set of short runs chosen by a scripted tick. In use (Ody-drive spec #60, 27 to 29 October 2026) the script's fixed readings of an open world failed more often than the work: 17 of 50 runs were lost to misread signals (a heartbeat taken for completion, a harness picked from an environment variable for a CLI that was not installed, a silent CI taken for red), format checks on prose sent good tickets to triage, and nothing merged automatically. We replace the scripted orchestrator with a long-lived **coordinator** agent that follows a written playbook, reads the tracker and the git host the way a person would, and delegates every step to a fresh **worker** that an **agent manager** (Orca first) starts through a nine-operation interface. Following mattpocock/skills (`software-factory`, `chief-of-staff`) and pstack's `orchestrate`, the coordinator never writes code and keeps its context small. Following pstack's one-verdict-per-head rule, merge safety lives in GitHub itself: verdicts are commit statuses on the exact head commit, and merges carry `--match-head-commit`.
+
+## Consequences
+
+- Supersedes ADR-0001's scripted tick, run records, step leases and per-machine state. Its two principles stay: nothing waits in a blocking way (the coordinator waits on the manager's events without spending tokens and looks at CI again on a later wake), and work state lives on the git host and the tracker, with the manager holding only workers in flight.
+- Behaviour is a playbook and work orders, so there are no unit tests to pin it. It is proven by the setup smoke test against the real manager and by end-to-end runs. A script comes back only for a rule that is irreversible when wrong, exact over structured data, independent of the kind of app, and observed to fail repeatedly.
+- Workers report through the manager and write results; the coordinator alone writes to the tracker and the git host, which also keeps Orca's worker contract (no posting during a run).
+- Adding a manager (Herdr next) is one reference document plus a passing smoke test.
+- Project knowledge (how to verify a web, mobile or desktop app, which checks are required, which resources are scarce) lives in the project's `docs/agents/`, never in the factory.

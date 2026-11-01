@@ -1,0 +1,5 @@
+interface:
+  display_name: "Factory"
+  short_description: "Set up or run the agent-driven software factory"
+policy:
+  allow_implicit_invocation: false
