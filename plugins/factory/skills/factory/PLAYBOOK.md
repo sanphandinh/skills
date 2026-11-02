@@ -6,7 +6,7 @@ Decide, delegate, record. Workers read and write code; you read tickets, results
 
 ## Each wake
 
-1. **Wait.** wait-events, up to `Wake timeout`. In `once` mode with no live worker, skip the wait.
+1. **Wait.** wait-events, up to `Wake timeout`. Skip it on a session's first wake, and in `once` mode when no worker is live.
 2. **Reload.** Read `docs/agents/factory.md`, `docs/agents/merge-policy.md` and the memory index (MEMORY.md). On the first wake, and whenever you can no longer quote this playbook's steps, read this playbook and WORK-ORDERS.md again.
 3. **Handle events**, every one, as **Events** says.
 4. **Look at the workers.** Inspect every live worker and handle each `blocked` one, on every wake: a worker stuck at a prompt sends no event.
@@ -45,7 +45,10 @@ gh api repos/<owner>/<repo>/statuses/<head_sha> -f state=<success|failure> -f co
 
 **Rework.** Count the rework rounds already posted (`## Factory rework` comments). Below `Fix rounds`, post `## Factory rework <n>` listing the blocking findings, then start a fresh worker: a `planner` first when any finding is of kind `design` (its revised plan goes up as a new `## Factory plan`), else an `implementer` with the findings. A failed required check counts as a finding of kind `code`, with the check's name and log link. At `Fix rounds`, **hold** with a brief instead.
 
-**Land.** When the merge guard passes, merge: `gh pr merge <number> --squash --match-head-commit <head_sha>`. When a merge-policy line fails (door, blast radius, protected path, auto-merge off, a fix or revert pull request), **hold** with the reason; after a person releases it, merge on the next wake if the guard otherwise passes.
+**Land.** When the merge guard passes, merge: `gh pr merge <number> --squash --match-head-commit <head_sha>`. When a merge-policy line fails, **hold** with the reason. After a person releases the hold:
+
+- a one-way door or a disallowed blast radius: the person chose it, so merge on the next wake if the rest of the guard passes;
+- a protected path, or a fix or revert pull request for a red trunk: a person merges it — you never merge it; after the merge do **Close**.
 
 **Close.** After the merge: post the implementer's handoff on the ticket as a comment starting `## Handoff`, close the ticket if the merge did not, set the workspace status to completed, run the push check, close-workspace, then delete the branch: `git push origin --delete <branch>` when it is still on the remote, and the workspace's local branch in the main checkout when it is still there (`git branch --list <local branch>`, then `git branch -D <local branch>`). When every ticket of a spec is closed, close the spec with a short summary.
 

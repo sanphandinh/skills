@@ -23,7 +23,7 @@ A work order is everything a worker gets; it starts with nothing else. Fill the 
 >
 > Result also has: `plan` (markdown with the headings Decisions, Change map, Interfaces, Tests, Verify, Door, Questions), `door` (`one-way` or `two-way`), `files_to_change`, `files_not_to_touch`.
 
-Delegation line: "Delegate the step, with this whole work order, to the `planner` agent. When no agent by that name is available to you, do the step yourself under the same rules."
+Delegation line: "Delegate the step, with this whole work order, to the `planner` agent. When this session has no agent by that name, do the step yourself under the same rules. When the agent exists but fails (a provider error, a rate limit), report failed with the error instead of doing its step yourself."
 
 ## implementer
 
