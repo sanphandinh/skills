@@ -4,15 +4,24 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** closed
 
 **Door:** two-way
 
-- [ ] ROLES.md defines a `planner` role (Oh My Pi `@planner` falling back to `@plan`; Claude Code `opus`), and both platform plugins ship a `planner` agent with an output schema holding every plan section.
+- [x] ROLES.md defines a `planner` role (Oh My Pi `@planner` falling back to `@plan`; Claude Code `opus`), and both platform plugins ship a `planner` agent with an output schema holding every plan section.
   Verify: `npm run validate` passes; read ROLES.md and both agent files.
-- [ ] Given a ticket that leaves a product choice open, the planner returns the question and decides nothing about it.
+- [x] Given a ticket that leaves a product choice open, the planner returns the question and decides nothing about it.
   Verify: run the planner on a sample ticket with an open product choice; the result lists the question and holds no decision for it.
-- [ ] Given a ticket that changes behaviour in stages, the plan names the files this ticket must not touch.
+- [x] Given a ticket that changes behaviour in stages, the plan names the files this ticket must not touch.
   Verify: run the planner on the first version of Ody-drive #61; the plan lists Recents and the sibling tickets' entry points as files not to touch.
-- [ ] An implementer given a plan follows it and lists its deviations.
+- [x] An implementer given a plan follows it and lists its deviations.
   Verify: run the implementer agent with a plan on a sandbox ticket; its result lists each deviation with a reason, or states there were none.
+
+## Handoff
+
+**Delivered:** the `planner` agent for Oh My Pi (`structured: true`, so its output schema is enforced) and Claude Code; ROLES.md's `planner` role; implementers follow a plan and return `deviations`. On a sandbox ticket with an open choice ("Add a truncate command") the planner returned three questions with options and marked every dependent part `open until question <n> is answered`. On the first version of Ody-drive #61 it named `app/(tabs)/recents.tsx` and `buildViewerRoute` as untouched (#62's scope), the track switch (#62) and reader activation (#63) as unchanged, and raised the open-target sheet question that cost #61 three rounds. The implementer built an `upper` command from a plan, touched exactly the planned files and returned `deviations: []`.
+**Interfaces introduced:** planner output `{ plan, door, filesToChange, filesNotToTouch, questions, note? }`; implementer output gains `deviations[] { change, reason }`.
+**Deviations from spec:** none.
+**Decisions:** the planner's plan headings are Decisions, Change map, Interfaces, Tests, Verify, Door, Questions.
+**Gotchas:** without `structured: true`, Oh My Pi does not enforce an agent's `output` schema (the first Ody run returned its own shape). The #61 run also read the issue's later comments, so part of its foresight came from the thread.
+**For the next ticket:** 03: the planner work order asks for this shape and the coordinator posts `plan` as `## Factory plan`.

@@ -19,7 +19,8 @@ Fill the template and show it to the user before writing:
 
 - **Agent**: the agent command-line tool the manager starts for workers; recommend the one this session runs in.
 - **Trunk**: the branch pull requests merge into.
-- **Required checks**: the CI checks a pull request must pass, by name. Read them from the latest merged pull request (`gh pr checks <number>`) or the job names in the CI configuration, and confirm them with the user; `none` when the project has no CI.
+- **Required checks**: the CI checks a pull request must pass, by name. Read them from the latest merged pull request (`gh pr checks <number>`) or the job names in the CI configuration, and confirm them with the user; `none` when pull requests get no CI.
+- **Trunk checks**: the CI checks whose failure on trunk stops merging, by name. Read them from trunk's latest commits (`gh api repos/<owner>/<repo>/commits/<sha>/check-runs`); usually the same as the required checks, but some CI runs only on trunk (an archive or deploy build). `none` when trunk gets no CI.
 - **Scarce resources**: ask whether checking a change needs something only some workers can use at once (a simulator, a device, a GPU, a port). Write each as `<resource>: <how many at once>, held by <roles>`, or `none`.
 - **Memory**: a folder outside the repository; default `~/.local/share/factory/<repository name>`.
 
@@ -35,6 +36,7 @@ Max workers: 3
 Scarce resources: none
 Fix rounds: 2
 Required checks: test
+Trunk checks: test
 Wake timeout: 15 minutes
 Memory: ~/.local/share/factory/<repository name>
 ```

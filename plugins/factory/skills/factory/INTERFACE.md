@@ -26,8 +26,8 @@ The factory needs nine operations from an agent manager. Each file in `reference
 ## Rules every reference keeps
 
 - **Done means reported.** A worker is `done` or `failed` only when it reports so through the manager. A heartbeat, a progress line, an idle terminal or a written file is not completion.
-- **Blocked is found by looking.** A worker that stopped working without reporting (idle at a prompt, waiting on a permission, a turn that ended without a report) never sends an event. On every `timeout` wake, inspect all live workers; each such worker is `blocked`.
+- **Blocked is found by looking.** A worker that stopped working without reporting (idle at a prompt, waiting on a permission, a turn that ended without a report) never sends an event. On every wake, inspect all live workers; each such worker is `blocked`.
 - **Questions carry options.** A `question` event holds the worker's question and its options; the answer goes back through the manager's reply or `send`.
-- **Push check before close.** In the workspace, `git status --porcelain` prints nothing, and `git log @{u}..` prints nothing (a branch with no upstream instead needs `git log origin/<trunk>..HEAD` to print nothing). Otherwise keep the workspace and say what is unpushed.
+- **Push check before close.** In the workspace, `git status --porcelain` prints nothing, and after `git fetch origin`, `git log origin/<branch>..HEAD` prints nothing, where `<branch>` is the ticket's branch on the remote (for a branch never pushed, `git log origin/<trunk>..HEAD` instead). Otherwise keep the workspace and say what is unpushed.
 - **Acknowledge after handling.** When the manager batches events with an acknowledgment, handle every event of the batch first, then acknowledge.
 - **One coordinator per repository.** A second coordinator on the same repository takes events away from the first.
