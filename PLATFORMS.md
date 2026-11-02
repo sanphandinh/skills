@@ -84,45 +84,46 @@ Commit `.claude/settings.json` and `.codex/config.toml`; add `.omp/plugins/` to
    fallback for platforms that do not have it.
 4. `npm run validate`.
 
-## Running autopilot
+## Running the factory
 
-`autopilot` runs one fresh, non-interactive agent session per role, through
-the harness you name. Its script needs only Node 20+ and git; it runs from the
-plugin's install folder with no dependencies.
+`factory` runs a long-lived coordinator agent inside an agent manager. Every
+step of every ticket (plan, build, verify, review, rework) is a fresh worker
+that the manager starts in its own worktree. Orca is the only manager so far:
+`references/orca.md` in the skill, verified on Orca 1.4.244 with Oh My Pi
+workers (`Agent: omp`).
 
-| | Claude Code | Oh My Pi |
-|---|---|---|
-| Plugins | `software`, `software-claude` | `software`, `software-omp` |
-| Session | `claude -p --output-format json` delegating to `software-claude:<agent>` | `omp -p --mode json` delegating to `<agent>` |
-| Permissions | `--permission-mode bypassPermissions`: nobody can answer prompts, so each session runs inside a disposable worktree | `--auto-approve`, same reason |
-| Role models | Agent aliases (implementer `inherit`, others `opus`); the parent session runs on `sonnet` so the implementer never shares the reviewers' model. Remap aliases per project with `env` in `.claude/settings.json` (`templates/roles.claude-settings.json`) | Custom roles `implementer`, `verifier`, `reviewer` in the project's `.omp/config.yml` (`templates/roles.omp-config.yml`); unassigned ones fall back to `@task` and `@slow` |
+Each machine needs:
 
-Tickets can live in any of four trackers, named by the `Tracker:` line in
-`docs/agents/issue-tracker.md` (no line means local):
+- Orca running, its `orca` CLI on the PATH, and `gh` signed in.
+- The role agents at **user** scope, because the worktrees Orca creates do not
+  see a project's `.omp/plugins/`: `omp plugin install software-omp@sanphan-skills`
+  (planner, implementer, verifier, reviewers). An agent file with the same name
+  in `~/.omp/agent/agents/` takes precedence over the plugin's.
+- Role models in `.omp/config.yml` (`templates/roles.omp-config.yml`). Workers
+  start on `@smol` and delegate their step to the role agent.
 
-| Tracker | `Tracker:` line | Spec | Tickets | Claim and close | Pull requests |
-|---|---|---|---|---|---|
-| Local markdown | `local` | `.scratch/<feature>/spec.md` | files in `issues/` | commit pushed to trunk; closes on the ticket branch | `Pull requests:` line |
-| GitHub Issues | `github <owner>/<repo>` | `#42` or its URL | sub-issues | claim comment; `Closes` keyword and handoff comment | same repo unless `Pull requests:` says otherwise |
-| GitLab Issues | `gitlab <group>/<project>` | `#42` | linked issues (`relates_to`) | claim note; `Closes` keyword and handoff note | same project, as merge requests |
-| Jira Cloud | `jira <site URL> <KEY>` plus `Jira statuses:` | `KEY-42` (an epic) | child issues | claim comment; transition to the closed status and handoff comment | `Pull requests:` line (GitHub or GitLab) |
+Each project needs, from `setup-software-context` and `setup-verification`:
+`docs/agents/issue-tracker.md` with its `## Factory` section,
+`triage-labels.md`, `merge-policy.md`, and `verify.md`. Then, in an Orca
+terminal on the project's main checkout, run the `factory` skill
+(`/skill:factory` in Oh My Pi):
 
-GitHub uses `gh`, GitLab uses `glab`, both already signed in; Jira reads
-`JIRA_EMAIL` and `JIRA_API_TOKEN` from the environment and never stores them.
-
-A project also needs, from `setup-software-context` and `setup-verification`:
-
-- `docs/agents/issue-tracker.md` with its `Tracker:` line and, when tickets are local or on Jira, a `Pull requests: github|gitlab <owner>/<repo>` line. Every forge call passes that repository, so another remote never receives a pull request.
-- `docs/agents/merge-policy.md` (optional; the built-in defaults apply without it).
-- `docs/agents/verify.md`; without it nothing auto-merges.
-
-Run it from the repository root:
-
-```bash
-node <plugin folder>/skills/autopilot/scripts/autopilot.mjs run <spec: .scratch/<feature>/spec.md | #42 | KEY-42>
+```text
+factory setup   write docs/agents/factory.md and smoke-test the manager
+factory once    one wake, to watch what it does
+factory run     keep waking until told to stop
 ```
 
-The harness is detected: the agent session the script runs inside (`omp` or `claude` among its parent processes, or `CLAUDECODE=1`), else the agent plugin the project installed, else the only agent CLI on PATH. `--harness` overrides it.
+Talk to the coordinator by typing in its terminal, on the desktop or in Orca's
+mobile app ("pause", "resume", "stop", or an answer). It reads you when its
+current wait ends, at most `Wake timeout` later, or at once if you press Escape
+first. It asks you through `factory:hold` briefs on the ticket and an unread
+mark on the workspace in Orca.
 
-The adapters' smoke tests call the real CLIs only when asked:
-`AUTOPILOT_SMOKE_OMP=1`, `AUTOPILOT_SMOKE_CLAUDE=1`, `AUTOPILOT_SMOKE_GH=1`.
+State lives in three places: GitHub (tickets, plans, briefs, pull requests and
+the verdict statuses `factory/verify` and `factory/review`), Orca (workers in
+flight), and the memory folder outside the repository
+(`~/.local/share/factory/<repo>`: journal, wiki, worker results). A provider
+rate limit ends the coordinator's turn; tell it to continue once the limit
+resets, and it picks up the events waiting in Orca.
+

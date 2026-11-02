@@ -27,7 +27,7 @@ Look at the current repo to understand its starting state. Read whatever exists;
 - `docs/agents/`: does this skill's prior output already exist?
 - `.scratch/`: a sign that a local-markdown issue tracker convention is already in use
 - Is the `triage` skill installed? (a `triage` skill folder alongside this one, or `triage` in your available skills.) This decides whether Section B runs at all.
-- Is the `autopilot` skill installed? (same check.) This decides whether `docs/agents/merge-policy.md` and `docs/agents/autopilot.md` are written.
+- Is the `factory` skill installed? (same check.) This decides whether `docs/agents/merge-policy.md` and `docs/agents/factory.md` are written.
 - Monorepo signals: a `pnpm-workspace.yaml`, a `workspaces` field in `package.json`, or a populated `packages/*` with its own `src/`. These are present only in a genuinely large multi-package repo; their absence means single-context, which is almost every repo.
 
 ### 2. Present findings and ask
@@ -48,7 +48,7 @@ Default posture: these skills were designed for GitHub. If a `git remote` points
 - **Jira**: issues live in a Jira Cloud project; code and pull requests stay on GitHub or GitLab. Ask for the site URL, the project key, the code host, and the workflow status names for each triage role
 - **Other** (Linear, etc.): ask the user to describe the workflow in one paragraph; the skill will record it as freeform prose
 
-Record the choice in `docs/agents/issue-tracker.md`, filling its `Tracker:` line (and for Jira its `Pull requests:` and `Jira statuses:` lines); the `autopilot` skill reads them. For a local-markdown tracker in a repo hosted on GitHub, fill its `Pull requests:` line with the repository pull requests go to; when several remotes exist, confirm which one with the user instead of guessing. The GitHub and GitLab templates carry a "PRs as a request surface" flag, defaulted **off**. Leave it off and don't raise it: a user who wants external PRs in the triage queue can flip the flag in the file later.
+Record the choice in `docs/agents/issue-tracker.md`, filling its `Tracker:` line (and for Jira its `Pull requests:` and `Jira statuses:` lines); the `factory` skill reads them. For a local-markdown tracker in a repo hosted on GitHub, fill its `Pull requests:` line with the repository pull requests go to; when several remotes exist, confirm which one with the user instead of guessing. The GitHub and GitLab templates carry a "PRs as a request surface" flag, defaulted **off**. Leave it off and don't raise it: a user who wants external PRs in the triage queue can flip the flag in the file later.
 
 **Section B: Triage label vocabulary.** Skip this section entirely if the `triage` skill isn't installed (exploration told you), since an uninstalled skill needs no labels.
 
@@ -56,7 +56,7 @@ If it is installed, ask exactly one question:
 
 > Do you want to keep the default triage labels? (recommended: **yes**)
 
-The defaults are the five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. The `triage-labels.md` seed also has a `spec` row (default string `spec`): it is not a triage role, but autopilot uses it to tell a spec from a standalone ticket, so keep the row and create the label too. On **yes**, write them as-is. Only if the user says no, usually because their tracker already uses other names (e.g. `bug:triage` for `needs-triage`), collect the overrides so `triage` applies existing labels instead of creating duplicates.
+The defaults are the five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. The `triage-labels.md` seed also has a `spec` row (default string `spec`): it is not a triage role, but the factory uses it to tell a spec from a standalone ticket, so keep the row and create the label too. On **yes**, write them as-is. Only if the user says no, usually because their tracker already uses other names (e.g. `bug:triage` for `needs-triage`), collect the overrides so `triage` applies existing labels instead of creating duplicates.
 
 **Section C: Domain docs.** Default to **single-context** (one `GLOSSARY.md` + `docs/adr/` at the repo root). This fits almost every repo; write it without asking.
 
@@ -67,7 +67,7 @@ Offer **multi-context** (a root `GLOSSARY-MAP.md` pointing to per-context `GLOSS
 Show the user a draft of:
 
 - The `## Agent skills` block to add to `AGENTS.md` (see step 4)
-- The contents of `docs/agents/issue-tracker.md`, `docs/agents/domain.md`, `docs/agents/triage-labels.md` (only when `triage` is installed), and `docs/agents/merge-policy.md` and `docs/agents/autopilot.md` (only when `autopilot` is installed, each written from its seed as is)
+- The contents of `docs/agents/issue-tracker.md`, `docs/agents/domain.md`, `docs/agents/triage-labels.md` (only when `triage` is installed), and `docs/agents/merge-policy.md` and `docs/agents/factory.md` (only when `factory` is installed, each written from its seed as is)
 
 Let them edit before writing.
 
@@ -112,8 +112,8 @@ Then write the docs files using the seed templates in this skill folder as a sta
 - [issue-tracker-local.md](./issue-tracker-local.md): local-markdown issue tracker
 - [issue-tracker-jira.md](./issue-tracker-jira.md): Jira issue tracker with pull requests on GitHub or GitLab
 - [triage-labels.md](./triage-labels.md): label mapping (only if `triage` is installed)
-- [merge-policy.md](./merge-policy.md): when pull requests merge without a human (only if `autopilot` is installed)
-- [autopilot.md](./autopilot.md): the factory's pause switch, limits, and enabled tasks (only if `autopilot` is installed)
+- [merge-policy.md](./merge-policy.md): when pull requests merge without a human (only if `factory` is installed)
+- [factory.md](./factory.md): the factory's manager, limits and settings (only if `factory` is installed)
 - [domain.md](./domain.md): domain doc consumer rules + layout
 
 For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description.

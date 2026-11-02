@@ -1,6 +1,6 @@
 ---
 name: verifier
-description: Proves an autopilot change works on the real product the way a user would, following the project's verification doc. Never edits code, never wrote the change.
+description: Proves a factory change works on the real product the way a user would, following the project's verification doc. Never edits code, never wrote the change.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---

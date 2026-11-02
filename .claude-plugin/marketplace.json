@@ -12,7 +12,7 @@
     {
       "name": "software",
       "source": "./plugins/software",
-      "description": "Software factory skills: spec, tickets, TDD implementation, unattended autopilot builds, verification, code review, diagnosis, and project setup."
+      "description": "Software factory skills: spec, tickets, TDD implementation, verification, code review, diagnosis, and project setup."
     },
     {
       "name": "software-claude",
