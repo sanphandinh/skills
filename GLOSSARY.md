@@ -25,7 +25,7 @@ The tool that creates workspaces, runs workers, and reports their events: Orca n
 _Avoid_: harness, runner
 
 **Interface**:
-The nine operations the factory needs from an agent manager.
+The ten operations the factory needs from an agent manager.
 _Avoid_: API, adapter
 
 **Reference**:

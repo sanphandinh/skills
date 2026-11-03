@@ -66,5 +66,6 @@ Prove every interface operation on the real manager with a throwaway workspace. 
 4. **resume**: start worker `smoke sleeper` told to run `sleep 600`, then report. Run the reference's resume test while it sleeps.
 5. **stop-worker**: stop `smoke sleeper`; inspect it: `stopped`.
 6. **close-workspace**: commit a scratch file in the workspace without pushing; the push check must refuse to close it. Drop the commit (`git reset --hard <trunk>` in the workspace), run the push check again, close the workspace, and delete the `factory/smoke` branch.
+7. **schedule-wakes**: schedule wakes for this session every minute with the prompt `factory smoke wake: reply with the word pong and nothing else`, end your turn, and let a person confirm the prompt arrived and was answered after your turn ended; then cancel the schedule. (Setup asks the person to watch; `run` schedules the real wakes.)
 
 End with the table of results. Setup is done when every line is `PASS`; for a `FAIL`, say what to fix and run the failed check again after the fix.

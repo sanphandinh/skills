@@ -1,6 +1,6 @@
 # Agent-manager interface
 
-The factory needs nine operations from an agent manager. Each file in `references/` maps them to one manager's commands and lists that manager's traps. A reference is ready when the setup smoke test passes every operation on it.
+The factory needs ten operations from an agent manager. Each file in `references/` maps them to one manager's commands and lists that manager's traps. A reference is ready when the setup smoke test passes every operation on it.
 
 ## Vocabulary
 
@@ -22,6 +22,7 @@ The factory needs nine operations from an agent manager. Each file in `reference
 | stop-worker | worker id | the worker's session ends; whatever it pushed stays |
 | close-workspace | workspace | the workspace is removed, after the push check below passed |
 | resume | none | a new coordinator session receives the events of every live worker |
+| schedule-wakes | coordinator session, interval, prompt | every interval, the prompt arrives in the coordinator's session as a person's message would, starting a wake even after the coordinator ended its turn; cancelling it stops the wakes |
 
 ## Rules every reference keeps
 

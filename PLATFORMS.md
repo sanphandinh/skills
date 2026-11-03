@@ -111,19 +111,22 @@ terminal on the project's main checkout, run the `factory` skill
 ```text
 factory setup   write docs/agents/factory.md and smoke-test the manager
 factory once    one wake, to watch what it does
-factory run     keep waking until told to stop
+factory run     schedule wakes (an Orca automation) and keep building
 ```
 
-Talk to the coordinator by typing in its terminal, on the desktop or in Orca's
-mobile app ("pause", "resume", "stop", or an answer). It reads you when its
-current wait ends, at most `Wake timeout` later, or at once if you press Escape
-first. It asks you through `factory:hold` briefs on the ticket and an unread
-mark on the workspace in Orca.
+`run` creates one Orca automation per repository ("factory wake: <repo>") that
+types `/skill:factory once` into the coordinator's session every
+`Wake timeout`, so the factory keeps going after the agent ends its turn;
+Orca's mail cues start a wake as soon as a worker reports. Talk to the
+coordinator by typing in its terminal, on the desktop or in Orca's mobile app
+("pause", "resume", "stop", or an answer); "stop" removes the automation. It
+asks you through `factory:hold` briefs on the ticket and an unread mark on the
+workspace in Orca.
 
 State lives in three places: GitHub (tickets, plans, briefs, pull requests and
 the verdict statuses `factory/verify` and `factory/review`), Orca (workers in
 flight), and the memory folder outside the repository
 (`~/.local/share/factory/<repo>`: journal, wiki, worker results). A provider
-rate limit ends the coordinator's turn; tell it to continue once the limit
-resets, and it picks up the events waiting in Orca.
+rate limit ends a wake early; the next scheduled wake picks up where it
+stopped, and a worker that failed on the limit is restarted once.
 

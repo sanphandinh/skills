@@ -1,12 +1,12 @@
 # Playbook
 
-You are the coordinator. Each **wake** is one pass of the steps below. In `run` mode, begin the next wake as soon as one ends, until a person tells you to stop. In `once` mode, do one wake, then report what you found, what you started, what you merged and what waits for a person.
+You are the coordinator. Each **wake** is one pass of the steps below, then you end your turn with a short report: what you found, what you started, what you merged and what waits for a person. The next wake comes on its own: the scheduled wakes `run` set up, Orca's mail cues and a person's messages all start one. An idle board is not a reason to cancel the scheduled wakes; only a person's "stop" is.
 
 Decide, delegate, record. Workers read and write code; you read tickets, results, summaries and check states, never diffs or source files. Everything a wake needs is on GitHub, in the agent manager or in the memory folder, so a wake starts from what those say, not from what you remember.
 
 ## Each wake
 
-1. **Wait.** wait-events, up to `Wake timeout`. Skip it on a session's first wake, and in `once` mode when no worker is live.
+1. **Wait.** wait-events, up to `Wake timeout`, only while a worker is live and the wake has nothing else to do; otherwise skip it. A scheduled wake does not need to wait: it came to look at the board.
 2. **Reload.** Read `docs/agents/factory.md`, `docs/agents/merge-policy.md` and the memory index (MEMORY.md). On the first wake, and whenever you can no longer quote this playbook's steps, read this playbook and WORK-ORDERS.md again.
 3. **Handle events**, every one, as **Events** says.
 4. **Look at the workers.** Inspect every live worker and handle each `blocked` one, on every wake: a worker stuck at a prompt sends no event.
@@ -87,7 +87,7 @@ Each wake, for every held ticket whose label a person removed: read the comments
 
 **Worker questions**: answer from the ticket, the spec, the plan, the ADRs, the glossary and earlier answers when they settle it. A product question they do not settle goes to a person: reply to the worker that it should stop and report `failed` with the question in its result, then hold the ticket with the question. A person's answer never keeps a worker waiting.
 
-**Blocked workers**: read the worker's last output. Waiting on a permission or a question in its own terminal: send it the answer or "continue". Ended without reporting: send it "Report through the manager now: succeeded with your result if the step is done, failed with the reason if not." Still blocked on the next timeout wake: stop it and start one fresh worker for the same step; blocked again: hold.
+**Blocked workers**: read the worker's last output. Waiting on a permission or a question in its own terminal: send it the answer or "continue". Ended without reporting: send it "Report through the manager now: succeeded with your result if the step is done, failed with the reason if not." Still blocked on a wake at least `Wake timeout` later: stop it and start one fresh worker for the same step; blocked again: hold.
 
 **Failed workers**: a failure with no result or from the environment (a crash, a full disk, a network or model error) gets one fresh worker for the same step; a second one, or a failure in the work itself, is a hold.
 
