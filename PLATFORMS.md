@@ -115,8 +115,9 @@ factory run     schedule wakes (an Orca automation) and keep building
 ```
 
 `run` creates one Orca automation per repository ("factory wake: <repo>") that
-types `/skill:factory once` into the coordinator's session every
-`Wake timeout`, so the factory keeps going after the agent ends its turn;
+sends `/skill:factory once` every `Wake timeout` to an agent session Orca keeps
+for it in the main checkout; that session is the coordinator. It runs on the
+agent's default model, and it keeps going after any turn ends.
 Orca's mail cues start a wake as soon as a worker reports. Talk to the
 coordinator by typing in its terminal, on the desktop or in Orca's mobile app
 ("pause", "resume", "stop", or an answer); "stop" removes the automation. It

@@ -14,7 +14,7 @@ The factory reaches the agent manager only through the operations in [INTERFACE.
 ## Modes
 
 - `setup`: prepare this project for the factory and prove it with a smoke test. Follow [SETUP.md](SETUP.md).
-- `run`: become the coordinator. Do schedule-wakes for this session, every `Wake timeout`, with the prompt `/skill:factory once`, then do a wake. From then on every scheduled wake, and every person's message, starts the next wake, so the factory keeps going after your turn ends. Follow [PLAYBOOK.md](PLAYBOOK.md), with [WORK-ORDERS.md](WORK-ORDERS.md) for every worker you start and [MEMORY.md](MEMORY.md) for the journal and the lessons. When a person says stop, cancel the scheduled wakes.
+- `run`: start the factory and leave it running. Do schedule-wakes for the main checkout, every `Wake timeout`, with the prompt `/skill:factory once`, report that the factory is running and in which session, and end your turn. From then on the scheduled session is the coordinator: each wake it receives is a `once`. Follow [PLAYBOOK.md](PLAYBOOK.md), with [WORK-ORDERS.md](WORK-ORDERS.md) for every worker started and [MEMORY.md](MEMORY.md) for the journal and the lessons. To stop the factory, a person tells the coordinator "stop", which cancels the scheduled wakes.
 - `once`: do exactly one wake of the playbook, report it, and stop. The scheduled wakes of `run` send this; on its own it lets a person watch one wake.
 
 With no mode given, ask which one. `run` and `once` need `docs/agents/factory.md`; without it, run `setup` first.
