@@ -4,13 +4,19 @@
 
 **Blocked by:** 04, 05
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
 **Door:** two-way
 
-- [ ] Each worker terminal is titled `<ticket> <role>` and each workspace status follows its task.
+- [x] Each worker terminal is titled `<ticket> <role>` and each workspace status follows its task.
   Verify: during a sandbox run, `orca terminal list --json` and `orca worktree list --json` show the titles and the statuses changing with the steps.
-- [ ] A task waiting for the developer carries an unread mark that clears once answered.
+- [x] A task waiting for the developer carries an unread mark that clears once answered.
   Verify: trigger a hold; Orca marks that workspace unread; answer it; the mark clears on the next wake.
 - [ ] The phone shows every task and can answer a waiting worker or the coordinator.
   Verify: pair Orca's mobile companion; answer a worker's question from the phone; the worker continues.
+
+## Progress
+
+- Worker panes carry `<number> <role>` titles (`orca terminal set-pane-title`), and workspace status follows the step (`in-progress`, `in-review`, `completed`) with a one-line comment (sandbox runs, `orca worktree list`).
+- Holds set the unread mark (`isUnread: true` on `8-add-a-reverse-helper` while #8 waited) and the next wake cleared it once the person answered.
+- Waiting on the person: pair Orca's mobile companion and answer a worker or the coordinator from the phone.
