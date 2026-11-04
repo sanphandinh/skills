@@ -19,13 +19,13 @@
     {
       "name": "software-omp",
       "source": "./plugins/software-omp",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "description": "Oh My Pi agents and rules for the software skills: planner, implementer, verifier, and role-based reviewers, plus TDD guard rules."
     },
     {
       "name": "factory",
       "source": "./plugins/factory",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "description": "Agent-driven software factory: a coordinator agent builds approved specs through an agent manager (Orca first), with planned tickets, independent checks, and guarded automatic merges."
     }
   ]

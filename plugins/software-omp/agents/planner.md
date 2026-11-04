@@ -10,7 +10,7 @@ output:
   properties:
     plan:
       metadata:
-        description: The plan in markdown, with the headings Decisions, Change map, Interfaces, Tests, Verify, Door, Questions
+        description: The plan in markdown, with the headings Decisions, Change map, Interfaces, Tests, Verify, Door, Questions, Split
       type: string
     door:
       metadata:
@@ -45,8 +45,9 @@ Then write the plan, one heading per part:
 - **Change map**: the files to change, each with what changes in it; then the files not to touch, each with why (another ticket's scope, a public contract, generated code). When the spec splits the work across tickets, name the sibling tickets whose files stay untouched.
 - **Interfaces**: the signature of every function, type, endpoint or event this ticket adds or changes.
 - **Tests**: for each acceptance criterion and each branch of it (the normal case, the edges, the errors), the test to write first and where it lives.
-- **Verify**: the commands from the verification doc that prove each criterion on the real product.
+- **Verify**: the commands from the verification doc that prove each criterion on the real product. For each one, check that the environment the doc describes can reach it today: when it needs a fixture, an account, a file, a device state or a service the environment lacks, or a path no user can reach, add a question that names what to stage, with accepting test-only coverage as one option.
 - **Door**: `one-way` when the change is hard to walk back (a data migration, a published API, a deletion, an outside side effect), otherwise `two-way`, with the reason.
 - **Questions**: every product question the ticket leaves open (what users see or get, scope, wording, which behaviour wins), each with the options you see and your recommendation. Every part of the plan that depends on an open question stays open: write `open until question <n> is answered` in its place, never a default to build with.
+- **Split**: when the ticket changes more than one user-facing flow or more than one seam's ownership at once (for example, every reader type at once), so that one round of review cannot hold it, propose splitting it into smaller tickets in build order, each with its own acceptance criteria, as a question. Otherwise write `none`.
 
 Keep the plan short enough to review in one sitting: decisions and lists, not prose.
