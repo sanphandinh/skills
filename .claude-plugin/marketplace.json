@@ -12,12 +12,17 @@
     {
       "name": "software",
       "source": "./plugins/software",
-      "description": "Software factory skills: spec, tickets, TDD implementation, unattended autopilot builds, verification, code review, diagnosis, and project setup."
+      "description": "Software factory skills: spec, tickets, TDD implementation, verification, code review, diagnosis, and project setup."
     },
     {
       "name": "software-claude",
       "source": "./plugins/software-claude",
-      "description": "Claude Code agents for the software skills: implementer, verifier, review-standards, and review-spec."
+      "description": "Claude Code agents for the software skills: planner, implementer, verifier, review-standards, and review-spec."
+    },
+    {
+      "name": "factory",
+      "source": "./plugins/factory",
+      "description": "Agent-driven software factory: a coordinator agent builds approved specs through an agent manager (Orca first), with planned tickets, independent checks, and guarded automatic merges."
     }
   ]
 }

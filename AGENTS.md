@@ -52,21 +52,24 @@ Skills listed in `UPSTREAM.md` came from mattpocock/skills. Edit them freely; `n
 
 ## Current contents
 
-`core` (shared): `grilling`, `grill-me` (user-invoked), `handoff` (user-invoked), `wait-what` (user-invoked), `research`, `writing-for-agents`.
+`core` (shared): `grilling`, `grill-me` (user-invoked), `handoff` (user-invoked), `wait-what` (user-invoked), `research`, `writing-for-agents`, `audit-product-opportunity` (weighted evidence audit of a product or idea; `scripts/score_audit.py` computes the score).
 
 `software` (shared):
 
 - Factory pipeline (idea, grilling, spec, tickets, implement with TDD, review, PR, handoff): `setup-software-context`, `grill-with-docs`, `to-spec`, `to-tickets` (user-invoked); `implement` for one ticket or small work, `implement-spec` for a whole spec with parallel implementers on an integration branch (both user-invoked); `tdd`, `code-review`, `pr`.
-- Unattended build: `autopilot` (user-invoked) is a continuous software factory (ADR-0001): a scheduled `tick` runs one step per ticket (decompose, implement, gates, rework, merge, fix) for every approved spec and standalone ticket, keeps each ticket's state as run records on its pull request, stops merging while trunk is red, and calls a human only with a brief; `run <spec>` builds one spec by hand and `status` shows the board. A tested orchestrator script (`scripts/` in the skill) holds the rules, with tracker adapters for local markdown, GitHub, GitLab, and Jira and forge adapters for GitHub and GitLab; limits live in the project's `docs/agents/autopilot.md`. `--harness orca` runs every agent as an Orca worker in an Orca worktree, so runs are visible in Orca; the workspace and harness ports keep this optional. `setup-verification` (user-invoked) writes the `docs/agents/verify.md` its verifiers follow. Use `implement` for a single ticket by hand and `implement-spec` for one integration branch per spec.
+- Unattended build: the `factory` plugin (below) runs the agent-driven factory; `setup-verification` (user-invoked) writes the `docs/agents/verify.md` its verifiers follow. Use `implement` for a single ticket by hand and `implement-spec` for one integration branch per spec.
 - Large or unclear efforts: `wayfinder` (user-invoked) maps decision tickets on the tracker, then hands off to `to-spec`.
 - Issue intake: `triage` (user-invoked) moves issues and external PRs through the triage roles and writes agent briefs for `ready-for-agent`.
 - Design and debugging: `codebase-design`, `domain-modeling`, `improve-codebase-architecture` (user-invoked), `diagnosing-bugs`.
 - Around the build: `prototype` answers a design question with throwaway code before `to-spec`; `wizard` scripts the steps only a human can take (credentials, CI secrets, third-party dashboards, cutovers); `retro` (user-invoked) turns a finished session into changes to the agent's environment (checks, coding standards, steering files).
 - Project setup: `frontend-web-project-setup`, `portless-web-project-setup`, `setup-pre-commit`, `github-repo-setup`.
+- Frontend and local dev: `shadcn` (MIT, from shadcn/ui; components, registries, presets), `portless-worktree-dev` (recover Portless routes and proxies when worktrees collide).
 
-`software-claude`: agents `implementer` (inherit), `verifier`, `review-standards`, `review-spec` (opus).
+`software-claude`: agents `planner` (opus), `implementer` (inherit), `verifier`, `review-standards`, `review-spec` (opus).
 
-`software-omp`: agents `implementer` (`@implementer` falling back to `@task`), `verifier` (`@verifier` falling back to `@slow`), `review-standards`, `review-spec` (`@reviewer` falling back to `@slow`), all with typed output; rules `tdd-no-skipped-tests` (interrupts on skip/only), `tdd-no-weakened-assertions` (judge question on test edits).
+`software-omp`: agents `planner` (`@planner` falling back to `@plan`), `implementer` (`@implementer` falling back to `@task`), `verifier` (`@verifier` falling back to `@slow`), `review-standards`, `review-spec` (`@reviewer` falling back to `@slow`), all with typed output; rules `tdd-no-skipped-tests` (interrupts on skip/only), `tdd-no-weakened-assertions` (judge question on test edits).
+
+`factory` (shared): `factory` (user-invoked) is the agent-driven software factory (ADR-0002). `setup` writes the project's `docs/agents/factory.md` and smoke-tests the agent manager; `run` makes the session the coordinator, woken on a schedule by the agent manager, that builds every approved spec and standalone ticket through plan, build, check, rework and land, with each step a fresh worker in its own worktree; `once` does one wake. The coordinator follows `PLAYBOOK.md` and `WORK-ORDERS.md`, reaches the agent manager only through the ten operations in `INTERFACE.md`, and keeps its journal and wiki outside the repository (`MEMORY.md`). One reference per manager (`references/orca.md` today) maps the operations to commands. No scripts: merge safety is verdict statuses on the exact head commit plus `gh pr merge --match-head-commit`.
 
 ## Agent skills
 

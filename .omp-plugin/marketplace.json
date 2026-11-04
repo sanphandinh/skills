@@ -13,14 +13,20 @@
     {
       "name": "software",
       "source": "./plugins/software",
-      "version": "0.6.1",
-      "description": "Software factory skills: spec, tickets, TDD implementation, unattended autopilot builds, verification, code review, diagnosis, and project setup."
+      "version": "0.7.0",
+      "description": "Software factory skills: spec, tickets, TDD implementation, verification, code review, diagnosis, and project setup."
     },
     {
       "name": "software-omp",
       "source": "./plugins/software-omp",
-      "version": "0.3.0",
-      "description": "Oh My Pi agents and rules for the software skills: implementer, verifier, and role-based reviewers, plus TDD guard rules."
+      "version": "0.4.0",
+      "description": "Oh My Pi agents and rules for the software skills: planner, implementer, verifier, and role-based reviewers, plus TDD guard rules."
+    },
+    {
+      "name": "factory",
+      "source": "./plugins/factory",
+      "version": "0.1.0",
+      "description": "Agent-driven software factory: a coordinator agent builds approved specs through an agent manager (Orca first), with planned tickets, independent checks, and guarded automatic merges."
     }
   ]
 }

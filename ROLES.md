@@ -31,8 +31,14 @@ roles:
     omp: ["@reviewer", "@slow"]
     claude: opus
     codex: high
+  planner:
+    purpose: planning one ticket before code (decisions, change map, tests, door, questions) (software)
+    custom: true
+    omp: ["@planner", "@plan"]
+    claude: opus
+    codex: high
   implementer:
-    purpose: building one autopilot ticket test-first (software)
+    purpose: building one factory ticket test-first (software)
     custom: true
     omp: ["@implementer", "@task"]
     claude: inherit
@@ -63,7 +69,8 @@ role to a model. Change models in your config, not in this repo.
 | architect | specs, tickets, interface design | `@plan` | `opus` | high |
 | judge | quick pass or fail checks (OMP judged rules use this role) | `@judge` | `haiku` | low |
 | reviewer (custom) | code review | `@reviewer`, falls back to `@slow` | `opus` | high |
-| implementer (custom) | building one autopilot ticket | `@implementer`, falls back to `@task` | `inherit` | medium |
+| planner (custom) | planning one ticket before code | `@planner`, falls back to `@plan` | `opus` | high |
+| implementer (custom) | building one factory ticket | `@implementer`, falls back to `@task` | `inherit` | medium |
 | verifier (custom) | proving a change works, not its author | `@verifier`, falls back to `@slow` | `opus` | high |
 | writer (custom) | copy and articles | `@writer`, falls back to `@default` | `sonnet` | medium |
 
@@ -89,6 +96,7 @@ Pick model ids from `omp models`:
 
 ```yaml
 modelRoles:
+  planner: <provider>/<model>:<level>
   implementer: <provider>/<model>:<level>
   verifier: <provider>/<model>:<level>
   reviewer: <provider>/<model>:<level>

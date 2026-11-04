@@ -11,9 +11,9 @@ installs them per project with its own plugin commands.
 
 ## The pipeline
 
-A human takes part twice. First, the problem goes through `grill-with-docs` and `to-spec` until the spec, with its test seams, is approved (`Status: ready-for-agent`). Second, the human reviews only the pull requests the merge policy will not merge alone.
+A human takes part at three points. First, the problem goes through `grill-with-docs` and `to-spec` until the spec, with its test seams, is approved, and `to-tickets` splits it into tickets whose acceptance criteria each carry a `Verify:` line. Second, the human answers the factory's briefs: a product question a plan raised, a one-way door, a protected path, anything stuck. Third, the human reviews only the pull requests the merge policy holds.
 
-Between the two, `autopilot` splits the spec into tickets (stopping for approval when it is large), and for each ticket runs a fresh implementer, an independent verifier that drives the real product per `docs/agents/verify.md`, and the Spec and Standards reviewers, then opens one pull request. Auto-merge is on by default, but only for a two-way door with an allowed blast radius, a passing verdict on the current patch, no hard review finding, green CI, and no protected path touched (`docs/agents/merge-policy.md`). Each merged ticket leaves a handoff for the tickets it unblocks and a decision trail.
+In between, the `factory` plugin runs a coordinator agent inside an agent manager (Orca). It takes each ticket through plan (a planner settles the design before any code), build (a fresh implementer, test-first), check (an independent verifier that drives the real product per `docs/agents/verify.md`, and the Spec and Standards reviewers, each verdict a commit status on the exact head commit), rework, and an automatic merge when every gate in `docs/agents/merge-policy.md` holds. Each merged ticket leaves a handoff for the tickets it unblocks, and the coordinator keeps a journal and a wiki of lessons outside the repository. See [PLATFORMS.md](PLATFORMS.md#running-the-factory).
 
 ## Work on this repo
 

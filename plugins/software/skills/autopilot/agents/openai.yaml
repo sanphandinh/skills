@@ -1,5 +1,0 @@
-interface:
-  display_name: "Autopilot"
-  short_description: "Run the unattended software factory, or build one spec by hand"
-policy:
-  allow_implicit_invocation: false

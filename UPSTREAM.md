@@ -208,7 +208,7 @@ SOFTWARE.
 
 `plugins/software/skills/setup-verification` adapts `create-verification-skill`
 from [cursor/plugins `pstack`](https://github.com/cursor/plugins/tree/main/pstack),
-and the `autopilot` skill borrows pstack's ideas of independent verifiers,
+and the `factory` skill borrows pstack's ideas of independent verifiers,
 patch-bound verdicts, and decision trails. It is not tracked by the upstream
 tool.
 

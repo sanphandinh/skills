@@ -25,3 +25,7 @@ plugins:
     platform: omp
     description: "Oh My Pi agents and rules for the software skills: role-based reviewers, TDD guard rules."
     prefix: ""
+  factory:
+    platform: shared
+    description: "Agent-driven software factory: a coordinator agent builds approved specs through an agent manager (Orca first)."
+    prefix: ""

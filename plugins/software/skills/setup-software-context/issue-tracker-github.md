@@ -26,11 +26,11 @@ When set to `yes`, PRs run through the same labels and states as issues, using t
 
 GitHub shares one number space across issues and PRs, so a bare `#42` may be either: resolve with `gh pr view 42` and fall back to `gh issue view 42`.
 
-## Autopilot
+## Factory
 
 **Tracker:** github <owner>/<repo>
 
-Read by the `autopilot` skill. A spec is an issue with the `spec` label (its string is set in `triage-labels.md`); its tickets are its sub-issues. Open issues with a triage role that are neither a spec nor a sub-issue of an open spec are standalone tickets, built without a spec. Tickets are blocked by native issue dependencies or a `Blocked by:` line. Autopilot claims a ticket by posting an `autopilot:claim` comment (the earliest unreleased claim holds it), hands a ticket to a human by setting the `ready-for-human` label with a release comment, and after a merge posts the ticket's `## Handoff` comment and closes it. Read a blocker's handoff from its comments.
+Read by the `factory` skill. A spec is an open issue with the `spec` label (its string is set in `triage-labels.md`); its tickets are its sub-issues (`gh api repos/<owner>/<repo>/issues/<spec>/sub_issues`). An open issue with the agent-ready label that is neither a spec nor a sub-issue of an open spec is a standalone ticket. A ticket is blocked while any native blocker is open (`issue_dependencies_summary.blocked_by` on `gh api repos/<owner>/<repo>/issues/<n>`) or any issue in its `Blocked by:` line is open. A spec's priority is its `priority:p1`, `priority:p2` or `priority:p3` label; no label means `priority:p2`. The factory posts its plan, its questions and its briefs as comments on the ticket, adds `factory:hold` to a ticket or pull request that waits for a person, and after a merge posts the ticket's `## Handoff` comment and closes the ticket. Read a blocker's handoff from its comments.
 
 ## When a skill says "publish to the issue tracker"
 
