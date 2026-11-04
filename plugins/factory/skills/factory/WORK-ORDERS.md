@@ -52,7 +52,11 @@ Delegation line: the planner's, with the `implementer` agent.
 
 > Step: prove the ticket works on the real product at commit `<head_sha>` of pull request <url>, following `docs/agents/verify.md`. First make `git rev-parse HEAD` equal `<head_sha>` (`git fetch origin` and `git checkout --detach <head_sha>` when it does not). Read only: change no file and make no commit.
 >
-> Result also has: `verdict` (`PASS`, `PASS+NOTES` or `FAIL`), `head_sha` (the commit you checked), `evidence` (per acceptance criterion: what you ran or did, and what you saw), `findings` (each with `severity` `blocking` or `note`, `kind` `design`, `code`, `test` or `scope`, and `detail`).
+> Judge each acceptance criterion on its own: `pass` (you ran it and saw it work), `fail` (you ran it and saw it break), or `unverified` (you could not reach the point to observe it: the environment, a device, an account or the automation got in the way), with what stopped you. A criterion is `fail` only on observed behaviour. <When this is a re-run after an unverified round: the criteria still open are <list>; last time <reasons>.>
+>
+> <When the project's `Scarce resources` names a resource you hold, such as a simulator, a device, a browser profile or a port:> while you hold <resource>, run one command against it at a time and wait for it to finish: never in the background, never in parallel, never several steps chained in one long script. Start by bringing it to a clean state as `docs/agents/verify.md` says. When a command times out or you abort it, stop whatever it left running (as `docs/agents/verify.md` says) before you retry.
+>
+> Result also has: `verdict` (`FAIL` when any criterion is `fail`; else `UNVERIFIED` when any is `unverified`; else `PASS`, or `PASS+NOTES` when you have notes), `head_sha` (the commit you checked), `criteria` (each with `criterion`, `status` `pass`, `fail` or `unverified`, and `reason` for the last two), `evidence` (per criterion: what you ran or did, and what you saw), `findings` (each with `severity` `blocking` or `note`, `kind` `design`, `code`, `test` or `scope`, and `detail`).
 
 Delegation line: the planner's, with the `verifier` agent.
 
@@ -60,6 +64,8 @@ Delegation line: the planner's, with the `verifier` agent.
 
 > Step: review pull request <url> at commit `<head_sha>` with the `code-review` skill: fixed point `origin/<trunk>`, the spec axis against the ticket and its plan, the standards axis against the repository's standards. First make `git rev-parse HEAD` equal `<head_sha>` as above. Read only.
 >
-> Result also has: `verdict` (`pass` when no finding is blocking, else `fail`), `head_sha`, `findings` (each with `severity`, `kind` and `detail`, as above).
+> These constraints from the ticket, its spec and its plan are binding, and breaking any of them is a `blocking` finding, never a note: <every "do not", "must not", "keep", "unchanged" line, the plan's files not to touch, and the spec's out-of-scope list>. A change outside the plan that the pull request body does not disclose is `blocking` too.
+>
+> Result also has: `verdict` (`pass` when no finding is blocking, else `fail`), `head_sha`, `findings` (each with `severity`, `kind` and `detail`, as above). You decide the severity; the coordinator does not change it.
 
 Delegation line: "Do the step yourself with the `code-review` skill; it starts its own review agents."

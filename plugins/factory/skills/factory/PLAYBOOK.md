@@ -38,12 +38,17 @@ The ticket's **pull request** is the open one that closes it, whoever opened it 
 **Check.** For the pull request's head commit, start a `verifier` and a `reviewer` worker in the ticket's workspace, together when the limits allow. On each `done`, act only if the result's `head_sha` is still the head: post the evidence or the findings as a pull request comment headed `## Factory verify` or `## Factory review`, then set the verdict status on that commit, linking the comment:
 
 ```bash
-gh api repos/<owner>/<repo>/statuses/<head_sha> -f state=<success|failure> -f context=factory/verify -f description="<one line>" -f target_url=<comment url>
+gh api repos/<owner>/<repo>/statuses/<head_sha> -f state=<success|failure|pending> -f context=factory/verify -f description="<one line>" -f target_url=<comment url>
 ```
 
-`PASS` and `PASS+NOTES` are `success` for `factory/verify`; a review with no blocking finding is `success` for `factory/review`. A result for an older head is stale: drop it.
+Each verdict goes on as the worker gave it:
 
-**Rework.** Count the rework rounds already posted (`## Factory rework` comments). Below `Fix rounds`, post `## Factory rework <n>` listing the blocking findings, then start a fresh worker: a `planner` first when any finding is of kind `design` (its revised plan goes up as a new `## Factory plan`), else an `implementer` with the findings. A failed required check counts as a finding of kind `code`, with the check's name and log link. At `Fix rounds`, **hold** with a brief instead.
+- `factory/verify`: `PASS` and `PASS+NOTES` are `success`, `FAIL` is `failure`, `UNVERIFIED` is `pending`. An `UNVERIFIED` costs no rework round: start one fresh `verifier` for the same head, with the criteria still open and the reasons in its work order, plus any lesson from the memory that applies. Still `UNVERIFIED`: **hold** with a brief listing exactly what a person must check by hand on which commit; the person answers by setting `factory/verify` themselves or replying.
+- `factory/review`: `pass` is `success`, `fail` is `failure`. The reviewer owns severity: never turn its `pass` into `fail` or its `fail` into `pass`. When a note looks blocking to you, start one fresh `reviewer` asking about that note alone, or hold with a brief.
+
+A result for an older head is stale: drop it.
+
+**Rework.** Count the rework rounds already posted (`## Factory rework` comments). Below `Fix rounds`, post `## Factory rework <n>` listing the blocking findings, then start a fresh worker: a `planner` first when any finding is of kind `design` (its revised plan goes up as a new `## Factory plan`), else an `implementer` with the findings. A failed required check counts as a finding of kind `code`, with the check's name and log link. At `Fix rounds`, **hold** with a brief instead. When a person grants extra rounds, say in every later brief how many were granted, and offer splitting what is left into a follow-up ticket as one of the options.
 
 **Land.** When the merge guard passes, merge: `gh pr merge <number> --squash --match-head-commit <head_sha>`. When a merge-policy line fails, **hold** with the reason. After a person releases the hold:
 
