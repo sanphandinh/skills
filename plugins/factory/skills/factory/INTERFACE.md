@@ -22,7 +22,7 @@ The factory needs ten operations from an agent manager. Each file in `references
 | stop-worker | worker id | the worker's session ends; whatever it pushed stays |
 | close-workspace | workspace | the workspace is removed, after the push check below passed |
 | resume | none | a new coordinator session receives the events of every live worker |
-| schedule-wakes | main checkout workspace, interval, prompt | every interval the prompt arrives in one agent session the manager keeps for this schedule (started on the first run, reused afterwards), so wakes keep coming whether or not any session ended its turn; that session is the coordinator; cancelling the schedule stops the wakes |
+| schedule-wakes | main checkout workspace, interval, prompt, optional pre-wake check | on each interval the manager runs the check when configured: exit 0 delivers the prompt into the session it keeps for this schedule (started on the first run, reused afterwards), any other exit skips that interval without calling a model; that session is the coordinator; cancelling the schedule stops the wakes |
 
 ## Rules every reference keeps
 

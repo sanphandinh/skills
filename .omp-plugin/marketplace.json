@@ -25,7 +25,7 @@
     {
       "name": "factory",
       "source": "./plugins/factory",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "description": "Agent-driven software factory: a coordinator agent builds approved specs through an agent manager (Orca first), with planned tickets, independent checks, and guarded automatic merges."
     }
   ]
