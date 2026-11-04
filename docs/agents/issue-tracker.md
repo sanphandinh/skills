@@ -19,6 +19,12 @@ Issues and specs for this repo live as markdown files in `.scratch/`.
 
 Code for a ticket still goes through a pull request on this repository, even though tickets live here. Every pull request operation names this repository explicitly; never let a tool infer it from git remotes, because a second remote (such as `upstream`) may point somewhere else.
 
+## Factory
+
+**Tracker:** local
+
+Read by the `factory` skill. A **spec** is a directory `.scratch/<feature-slug>/` that contains `spec.md`; it stays open while the spec or any of its tickets is not `Status: closed`. A spec is **approved** when its tickets that should be built carry `Status: ready-for-agent` (the agent-ready role from `triage-labels.md`) and the spec is not waiting on a person. Its **tickets** are `.scratch/<feature-slug>/issues/<NN>-<slug>.md`. A **standalone ticket** is an open issue file with `Status: ready-for-agent` under `.scratch/<slug>/issues/` when that folder has no `spec.md`, or under `.scratch/factory-fixes/issues/` for trunk-fix work. A ticket is **blocked** while any ticket named in its `Blocked by:` line is not `Status: closed`. **Priority** on a spec is `Priority: p1`, `Priority: p2`, or `Priority: p3` on `spec.md`; missing means `p2`. A **hold** is `Status: ready-for-human` with a `## Factory brief` under `## Comments`; when a pull request exists, also add the `factory:hold` label on GitHub. The factory appends `## Factory plan`, verify, review, rework, and brief sections under the ticket's `## Comments`, commits those ticket updates to trunk outside pull requests, and after merge appends `## Handoff` and sets `Status: closed`.
+
 ## Claiming and closing tickets
 
 - **Claim**: add `Claimed-by: <who>` (a person) near the top, commit only that change, and push it to trunk before any other work. A rejected push means someone claimed first: pull and pick another ticket. The factory works only tickets nobody claimed.
