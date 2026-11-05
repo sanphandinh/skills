@@ -1,0 +1,87 @@
+name: Bug
+description: Report a bug in a fixed shape so an agent or a person can reproduce it and check the fix without asking you.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill every required field. The reproduction criteria are what an agent runs to check your claim and, later, the fix, so write them with care.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: "One or two sentences: what is broken."
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: "What happens now. Quote the exact error or output."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: "What should happen instead."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: "Numbered steps from a clean start, so someone else gets the same result."
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: "Version or commit, operating system, runtime, browser, and anything else the bug depends on."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction-criteria
+    attributes:
+      label: Reproduction criteria
+      description: |
+        At least one checkbox. Give each a `Verify:` line that an agent can run without a person: a command, a request, or automated browser steps. A purely manual check is not accepted.
+        The `Verify:` line must fail while the bug exists and pass after a correct fix, so it proves this bug and nothing nearby.
+      placeholder: |
+        - [ ] The export of an empty list returns an empty file instead of an error
+          Verify: `npm run export -- --input fixtures/empty.json; echo $?` prints 0
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: "Optional. A screenshot or screen recording for a visual bug; a log or terminal transcript otherwise. Leave empty if there is none. Redact secrets and personal data."
+    validations:
+      required: false
+  - type: input
+    id: frequency
+    attributes:
+      label: Frequency
+      description: "Optional. Always, or how often when it is intermittent."
+    validations:
+      required: false
+  - type: input
+    id: since
+    attributes:
+      label: Since
+      description: "Optional. The version, commit, or date when it started, if you know."
+    validations:
+      required: false
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+      description: "Optional. Nearby behavior that looks related but is not part of this bug."
+    validations:
+      required: false
