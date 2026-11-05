@@ -15,6 +15,35 @@ This skill has you show commands, outputs and captured artifacts. **Redact every
 
 If the redacted output is not enough to diagnose the bug, say so and ask the user.
 
+## Bug issue intake
+
+Apply this section only when the work is tied to a **bug issue** on the project's tracker. With no bug issue (the user just says "debug this" about a symptom), skip it and start at Phase 1.
+
+A **bug issue** is an issue labelled `bug` on GitHub or GitLab, or a file in the local bugs folder (`.scratch/bugs/issues/`). It is never a spec: it never carries the `spec` label, and locally it never lives in a folder with `spec.md`. The reporter has defined the bug in fixed fields; the ones you depend on are **Actual behavior**, **Expected behavior**, **Reproduction criteria** (checkboxes, each with a `Verify:` line) and the optional **Evidence**. Never rewrite or reinterpret the reporter's claim.
+
+### Find and claim
+
+- **Given a specific issue**, work exactly that bug.
+- **Given none**, list the open bug issues on the tracker:
+  - GitHub and GitLab: open issues labelled `bug`.
+  - Local markdown: the open files in the local bugs folder (any `Status:` other than `closed`).
+
+  Skip every issue whose triage state is `needs-info` (the label on GitHub and GitLab, the `Status:` line locally) and every issue already claimed (it has an assignee on GitHub and GitLab, a `Claimed-by:` line locally). Take the oldest remaining one: the earliest created on GitHub and GitLab, the lowest number locally. If none remains, say so and stop.
+- **Claim before any work**: assign the issue to yourself on GitHub and GitLab; add a `Claimed-by: <who>` line near the top of the file locally. Use the tracker's own operations as the project's tracker setup describes them.
+
+### Self-verify
+
+Before Phase 1, check the reporter's claim against the current code:
+
+1. Read the whole issue body, then look at the Evidence (screenshot, recording, log or transcript) so you understand what the reporter saw.
+2. Run **every** `Verify:` line, unattended. Record each one as **reproduced** (it failed, showing the Actual behavior), **not reproduced** (it passed, or failed with some other symptom) or **could not run**, with its command and output, redacted as above.
+3. A bug with no runnable `Verify:` line is missing information. Do not invent a reproduction of your own and do not start Phase 1.
+4. If any `Verify:` line is not reproduced or could not run, stop. Never pick a nearby failure and diagnose that in its place.
+
+### Hand over to Phase 1
+
+When every `Verify:` line is reproduced, those lines are your first feedback loop for Phase 1: start from the reporter's own commands, then tighten them. The Phase 1 completion criterion and every later phase apply as written.
+
 ## Phase 1: Build a feedback loop
 
 **This is the skill.** Everything else is mechanical. If you have a **tight** pass/fail signal for the bug (one that goes red on _this_ bug), you will find the cause; bisection, hypothesis-testing, and instrumentation all just consume it. If you don't have one, no amount of staring at code will save you.
