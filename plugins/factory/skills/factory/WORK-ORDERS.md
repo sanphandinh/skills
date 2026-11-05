@@ -6,7 +6,7 @@ A work order is everything a worker gets; it starts with nothing else. Fill the 
 
 > Factory worker `<number> <role>` for `<owner>/<repo>`, ticket #<number> "<title>"<, rework round <n>>.
 >
-> Workspace: this checkout, branch `<branch>`, trunk `<trunk>`. Read the project's `AGENTS.md` first and the docs it points to; the tracker doc is `docs/agents/issue-tracker.md`.
+> Workspace: this checkout, branch `<branch>`, trunk `<trunk>`. Read the project's `AGENTS.md` first and the docs it points to; the tracker doc is `docs/agents/issue-tracker.md`. Reply language: read `docs/agents/response-language.md` when it exists (else `match-user`). Copy its `Reply language:` value into every brief and human-facing comment. When that value is `match-user` and there is no live user message, resolve the language as the ticket or spec when it has prose, else the latest human comment on it, else English, and name that resolved language in the brief.
 > Ticket: <url>. Spec: <url, or "none">. Plan: <url of the latest `## Factory plan` comment, or "none yet">. Handoffs of the tickets that blocked it: <urls, or "none">.
 >
 > <The role's delegation line, from its section below.>

@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Break a plan, spec, or conversation into a set of **tickets**: tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
-The issue tracker and triage label vocabulary should have been provided to you. If not, tell the user to run the `setup-software-context` skill.
+The issue tracker and triage label vocabulary should have been provided to you. If not, tell the user to run the `setup-software-context` skill. Follow `docs/agents/response-language.md` for natural language. If that file is missing, use the language of the user's latest message when there is one; otherwise the language of the ticket or spec when it has prose, else the latest human comment on it, else English.
 
 ## Process
 

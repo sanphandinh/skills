@@ -30,4 +30,4 @@ Model roles used by the agents (`reviewer`, `writer`, ...) are mapped to models
 in `.omp/config.yml` under `modelRoles`, or in your own agent config.
 
 <!-- The setup-software-context skill fills in the issue tracker, triage labels,
-     and domain docs sections below. -->
+     domain docs, and response language sections below. -->

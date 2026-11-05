@@ -104,7 +104,7 @@ Each machine needs:
 
 Each project needs, from `setup-software-context` and `setup-verification`:
 `docs/agents/issue-tracker.md` with its `## Factory` section,
-`triage-labels.md`, `merge-policy.md`, and `verify.md`. Then, in an Orca
+`triage-labels.md`, `merge-policy.md`, `response-language.md`, and `verify.md`. Then, in an Orca
 terminal on the project's main checkout, run the `factory` skill
 (`/skill:factory` in Oh My Pi):
 

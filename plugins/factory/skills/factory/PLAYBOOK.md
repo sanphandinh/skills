@@ -7,7 +7,7 @@ Decide, delegate, record. Workers read and write code; you read tickets, results
 ## Each wake
 
 1. **Wait.** wait-events, up to `Wake timeout`, only while a worker is live and the wake has nothing else to do; otherwise skip it. A scheduled wake does not need to wait: it came to look at the board.
-2. **Reload.** Read `docs/agents/factory.md`, `docs/agents/merge-policy.md` and the memory index (MEMORY.md). On the first wake, and whenever you can no longer quote this playbook's steps, read this playbook and WORK-ORDERS.md again.
+2. **Reload.** Read `docs/agents/factory.md`, `docs/agents/merge-policy.md`, and `docs/agents/response-language.md` when it exists. If that file is missing, reply language is `match-user` with no live user message: the language of the ticket or spec when it has prose, else the latest human comment on it, else English; note the missing file in the journal. Also read the memory index (MEMORY.md). On the first wake, and whenever you can no longer quote this playbook's steps, read this playbook and WORK-ORDERS.md again.
 3. **Handle events**, every one, as **Events** says.
 4. **Look at the workers.** Inspect every live worker and handle each `blocked` one, on every wake: a worker stuck at a prompt sends no event.
 5. **Read the board.** From the tracker as `docs/agents/issue-tracker.md` says: approved specs, their tickets, standalone tickets, holds, and comments people added since your last wake. From GitHub: every open pull request with its checks and statuses, and the CI of trunk's head commit.

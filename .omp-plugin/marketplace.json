@@ -7,13 +7,13 @@
     {
       "name": "core",
       "source": "./plugins/core",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "description": "Cross-domain process skills: grilling, research, handoff, and writing for agents."
     },
     {
       "name": "software",
       "source": "./plugins/software",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "description": "Software factory skills: spec, tickets, TDD implementation, verification, code review, diagnosis, and project setup."
     },
     {
@@ -25,7 +25,7 @@
     {
       "name": "factory",
       "source": "./plugins/factory",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "description": "Agent-driven software factory: a coordinator agent builds approved specs through an agent manager (Orca first), with planned tickets, independent checks, and guarded automatic merges."
     }
   ]
