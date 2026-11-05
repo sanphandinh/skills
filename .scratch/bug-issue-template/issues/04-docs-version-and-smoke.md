@@ -46,6 +46,8 @@ Note: my instructions said "triage is not installed, skip Section B", but the ag
 
 **Cleanup.** `/tmp/bug-template-smoke/` and its run scripts and logs were deleted; `git status` in this worktree lists no sandbox or seeded bug file.
 
+**Post-smoke review fixes (2026-11-05):** (1) `diagnosing-bugs` local find now lists only numbered `<NN>-<slug>.md` files in `.scratch/bugs/issues/`, not `TEMPLATE.md`. (2) the cannot-fix-yet path now releases the agent's claim when setting `needs-info` (remove assignee on GitHub/GitLab, remove `Claimed-by:` locally), addressing Smokes 4 and 5 leaving a claim in place. (3) the local seed `bug-template-local.md` uses plain `Status:` and `Category:` lines, not bold. Smokes were not re-run.
+
 ## Handoff
 
 **Delivered:** `AGENTS.md`'s existing contents list now mentions the bug template under `setup-software-context` and the bug-issue behaviour under `diagnosing-bugs`, with no new skill entry. The `software` plugin is 0.8.0 in every file that records it. `npm run validate` and `npm test` pass. The five smokes ran against the merged skills and all behaved as the spec describes; the record is under `## Comments`.

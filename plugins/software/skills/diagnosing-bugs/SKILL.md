@@ -26,10 +26,10 @@ A **bug issue** is an issue labelled `bug` on GitHub or GitLab, or a file in the
 - **Given a specific issue**, work exactly that bug.
 - **Given none**, list the open bug issues on the tracker:
   - GitHub and GitLab: open issues labelled `bug`.
-  - Local markdown: the open files in the local bugs folder (any `Status:` other than `closed`).
+  - Local markdown: numbered bug files in the local bugs folder (only `<NN>-<slug>.md`; never `TEMPLATE.md`) whose `Status:` is not `closed`.
 
   Skip every issue whose triage state is `needs-info` (the label on GitHub and GitLab, the `Status:` line locally) and every issue already claimed (it has an assignee on GitHub and GitLab, a `Claimed-by:` line locally). Take the oldest remaining one: the earliest created on GitHub and GitLab, the lowest number locally. If none remains, say so and stop.
-- **Claim before any work**: assign the issue to yourself on GitHub and GitLab; add a `Claimed-by: <who>` line near the top of the file locally. Use the tracker's own operations as the project's tracker setup describes them.
+- **Claim before any work**: assign the issue to yourself on GitHub and GitLab; add a `Claimed-by: <who>` line near the top of the file locally. Use the tracker's own operations as the project's tracker setup describes them. Keep the claim until the bug is fixed or you take the [cannot-fix-yet](#cannot-fix-yet) path; release it when you move the issue to `needs-info`.
 
 ### Self-verify
 
@@ -61,10 +61,10 @@ Then:
    - **What is needed from the reporter**: the specific missing item, such as a `Verify:` line that runs unattended and fails while the bug exists, access to the environment that reproduces it, or a captured artifact.
 
    The comment is public, so apply [Redact](#redact) to everything in it. Write `<REDACTED>` for a secret in a command or an output, and name the environment variable that holds it instead of its value. If the redacted output is not enough for the reporter to act on, say so in the comment.
-2. **Move the issue to `needs-info`**, using the label string for that role in the project's triage label mapping:
-   - GitHub and GitLab: post the comment and set the label with the comment and label operations in the project's tracker doc.
-   - Local markdown: append the comment under the `## Comments` heading at the bottom of the file (add the heading if it is missing) and set the `Status:` line to `needs-info`.
-3. **Leave the issue open.** Never close it, and set no state other than `needs-info`: the reporter's update returns the issue to the triage queue through the existing triage rules.
+2. **Move the issue to `needs-info` and release your claim**, using the label string for that role in the project's triage label mapping:
+   - GitHub and GitLab: post the comment, set the label, and remove your assignee with the comment, label, and assignee operations in the project's tracker doc.
+   - Local markdown: append the comment under the `## Comments` heading at the bottom of the file (add the heading if it is missing), set the `Status:` line to `needs-info`, and remove the `Claimed-by:` line you added.
+3. **Leave the issue open.** Never close it, and set no state other than `needs-info`: the reporter's update returns the issue to the triage queue through the existing triage rules, and with the claim released the bug is pickable again once triage sets it back to `needs-triage`.
 
 Then stop; do not diagnose a different failure in its place.
 

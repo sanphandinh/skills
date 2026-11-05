@@ -4,9 +4,9 @@ Copy this file to `.scratch/bugs/issues/<NN>-<slug>.md`, numbered from `01`, and
 
 # <NN>: <short bug title>
 
-**Status:** needs-triage
+Status: needs-triage
 
-**Category:** bug
+Category: bug
 
 ## Summary (required)
 
