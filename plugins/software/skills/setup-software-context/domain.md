@@ -2,6 +2,8 @@
 
 How the engineering skills should consume this repo's domain documentation when exploring the codebase.
 
+Reply language for user-facing prose is separate: see `docs/agents/response-language.md`.
+
 ## Before exploring, read these
 
 - **`GLOSSARY.md`** at the repo root, or

@@ -34,7 +34,7 @@ Use this template for writing the PR body:
 
 ## Sections
 
-Skip all preambles and keep prose brief. Use the user's domain language from `GLOSSARY.md`.
+Skip all preambles and keep prose brief. Follow `docs/agents/response-language.md` for natural language. If that file is missing, use the language of the user's latest message when there is one; otherwise the language of the ticket or spec when it has prose, else the latest human comment on it, else English. Use domain terms from `GLOSSARY.md`.
 
 ### Summary
 

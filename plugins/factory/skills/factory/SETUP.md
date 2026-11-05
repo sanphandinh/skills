@@ -5,9 +5,10 @@ Prepare one project for the factory, then prove the setup with a smoke test agai
 ## 1. Check the documents the factory reads
 
 - `docs/agents/issue-tracker.md` with its `## Factory` section and `Tracker:` line, `docs/agents/triage-labels.md`, and `docs/agents/merge-policy.md`: written by the `setup-software-context` skill.
+- `docs/agents/response-language.md`: written by the same skill. When it is missing, do not stop. Wakes use `match-user` with no live user message (the language of the ticket or spec when it has prose, else the latest human comment, else English) and the journal notes the gap. Tell the user they can add the file by re-running `setup-software-context`.
 - `docs/agents/verify.md`: written by the `setup-verification` skill.
 
-Stop at the first one missing and tell the user which skill writes it.
+Stop at the first missing file in the first and third bullets and tell the user which skill writes it. A missing `response-language.md` does not stop setup.
 
 ## 2. Pick the agent manager
 

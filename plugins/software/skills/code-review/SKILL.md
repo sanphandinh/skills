@@ -10,7 +10,7 @@ Two-axis review of the diff between `HEAD` and a fixed point the user supplies:
 
 Both axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings.
 
-The issue tracker should have been provided to you. If not, tell the user to run the `setup-software-context` skill.
+The issue tracker should have been provided to you. If not, tell the user to run the `setup-software-context` skill. Follow `docs/agents/response-language.md` for natural language. If that file is missing, use the language of the user's latest message when there is one; otherwise the language of the ticket or spec when it has prose, else the latest human comment on it, else English.
 
 ## Process
 

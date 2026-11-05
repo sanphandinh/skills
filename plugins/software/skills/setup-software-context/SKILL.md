@@ -1,6 +1,6 @@
 ---
 name: setup-software-context
-description: "Configure this repo for the engineering skills: set up its issue tracker, triage label vocabulary, and domain doc layout. Run once before first use of the other engineering skills."
+description: "Configure this repo for the engineering skills: set up its issue tracker, triage label vocabulary, domain doc layout, and agent reply language. Run once before first use of the other engineering skills."
 disable-model-invocation: true
 ---
 
@@ -11,6 +11,7 @@ Scaffold the per-repo configuration that the engineering skills assume:
 - **Issue tracker**: where issues live (GitHub by default; local markdown is also supported out of the box)
 - **Triage labels**: the strings used for the five canonical triage roles
 - **Domain docs**: where `GLOSSARY.md` and ADRs live, and the consumer rules for reading them
+- **Response language**: which natural language agents use for user-facing prose
 
 This is a prompt-driven skill, not a deterministic script. Explore, present what you found, confirm with the user, then write.
 
@@ -24,7 +25,7 @@ Look at the current repo to understand its starting state. Read whatever exists;
 - `AGENTS.md` and `CLAUDE.md` at the repo root: does either exist? Is there already an `## Agent skills` section in either?
 - `GLOSSARY.md` and `GLOSSARY-MAP.md` at the repo root
 - `docs/adr/` and any `src/*/docs/adr/` directories
-- `docs/agents/`: does this skill's prior output already exist?
+- `docs/agents/`: does this skill's prior output already exist? In particular `response-language.md` and its `Reply language:` line
 - `.scratch/`: a sign that a local-markdown issue tracker convention is already in use
 - Is the `triage` skill installed? (a `triage` skill folder alongside this one, or `triage` in your available skills.) This decides whether Section B runs at all.
 - Is the `factory` skill installed? (same check.) This decides whether `docs/agents/merge-policy.md` is written; the factory's own `setup` mode writes `docs/agents/factory.md` later.
@@ -62,12 +63,22 @@ The defaults are the five canonical roles, each label string equal to its name: 
 
 Offer **multi-context** (a root `GLOSSARY-MAP.md` pointing to per-context `GLOSSARY.md` files) only when exploration found monorepo signals. Then confirm which layout they want.
 
+**Section D: Response language.**
+
+> Explainer: Engineering skills draft chat, briefs, and sometimes pull request prose. This setting keeps that text in one language policy for the repo. It does not change domain vocabulary in `GLOSSARY.md`.
+
+Ask exactly one question:
+
+> Should agents **match the language you write in** each message? (recommended: **yes**)
+
+On **yes**, set `Reply language: match-user`. On **no**, ask which fixed language the team wants (`en`, `vi`, or another BCP 47 tag) and set `Reply language:` to that value. If exploration already found a `docs/agents/response-language.md`, propose keeping its current line unless the user wants to change it.
+
 ### 3. Confirm and edit
 
 Show the user a draft of:
 
 - The `## Agent skills` block to add to `AGENTS.md` (see step 4)
-- The contents of `docs/agents/issue-tracker.md`, `docs/agents/domain.md`, `docs/agents/triage-labels.md` (only when `triage` is installed), and `docs/agents/merge-policy.md` (only when `factory` is installed, written from its seed as is)
+- The contents of `docs/agents/issue-tracker.md`, `docs/agents/domain.md`, `docs/agents/response-language.md`, `docs/agents/triage-labels.md` (only when `triage` is installed), and `docs/agents/merge-policy.md` (only when `factory` is installed, written from its seed as is)
 
 Let them edit before writing.
 
@@ -81,7 +92,7 @@ Let them edit before writing.
 - If only `CLAUDE.md` exists, propose moving its content into a new `AGENTS.md` and replacing `CLAUDE.md` with the single line `@AGENTS.md`. Do it only after the user agrees; otherwise edit `CLAUDE.md`.
 - If neither exists, create `AGENTS.md`, plus a `CLAUDE.md` containing only `@AGENTS.md`.
 
-If an `## Agent skills` block already exists in the chosen file, update its contents in-place rather than appending a duplicate. Don't overwrite user edits to the surrounding sections.
+If an `## Agent skills` block already exists in the chosen file, update its contents in-place rather than appending a duplicate. Don't overwrite user edits to the surrounding sections. When updating `### Response language`, set the line to the trigger wording below and copy **Reply language:** from `docs/agents/response-language.md` verbatim; do not paraphrase the value.
 
 The block:
 
@@ -99,6 +110,10 @@ The block:
 ### Domain docs
 
 [one-line summary of layout: "single-context" or "multi-context"]. See `docs/agents/domain.md`.
+
+### Response language
+
+Before writing prose for a person (chat, issue, spec, ticket, brief, PR body), read `docs/agents/response-language.md`. **Reply language:** [copy the `Reply language:` value from that file verbatim, e.g. `match-user`].
 ```
 
 Include the `### Triage labels` sub-block, and write `docs/agents/triage-labels.md`, only when `triage` is installed and Section B ran. When it isn't, both are omitted.
@@ -114,9 +129,12 @@ Then write the docs files using the seed templates in this skill folder as a sta
 - [triage-labels.md](./triage-labels.md): label mapping (only if `triage` is installed)
 - [merge-policy.md](./merge-policy.md): when pull requests merge without a human (only if `factory` is installed)
 - [domain.md](./domain.md): domain doc consumer rules + layout
+- [response-language.md](./response-language.md): reply language policy
 
 For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description.
 
+When updating an existing `docs/agents/response-language.md`, change only the `Reply language:` line (and any user-edited notes) unless the user asked to replace the whole file from the seed.
+
 ### 5. Done
 
-Tell the user the setup is complete and which engineering skills will now read from these files. Mention they can edit `docs/agents/*.md` directly later; re-running this skill is only necessary if they want to switch issue trackers or restart from scratch. When `factory` is installed, the next steps are the `setup-verification` skill, then the `factory` skill's `setup` mode.
+Tell the user the setup is complete and which engineering skills will now read from these files. Mention they can edit `docs/agents/*.md` directly later (including `Reply language:` in `response-language.md`); re-running this skill is only necessary if they want to switch issue trackers or restart from scratch. When `factory` is installed, the next steps are the `setup-verification` skill, then the `factory` skill's `setup` mode.

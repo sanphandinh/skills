@@ -84,3 +84,7 @@ The five canonical triage roles, recorded as a `Status:` line in each issue file
 ### Domain docs
 
 Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.
+
+### Response language
+
+Before writing prose for a person (chat, issue, spec, ticket, brief, PR body), read `docs/agents/response-language.md`. **Reply language:** match-user.

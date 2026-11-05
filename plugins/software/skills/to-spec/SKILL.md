@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 This skill takes the current conversation context and codebase understanding and produces a spec. Do NOT interview the user; just synthesize what you already know.
 
-The issue tracker and triage label vocabulary should have been provided to you. If not, tell the user to run the `setup-software-context` skill.
+The issue tracker and triage label vocabulary should have been provided to you. If not, tell the user to run the `setup-software-context` skill. Follow `docs/agents/response-language.md` for natural language. If that file is missing, use the language of the user's latest message when there is one; otherwise the language of the ticket or spec when it has prose, else the latest human comment on it, else English.
 
 ## Process
 
