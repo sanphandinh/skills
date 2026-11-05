@@ -1,6 +1,6 @@
 ---
 name: setup-software-context
-description: "Configure this repo for the engineering skills: set up its issue tracker, triage label vocabulary, domain doc layout, and agent reply language. Run once before first use of the other engineering skills."
+description: "Configure this repo for the engineering skills: set up its issue tracker, triage label vocabulary, domain doc layout, agent reply language, and optionally a bug issue template. Run once before first use of the other engineering skills."
 disable-model-invocation: true
 ---
 
@@ -12,6 +12,7 @@ Scaffold the per-repo configuration that the engineering skills assume:
 - **Triage labels**: the strings used for the five canonical triage roles
 - **Domain docs**: where `GLOSSARY.md` and ADRs live, and the consumer rules for reading them
 - **Response language**: which natural language agents use for user-facing prose
+- **Bug template**: a fixed-shape bug issue template in the tracker, so every bug reaches an agent with a reproduction check it can run
 
 This is a prompt-driven skill, not a deterministic script. Explore, present what you found, confirm with the user, then write.
 
@@ -73,11 +74,20 @@ Ask exactly one question:
 
 On **yes**, set `Reply language: match-user`. On **no**, ask which fixed language the team wants (`en`, `vi`, or another BCP 47 tag) and set `Reply language:` to that value. If exploration already found a `docs/agents/response-language.md`, propose keeping its current line unless the user wants to change it.
 
+**Section E: Bug issue template.** Ask exactly one question:
+
+> Do you want a bug issue template installed in your tracker? (recommended: **yes**)
+
+> Explainer: A person who hits a bug files it in a fixed shape: summary, actual and expected behavior, steps, environment, and reproduction criteria whose `Verify:` lines an agent can run without a person. Without the template, a bug reaches an agent in whatever shape the reporter chose, and the agent can only guess which behavior is the bug.
+
+On **yes**, the template is installed for the tracker chosen in Section A; see step 4. Skip the section when the user declined bug templates before, or when exploration found a bug template already installed (a `bug.yml` form, a `Bug.md` template, or `.scratch/bugs/`). Other issue templates in the project are left alone either way.
+
 ### 3. Confirm and edit
 
 Show the user a draft of:
 
 - The `## Agent skills` block to add to `AGENTS.md` (see step 4)
+- The bug template to install and where it goes (or, for Jira and other trackers, the text that will be printed), when Section E was accepted
 - The contents of `docs/agents/issue-tracker.md`, `docs/agents/domain.md`, `docs/agents/response-language.md`, `docs/agents/triage-labels.md` (only when `triage` is installed), and `docs/agents/merge-policy.md` (only when `factory` is installed, written from its seed as is)
 
 Let them edit before writing.
@@ -133,8 +143,22 @@ Then write the docs files using the seed templates in this skill folder as a sta
 
 For "other" issue trackers, write `docs/agents/issue-tracker.md` from scratch using the user's description.
 
+**Bug template.** When the user accepted Section E, install the bug template for the tracker chosen in Section A, from the seed in this skill folder. The seeds carry the whole field contract; copy them as they are.
+
+- [bug-template-github.yml](./bug-template-github.yml): GitHub issue form, written to `.github/ISSUE_TEMPLATE/bug.yml`. Its required fields are enforced by GitHub, and it applies the `bug` label.
+- [bug-template-gitlab.md](./bug-template-gitlab.md): GitLab issue template, written to `.gitlab/issue_templates/Bug.md`. GitLab cannot enforce required fields, so the template marks them in text.
+- [bug-template-local.md](./bug-template-local.md): local-markdown template, written to `.scratch/bugs/issues/TEMPLATE.md` (create the folder). A bug file is a copy named `.scratch/bugs/issues/<NN>-<slug>.md`, numbered from `01`, with a `Status:` line from the triage vocabulary and a `Category: bug` line. Never write a `spec.md` in `.scratch/bugs/`: a bug is not a spec.
+- [bug-template-text.md](./bug-template-text.md): Jira and other trackers. Write no file; print the text for the maintainer to paste into the tracker's bug description template.
+
+Rules for every kind:
+
+- Never overwrite or edit an existing issue template or issue file. When the target file already exists, stop and tell the user instead of replacing it.
+- On GitHub and GitLab, create the `bug` label when the tracker lacks it (`gh label create bug` / `glab label create bug`). The string is fixed at `bug`; it is not part of the triage label mapping, so create it even when Section B was skipped.
+- Write no bug doc under `docs/agents/`, and add nothing to the `## Agent skills` block.
+- A bug never carries the `spec` label.
+
 When updating an existing `docs/agents/response-language.md`, change only the `Reply language:` line (and any user-edited notes) unless the user asked to replace the whole file from the seed.
 
 ### 5. Done
 
-Tell the user the setup is complete and which engineering skills will now read from these files. Mention they can edit `docs/agents/*.md` directly later (including `Reply language:` in `response-language.md`); re-running this skill is only necessary if they want to switch issue trackers or restart from scratch. When `factory` is installed, the next steps are the `setup-verification` skill, then the `factory` skill's `setup` mode.
+Tell the user the setup is complete and which engineering skills will now read from these files. Mention they can edit `docs/agents/*.md` directly later (including `Reply language:` in `response-language.md`); re-running this skill is only necessary if they want to switch issue trackers or restart from scratch. When the bug template was installed, say where it went (or that it was printed). When `factory` is installed, the next steps are the `setup-verification` skill, then the `factory` skill's `setup` mode.
