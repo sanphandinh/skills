@@ -13,7 +13,7 @@
     {
       "name": "software",
       "source": "./plugins/software",
-      "version": "0.8.0",
+      "version": "0.8.1",
       "description": "Software factory skills: spec, tickets, TDD implementation, verification, code review, diagnosis, and project setup."
     },
     {
