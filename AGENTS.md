@@ -56,11 +56,11 @@ Skills listed in `UPSTREAM.md` came from mattpocock/skills. Edit them freely; `n
 
 `software` (shared):
 
-- Factory pipeline (idea, grilling, spec, tickets, implement with TDD, review, PR, handoff): `setup-software-context`, `grill-with-docs`, `to-spec`, `to-tickets` (user-invoked); `implement` for one ticket or small work, `implement-spec` for a whole spec with parallel implementers on an integration branch (both user-invoked); `tdd`, `code-review`, `pr`.
+- Factory pipeline (idea, grilling, spec, tickets, implement with TDD, review, PR, handoff): `setup-software-context` (also installs the bug issue template into the tracker), `grill-with-docs`, `to-spec`, `to-tickets` (user-invoked); `implement` for one ticket or small work, `implement-spec` for a whole spec with parallel implementers on an integration branch (both user-invoked); `tdd`, `code-review`, `pr`.
 - Unattended build: the `factory` plugin (below) runs the agent-driven factory; `setup-verification` (user-invoked) writes the `docs/agents/verify.md` its verifiers follow. Use `implement` for a single ticket by hand and `implement-spec` for one integration branch per spec.
 - Large or unclear efforts: `wayfinder` (user-invoked) maps decision tickets on the tracker, then hands off to `to-spec`.
 - Issue intake: `triage` (user-invoked) moves issues and external PRs through the triage roles and writes agent briefs for `ready-for-agent`.
-- Design and debugging: `codebase-design`, `domain-modeling`, `improve-codebase-architecture` (user-invoked), `diagnosing-bugs`.
+- Design and debugging: `codebase-design`, `domain-modeling`, `improve-codebase-architecture` (user-invoked), `diagnosing-bugs` (on a bug issue it also finds and claims the bug, runs the reporter's `Verify:` lines first, and comments and sets `needs-info` when it cannot fix it).
 - Around the build: `prototype` answers a design question with throwaway code before `to-spec`; `wizard` scripts the steps only a human can take (credentials, CI secrets, third-party dashboards, cutovers); `retro` (user-invoked) turns a finished session into changes to the agent's environment (checks, coding standards, steering files).
 - Project setup: `frontend-web-project-setup`, `portless-web-project-setup`, `setup-pre-commit`, `github-repo-setup`.
 - Frontend and local dev: `shadcn` (MIT, from shadcn/ui; components, registries, presets), `portless-worktree-dev` (recover Portless routes and proxies when worktrees collide).
