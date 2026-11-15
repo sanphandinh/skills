@@ -17,7 +17,7 @@ Read a skill's `SKILL.md` with the `Read` tool and follow it.
 | smode action | Claude Code |
 |---|---|
 | Spawn a worker | The `Agent` tool, `subagent_type: "general-purpose"`, the work order as `prompt`. Background is the default; wait for the notification instead of polling. |
-| Spawn a read-only worker | `subagent_type: "Explore"`. It still has `Bash`, so the work order still says "change no file and make no commit", and you check `git status` afterwards. |
+| Spawn a read-only worker | `subagent_type: "Explore"` for reading and searching only: it may be refused the shell. A worker that must run commands read-only (the `verify` and `review` playbooks) is `general-purpose`, with "change no file and make no commit" in its work order and a `git status` check afterwards. |
 | Choose the model | `model` takes only `opus`, `sonnet`, `haiku`, `fable`. A role value `opus high` is `model: "opus"` and `effort: "high"`. A non-Claude model cannot run here: omit `model` and say so. |
 | A separate checkout | `isolation: "worktree"`. Name the branch or commit the worker starts from in the work order. |
 | Ask the user | `AskUserQuestion`. In print mode (`-p`) it is absent: ask in plain text and end the turn. |

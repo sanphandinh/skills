@@ -3,7 +3,7 @@
 Build exactly one ticket, on the branch you are given or a new one from trunk, from plan to pull request. Use a `worker` for the build when you delegate it.
 
 1. Read the ticket the way `docs/agents/issue-tracker.md` says, its spec, and the handoff of every ticket that blocked it. When a handoff contradicts the ticket, follow the handoff (it describes merged code) and report the conflict, saying whether it changes what an acceptance criterion can mean.
-2. With no plan for the ticket yet, run the `plan-ticket` playbook and show its plan, with every heading, before writing any code. Planning in your head instead is a deviation. A plan with open questions stops here: ask the user, or report them when you are a worker.
+2. With no plan for the ticket yet, run the `plan-ticket` playbook and write its plan, every heading, onto the ticket as a comment headed `## Plan` (where `docs/agents/issue-tracker.md` keeps comments) before writing any code. A worker whose work order asks for a result object returns the plan in it instead. A plan only in your head is a deviation. A plan with open questions stops here: ask the user, or report them when you are a worker.
 3. Build test-first with the `tdd` skill at the seams the plan names. Make its decisions, change the files it lists to change, and leave alone the files it lists not to touch. Record every departure from it, with the reason, as a deviation.
 4. Commit each finished unit on the branch. When the branch has a remote, push after each commit.
 5. Check your own work before anyone else does, because every finding a reviewer makes costs a full round:
