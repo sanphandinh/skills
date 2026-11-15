@@ -27,7 +27,7 @@ Part of `core` and `software` is derived from mattpocock/skills; see `UPSTREAM.m
 
 1. Frontmatter: `name`, `description`, and optionally `disable-model-invocation`, `argument-hint`, `license`, `compatibility`, `metadata`. Anything else makes it a platform skill.
 2. A user-invoked skill also sets `policy.allow_implicit_invocation: false` in `agents/openai.yaml`.
-3. Never name an agent's tools. Describe the action: "search the code", "run the tests", "ask the user".
+3. Never name an agent's tools. Describe the action: "search the code", "run the tests", "ask the user". The only exceptions are a mode skill's `harness/` docs and a factory's `references/`, whose job is mapping those actions to one harness's or one agent manager's tools (ADR-0003); the validator keeps tool names out of everything else.
 4. Refer to other skills by name ("use the `tdd` skill"), never with `/skill` or `$skill`.
 5. Refer to agents by name with a fallback: "if a `review-spec` agent is available, ...; otherwise ...". The skill must still work run sequentially by one agent.
 6. Put logic that must be exact in `scripts/`, with tests next to it.

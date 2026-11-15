@@ -14,15 +14,25 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** closed
 
 **Door:** two-way
 
-- [ ] `docs/adr/0003-*.md` ghi đủ sáu quyết định trên, mỗi quyết định kèm lý do, và dẫn tới kết quả spike
+- [x] `docs/adr/0003-*.md` ghi đủ sáu quyết định trên, mỗi quyết định kèm lý do, và dẫn tới kết quả spike
   Verify: đọc ADR, đối chiếu với mục Implementation Decisions của spec
-- [ ] `GLOSSARY.md` định nghĩa Harness, Mode skill, Playbook, Role, Route, mỗi thuật ngữ có _Avoid_. Harness được phân biệt rõ với Agent manager.
+- [x] `GLOSSARY.md` định nghĩa Harness, Mode skill, Playbook, Role, Route, mỗi thuật ngữ có _Avoid_. Harness được phân biệt rõ với Agent manager.
   Verify: `grep -n "^\*\*Harness\*\*\|^\*\*Mode skill\*\*\|^\*\*Playbook\*\*\|^\*\*Role\*\*\|^\*\*Route\*\*" GLOSSARY.md` ra năm dòng
-- [ ] Mục "Writing a shared skill" trong `AGENTS.md` nói rằng tên tool chỉ được nhắc trong `harness/` của mode skill và trong `references/` của factory
+- [x] Mục "Writing a shared skill" trong `AGENTS.md` nói rằng tên tool chỉ được nhắc trong `harness/` của mode skill và trong `references/` của factory
   Verify: đọc `AGENTS.md`
-- [ ] `npm run validate` và `npm test` pass
+- [x] `npm run validate` và `npm test` pass
   Verify: chạy hai lệnh từ thư mục gốc của repo
+
+## Handoff
+
+**Delivered:** ADR-0003 ghi sáu quyết định (mode skill với playbook, model chọn lúc giao việc, tìm skill theo tên qua index với thứ tự bốn bước, T3 là một reference, v2 cạnh v1 đóng băng, chỉ đọc là quy tắc bằng lời), mỗi quyết định kèm lý do và spike. `GLOSSARY.md` có Harness, Mode skill, Playbook, Role, Route, mỗi thuật ngữ có _Avoid_; Harness được tách khỏi Agent manager. `AGENTS.md` quy tắc 3 cho phép tên tool chỉ trong `harness/` của mode skill và `references/` của factory. `npm run validate` và `npm test` pass (13/13).
+**Interfaces introduced:** thuật ngữ Harness, Mode skill, Playbook, Role, Route.
+**Deviations from spec:** không.
+**Decisions:** ADR viết tiếng Anh như ADR-0001 và ADR-0002; "platform" giữ cho nghĩa của catalog plugin, nên nằm trong _Avoid_ của Harness.
+**Gotchas:** worktree mới chưa có `node_modules`; chạy `npm ci` trước `npm run validate`.
+**For the next ticket:** 02: validator phải thực thi quy tắc 3 mới (tên tool T3 chỉ trong `harness/` và `references/`). Dùng "work order" cho hướng dẫn giao worker, "brief" chỉ cho ghi chú gửi người.
+**Links:** `docs/adr/0003-smode-and-factory-v2.md`

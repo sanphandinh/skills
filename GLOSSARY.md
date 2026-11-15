@@ -51,3 +51,23 @@ _Avoid_: incident, hotfix
 **Stop the line**:
 The rule that nothing merges while trunk is red.
 _Avoid_: freeze, merge block
+
+**Harness**:
+The agent that runs a session and owns its tools: Claude Code, Codex, Oh My Pi, or a provider session inside T3 Code. A mode skill maps its actions to one harness's tools in a harness doc. Distinct from the agent manager, which creates workspaces and runs workers.
+_Avoid_: platform (that is the plugin catalog's word), runtime
+
+**Mode skill**:
+A user-invoked skill that routes a task to one of its playbooks and calls other skills at each step: `smode` (ADR-0003).
+_Avoid_: meta skill, router, super skill
+
+**Playbook**:
+One short, ordered list of steps for one kind of task inside a mode skill, copied verbatim into the todo list when it runs.
+_Avoid_: recipe, workflow, script
+
+**Role**:
+What a piece of delegated work needs from a model (deep reasoning, cheap and fast, independent from the author), described by traits and mapped to a model per machine and harness. Never a model name.
+_Avoid_: tier, agent type
+
+**Route**:
+The ordered list of `provider/model` candidates for one role on a manager that runs several providers; the coordinator takes the first one that is qualified, available and not out of quota.
+_Avoid_: fallback chain, model list
