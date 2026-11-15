@@ -70,9 +70,9 @@ Pass it to start-worker and record it in the worker's result path name and the j
 
 ## Quota
 
-A worker that failed is checked for a usage limit before **Failed workers** applies: its error text (inspect) says "usage limit", "rate limit", "quota", "429" or "reset after …". When it does:
+A worker that failed is checked for a usage limit before **Failed workers** applies: its error text (inspect) speaks of usage, credits, a quota, a rate limit, a plan that does not include the model, "429", or a reset time (seen: "Gemini 4 Carbon is not included in your weekly usage. Buy credits or switch to a Grok model to continue."). When it does:
 
-- block that candidate in `quota.md` until the reset the text gives, or for one hour when it gives none;
+- block that candidate in `quota.md` until the reset the text gives; with no time given, for 24 hours when the text names a weekly or monthly allowance or a plan without the model, else for one hour;
 - start one fresh worker for the same step on the next candidate of the route, with the same work order. This restart is not a failure and costs no rework round;
 - a second usage-limit failure on the same step moves on the same way; with no candidate left, the step waits as **Routing** says.
 
