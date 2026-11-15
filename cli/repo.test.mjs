@@ -275,6 +275,16 @@ test("the skills index lists every shared skill with its plugin and goes stale w
   assert.match(messages(root), /plugins\/core\/skills\/mode\/skills-index\.md: skills index is stale; run `npm run index`/);
 });
 
+test("a mode skill whose skills index is missing still fails validation", () => {
+  const root = modeRepo({ "plugins/core/skills/mode/playbooks/bug-fix.md": "1. Use the `nope` skill.\n" });
+  fs.rmSync(path.join(root, "plugins/core/skills/mode/skills-index.md"));
+  const msgs = messages(root);
+  assert.match(msgs, /plugins\/core\/skills\/mode\/skills-index\.md: mode skill has no skills index; run `npm run index`/);
+  assert.match(msgs, /bug-fix\.md:1: names skill "nope", which does not exist/);
+  writeSkillsIndexes(root);
+  assert.doesNotMatch(messages(root), /skills index/);
+});
+
 test("a mode skill may name only skills and playbooks that exist", () => {
   const msgs = messages(
     modeRepo({

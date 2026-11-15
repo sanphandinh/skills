@@ -166,9 +166,13 @@ export function renderSkillsIndex(root, catalog = loadCatalog(root)) {
   ].join("\n");
 }
 
-// Mode skills are the shared skills that carry a skills index.
+// Mode skills are the shared skills that carry playbooks or a skills index.
+// Playbooks count on their own, so a mode skill whose index was deleted is
+// still checked (and `npm run index` writes the index back).
 export function modeSkills(root, catalog = loadCatalog(root)) {
-  return listSkills(root, catalog).filter((s) => s.platform === "shared" && fs.existsSync(path.join(s.dir, SKILLS_INDEX)));
+  return listSkills(root, catalog).filter(
+    (s) => s.platform === "shared" && (fs.existsSync(path.join(s.dir, SKILLS_INDEX)) || fs.existsSync(path.join(s.dir, "playbooks"))),
+  );
 }
 
 export function writeSkillsIndexes(root) {
@@ -237,7 +241,8 @@ export function validate(root) {
   const index = renderSkillsIndex(root, catalog);
   for (const mode of modeSkills(root, catalog)) {
     const indexFile = path.join(mode.dir, SKILLS_INDEX);
-    if (fs.readFileSync(indexFile, "utf8") !== index) add(indexFile, "skills index is stale; run `npm run index`");
+    if (!fs.existsSync(indexFile)) add(indexFile, "mode skill has no skills index; run `npm run index`");
+    else if (fs.readFileSync(indexFile, "utf8") !== index) add(indexFile, "skills index is stale; run `npm run index`");
     const playbooks = new Set(walk(path.join(mode.dir, "playbooks")).filter((f) => f.endsWith(".md")).map((f) => f.slice(0, -3)));
     for (const file of walk(mode.dir).filter((f) => f.endsWith(".md") && f !== SKILLS_INDEX && !inToolMappingDir(f))) {
       fs.readFileSync(path.join(mode.dir, file), "utf8")
