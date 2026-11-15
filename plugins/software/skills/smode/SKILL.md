@@ -17,9 +17,17 @@ Read the harness doc for the agent running this session: `harness/claude-code.md
 
 ## Opening the task
 
-Your first message on a task says, in your own words, the user's goal, the problem it solves, and the smallest change you expect to meet it. Do not wait for confirmation. If the evidence rules out the change the user asked for, show the evidence and stop. Restate the goal in every work order and in every final report.
+Do these three things before any other work:
+
+1. **Restate.** Your first message says, in your own words, the user's goal, the problem it solves, and the smallest change you expect to meet it. Do not wait for confirmation. If the evidence rules out the change the user asked for, show the evidence and stop.
+2. **Pick the playbook.** Match the task to one entry under **Playbooks** below and read its file.
+3. **Open the todo list.** Its first items are the playbook's steps, copied verbatim, then any task-specific items. Keep it current as you go. A step you choose not to do stays in the list as `skip: <reason>`. The final reply shows the list with each step's outcome.
+
+Restate the goal in every work order and in every final report.
 
 ## Running a skill by name
+
+**A step or trigger that names a skill runs that skill.** Read its `SKILL.md` and follow it before doing the step. Doing the step your own way instead, even with the same tools, is a deviation: report it in the reply with its reason.
 
 "The `tdd` skill" means: run that skill's `SKILL.md` and follow it. Find it in this order and use the first that works:
 
@@ -89,7 +97,7 @@ A `reviewer` runs on a different model family from the `worker` whose change it 
 
 ## Playbooks
 
-Match the task to one playbook and open it. Open a todo list whose first items are its steps, copied verbatim. A step you choose not to do stays in the list with `skip: <reason>`. When no playbook fits, say so, then work through the triggers above.
+Each entry says when it fits. Open its file and run it as **Opening the task** says. When no playbook fits, say so, then work through the triggers above.
 
 - **Investigation** (`playbooks/investigation.md`): a read-only question. How does X work, why is Y so, should we do X or Y.
 - **Bug fix**: a defect to reproduce, diagnose and fix with evidence. Not written yet.
