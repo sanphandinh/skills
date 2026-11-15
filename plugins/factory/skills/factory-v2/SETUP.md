@@ -10,7 +10,7 @@ Prepare one project for the factory, then prove the setup with a smoke test agai
 
 Stop at the first missing file in the first and third bullets and tell the user which skill writes it. A missing `response-language.md` does not stop setup.
 
-Then check the version: when `docs/agents/factory.md` exists and version 1's memory index (its `Memory:` folder) says `Status: running`, stop and tell the user to stop version 1 first ("stop" to its coordinator). One repository runs one version.
+Then check the version: when `docs/agents/factory.md` exists, read its `Manager:` and `Memory:` lines and look up version 1's wake schedule for this repository with that manager (the `factory` skill's reference for it says how, under schedule-wakes). When a schedule exists and is enabled, stop and tell the user to stop version 1 first ("stop" to its coordinator). A memory index that says `Status: running` with no schedule behind it is a leftover: say so and go on. One repository runs one version.
 
 Then check smode: the `smode` skill is reachable on this machine (smode's **Running a skill by name**), and its role configuration has a route for `thinker`, `worker` and `reviewer`. Without one, run smode's `setup` playbook first.
 
