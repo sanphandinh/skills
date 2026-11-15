@@ -13,7 +13,7 @@ Prepare this project and this machine for smode: the project's agent docs, and t
 
    On a manager that runs several providers, each role is a route: two or three candidates in order, on different providers where possible, so a provider out of quota has a fallback.
 4. Ask the user to accept the table or change roles. Change only what they name.
-5. Write the configuration where the harness doc says, in its format. Read the current file first. Keep every line that is not a smode role, replace the smode roles, and keep a copy of the previous file next to it with a `.bak` suffix.
+5. Write the configuration where the harness doc says, in its format. Read the current file first. Keep every line that is not a smode role, replace the smode roles, and keep a copy of the previous file next to it with a `.bak` suffix; when that name is taken, use `.bak-<YYYYMMDDHHMMSS>` instead, so an existing backup is never overwritten.
 6. Prove it: on a harness that loads the file into new sessions, read it back the way a new session would; on a harness that spawns workers with a per-call model, spawn one `scout` worker on the configured model and compare the model it reports.
 
 **Reply:** the table as written, the file and its backup, the proof from step 6 (measured), and what to run to undo it.
