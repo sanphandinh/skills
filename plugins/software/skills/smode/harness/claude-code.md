@@ -7,8 +7,8 @@ Read this once per session when the agent is Claude Code (the CLI, the desktop a
 | smode step | Claude Code |
 |---|---|
 | 1. Skill already loaded | The `Skill` tool, with the plugin prefix: `software:tdd`, `core:grilling`. It refuses skills marked `disable-model-invocation`; go to the next step for those. |
-| 3. Installed plugin | `~/.claude/plugins/installed_plugins.json` lists each `<plugin>@sanphan-skills` with its `installPath`. A project-scoped install is listed there too. |
-| 4. Marketplace clone | `~/.claude/plugins/marketplaces/sanphan-skills/` is a full clone of the repository: `plugins/<plugin>/skills/<skill>/SKILL.md`. |
+| 3. Installed plugin | `~/.claude/plugins/installed_plugins.json`, `plugins["<plugin>@sanphan-skills"]`: a list of installs, each with `scope`, `installPath` (`~/.claude/plugins/cache/sanphan-skills/<plugin>/<version>`) and, for `scope: "project"`, `projectPath`. Take the install whose `projectPath` is this project, else the `user` one. The plugin may be installed but disabled in this project's `.claude/settings.json`; its files are still there to read. Get the path with `python3 -c 'import json,os,sys; d=json.load(open(os.path.expanduser("~/.claude/plugins/installed_plugins.json")))["plugins"].get(sys.argv[1]+"@sanphan-skills",[]); c=os.getcwd(); m=[i for i in d if i.get("projectPath")==c] or [i for i in d if i.get("scope")=="user"]; print(m[0]["installPath"] if m else "")' <plugin>`. |
+| 4. Marketplace clone | `installLocation` of `sanphan-skills` in `~/.claude/plugins/known_marketplaces.json`: a clone of the repository under `~/.claude/plugins/marketplaces/` for a GitHub marketplace, or the source folder itself for a local one. Read `plugins/<plugin>/skills/<skill>/SKILL.md` there, only when step 3 found nothing. |
 
 Read a skill's `SKILL.md` with the `Read` tool and follow it.
 
