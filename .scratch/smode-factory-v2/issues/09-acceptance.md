@@ -13,6 +13,8 @@
 
 **Blocked by:** 03, 08
 
+Claimed-by: San (nghiệm thu bằng tay, factory không nhận)
+
 **Status:** ready-for-agent
 
 **Door:** two-way
