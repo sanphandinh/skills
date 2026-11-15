@@ -11,4 +11,6 @@ A reported defect: reproduce it, find its root cause, fix it there, and prove th
 7. Run the `verify` playbook in a fresh worker that did not write the fix, then the `review` playbook the same way. Fix blocking findings in a fresh worker and repeat.
 8. Open the pull request with the `pr` skill. Merging is an always-pause act.
 
+Step 7 is never skipped, however small the fix: the author's own checks are not a verdict.
+
 **Reply:** the symptom, the root cause with its file and line, the fix, the reproduction before and after (measured), the verify and review verdicts with their commit, and the pull request link.
