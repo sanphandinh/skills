@@ -27,5 +27,5 @@ plugins:
     prefix: ""
   factory:
     platform: shared
-    description: "Agent-driven software factory: a coordinator agent builds approved specs through an agent manager (Orca first)."
+    description: "Agent-driven software factory: a coordinator agent builds approved specs through an agent manager (Orca, or T3 Code for version 2)."
     prefix: ""

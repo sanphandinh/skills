@@ -208,9 +208,11 @@ SOFTWARE.
 
 `plugins/software/skills/setup-verification` adapts `create-verification-skill`
 from [cursor/plugins `pstack`](https://github.com/cursor/plugins/tree/main/pstack),
-and the `factory` skill borrows pstack's ideas of independent verifiers,
-patch-bound verdicts, and decision trails. It is not tracked by the upstream
-tool.
+the `factory` skill borrows pstack's ideas of independent verifiers,
+patch-bound verdicts, and decision trails, and the structure of `smode` (one
+mode skill with a trigger table, an always-pause list, delegation rules, short
+playbooks, per-role models set at delegation, and one doc per harness) is
+adapted from pstack's `poteto-mode`. None of it is tracked by the upstream tool.
 
 ```
 MIT License

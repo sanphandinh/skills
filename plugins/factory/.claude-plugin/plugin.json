@@ -1,7 +1,7 @@
 {
   "name": "factory",
-  "description": "Agent-driven software factory: a coordinator agent builds approved specs through an agent manager (Orca first), with planned tickets, independent checks, and guarded automatic merges.",
-  "version": "0.3.0",
+  "description": "Agent-driven software factory: a coordinator agent builds approved specs through an agent manager (Orca, or T3 Code for version 2), with planned tickets, independent checks, and guarded automatic merges.",
+  "version": "0.4.0",
   "author": {
     "name": "San Phan"
   },

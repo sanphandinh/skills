@@ -131,3 +131,31 @@ flight), and the memory folder outside the repository
 rate limit ends a wake early; the next scheduled wake picks up where it
 stopped, and a worker that failed on the limit is restarted once.
 
+
+## Harnesses and managers (smode and factory v2)
+
+`smode` and `factory-v2` (ADR-0003) separate two layers:
+
+| Harness (runs a session) | smode harness doc | Roles live in | Checked |
+|---|---|---|---|
+| Claude Code | `harness/claude-code.md` | `~/.claude/rules/smode-roles.md` | yes |
+| Oh My Pi | `harness/omp.md` | `modelRoles` in `~/.omp/agent/config.yml`, with `task.perCallModel: on` | yes |
+| Codex | `harness/codex.md` | `~/.codex/agents/<role>.toml` | not yet |
+| a provider inside T3 Code | `harness/t3.md`, on top of the provider's own doc | `route <role>:` lines in the coordinator's role file | yes (Claude, Cursor, Antigravity) |
+
+| Agent manager | `factory` (v1) | `factory-v2` |
+|---|---|---|
+| Orca | `references/orca.md` | not yet |
+| T3 Code | — | `references/t3.md` |
+
+## Running the factory, version 2
+
+Each machine needs smode's role configuration with a route for `thinker`, `worker` and `reviewer` (smode's `setup` playbook), and T3 Code with the providers those routes name. Each project needs the same `docs/agents/` files as version 1. Then, in a T3 thread on the project root, in full-access mode:
+
+```text
+factory-v2 setup   write docs/agents/factory-v2.md, check each provider, smoke-test T3
+factory-v2 once    one wake
+factory-v2 run     start the watcher and keep building
+```
+
+The coordinator is that thread for life. A watcher thread on T3's scheduler, on the `scout` route, runs `wake-check.sh` every `Wake timeout` and wakes the coordinator only when GitHub or the results changed, or after an hour; finished workers, worker questions and watched pull requests wake it directly. Memory lives in `~/.local/share/factory-v2/<repo>` (journal, wiki, results, `providers.md`, `quota.md`). One repository runs one version: stop version 1's wakes before setting up version 2.
