@@ -105,11 +105,11 @@ Each entry says when it fits. Open its file and run it as **Opening the task** s
 - **Refactor**: a change to structure that keeps behaviour. Not written yet.
 - **Prototype**: throwaway code that answers a design question. Not written yet.
 - **Spec**: from an idea to a spec and tickets on the tracker. Not written yet.
-- **Plan ticket**: a plan for one ticket before any code. Not written yet.
-- **Ticket**: build one ticket from plan to pull request. Not written yet.
+- **Plan ticket** (`playbooks/plan-ticket.md`): a plan for one ticket before any code.
+- **Ticket** (`playbooks/ticket.md`): build one ticket from plan to pull request.
 - **Spec run**: build every ticket of a spec on an integration branch. Not written yet.
-- **Verify**: prove a change works on the real product. Not written yet.
-- **Review**: an independent review of a change. Not written yet.
+- **Verify** (`playbooks/verify.md`): prove a change works on the real product, at one commit.
+- **Review** (`playbooks/review.md`): an independent review of a change, at one commit.
 - **Triage**: move new issues and outside pull requests through the triage roles. Not written yet.
 - **Pickup**: take over work in flight from a handoff or a branch. Not written yet.
 - **Retro**: turn a finished session into changes to the agent's environment. Not written yet.
