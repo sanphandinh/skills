@@ -114,6 +114,6 @@ Each entry says when it fits. Open its file and run it as **Opening the task** s
 - **Pickup** (`playbooks/pickup.md`): take over work in flight from a handoff or a branch.
 - **Retro** (`playbooks/retro.md`): turn a finished session into changes to the agent's environment.
 - **Setup** (`playbooks/setup.md`): prepare this machine and project for smode, including the role configuration.
-- **Factory**: run the agent-driven factory. Not written yet.
+- **Factory** (`playbooks/factory.md`): run the agent-driven factory, version 2.
 
 The structure of this skill is adapted from `poteto-mode` in cursor/plugins `pstack` (MIT, Copyright (c) 2026 Lauren Tan).
