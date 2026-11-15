@@ -29,3 +29,11 @@
   Verify: đọc `journal.md` trong memory của v2
 - [ ] Các bài học trong quá trình nghiệm thu được ghi vào wiki của v2, và mỗi chỗ sai được sửa trong skill tương ứng
   Verify: đọc `wiki/` và `git log` của nhánh nghiệm thu
+
+## Comments
+
+### Tiến độ 2026-11-15
+
+- **Đạt:** `bug-fix` và `ticket` trên Claude Code (sandbox, ticket 03 và 04) và trên OMP (sandbox): todo list, kế hoạch trên ticket, `verify` và `review` trong worker mới, body PR có Merge Danger. Trên OMP, reviewer khác họ model gặp lỗi quota `USAGE_PRICING_REQUIRED` và chuyển sang `cursor/composer-2.5`. Sửa `bug-fix`: sửa trên nhánh mới, không lên trunk.
+- **Đạt một phần:** Claude Code với marketplace cài thật. Marketplace thêm từ thư mục local chạy plugin thẳng từ thư mục nguồn, nên `smode` đi bước 2 (checkout) và đọc `research` từ `plugins/core`, đúng thứ tự. Bố cục `installed_plugins.json` và cache đã xác nhận, ghi vào `harness/claude-code.md`. Bước 3 (`installPath`) chỉ chạy thật với marketplace từ GitHub, tức là sau khi nhánh này được push. Marketplace, plugin và cache thử đã gỡ.
+- **Chờ người dùng đồng ý:** factory v2 `once` với một ticket thật tới merge và `run` qua ba lần thức. Hai việc này cần `smode` và `factory-v2` nằm trên `main` (worktree của worker tạo từ trunk), nghĩa là phải push nhánh, mở PR và merge lên `main` trước.
