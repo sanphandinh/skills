@@ -27,7 +27,7 @@ Restate the goal in every work order and in every final report.
 
 ## Running a skill by name
 
-**A step or trigger that names a skill runs that skill.** Read its `SKILL.md` and follow it before doing the step. Doing the step your own way instead, even with the same tools, is a deviation: report it in the reply with its reason.
+**A step or trigger that names a skill runs that skill.** Read its `SKILL.md` and follow it before doing the step. Doing the step your own way instead, even with the same tools, is a deviation: report it in the reply, under **Deviations**, with its reason.
 
 "The `tdd` skill" means: run that skill's `SKILL.md` and follow it. Find it in this order and use the first that works:
 
