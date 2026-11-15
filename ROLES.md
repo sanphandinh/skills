@@ -15,6 +15,11 @@ roles:
     omp: "@slow"
     claude: opus
     codex: high
+  coordinator:
+    purpose: runs a program of many workers (smode delegation, the factory); steady, cheap, small context, never writes code
+    omp: "@default"
+    claude: sonnet
+    codex: medium
   architect:
     purpose: specs, ticket breakdown, interface design
     omp: "@plan"
@@ -66,6 +71,7 @@ role to a model. Change models in your config, not in this repo.
 | scout | fast reading and searching | `@smol` | `haiku` | low |
 | worker | implementation, TDD loops | `@task` | `inherit` | medium |
 | thinker | diagnosis, deep analysis | `@slow` | `opus` | high |
+| coordinator | runs many workers; steady, cheap, small context | `@default` | `sonnet` | medium |
 | architect | specs, tickets, interface design | `@plan` | `opus` | high |
 | judge | quick pass or fail checks (OMP judged rules use this role) | `@judge` | `haiku` | low |
 | reviewer (custom) | code review | `@reviewer`, falls back to `@slow` | `opus` | high |
@@ -73,6 +79,13 @@ role to a model. Change models in your config, not in this repo.
 | implementer (custom) | building one factory ticket | `@implementer`, falls back to `@task` | `inherit` | medium |
 | verifier (custom) | proving a change works, not its author | `@verifier`, falls back to `@slow` | `opus` | high |
 | writer (custom) | copy and articles | `@writer`, falls back to `@default` | `sonnet` | medium |
+
+`smode` (ADR-0003) delegates by role: `scout`, `worker`, `thinker`, `reviewer` and
+`coordinator`, described by what the work needs, never by model. A `reviewer`
+always runs on a different model family from the `worker` whose change it
+checks, so its verdict is independent. On a manager that runs several providers
+(T3 Code), each role is a **route**: an ordered list of `provider/model`
+candidates on the machine, written by smode's Setup playbook.
 
 The frontmatter above is the machine-readable copy; `npm run validate` checks
 that every OMP agent uses a role from it (or a built-in OMP role) and every

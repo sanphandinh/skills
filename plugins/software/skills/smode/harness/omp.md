@@ -25,6 +25,10 @@ Read a skill's `SKILL.md` with `read` and follow it.
 | Schedule or loop | Skip with the line. |
 | Watch a pull request | Skip with the line; look again on the next step. |
 
+## Models on offer
+
+`omp models` lists the exact `provider/model-id` values this machine can run.
+
 ## Role configuration
 
 `modelRoles` in `~/.omp/agent/config.yml`, the user config. smode's roles (`scout`, `worker`, `thinker`, `reviewer`, `coordinator`) are keys there next to OMP's own roles, each with an exact `provider/model-id:level`; `templates/roles.omp-config.yml` in this repository shows the shape. Keep them in the user config, not in a project's `.omp/config.yml`: OMP grants per-call models only from user-level settings. A missing role means the bundled agent's own role.

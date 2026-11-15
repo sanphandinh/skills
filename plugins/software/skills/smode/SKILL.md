@@ -27,7 +27,7 @@ Restate the goal in every work order and in every final report.
 
 ## Running a skill by name
 
-**A step or trigger that names a skill runs that skill.** Read its `SKILL.md` and follow it before doing the step. Doing the step your own way instead, even with the same tools, is a deviation: report it in the reply, under **Deviations**, with its reason.
+**A step or trigger that names a skill runs that skill.** Read its whole `SKILL.md`, not its first lines, and follow it before doing the step. Doing the step your own way instead, even with the same tools, is a deviation: report it in the reply, under **Deviations**, with its reason.
 
 "The `tdd` skill" means: run that skill's `SKILL.md` and follow it. Find it in this order and use the first that works:
 
@@ -71,7 +71,7 @@ No is an acceptable answer. When asked whether to do something, give your real j
 
 **Every work order says** which playbook to run and gives the absolute path of this file, so the worker can run it on any harness.
 
-**Model per role.** Pick the role the work needs, then the model the role maps to in this machine's role configuration (the harness doc says where it lives; the Setup playbook writes it). With no configuration, run the worker on the session's model and say so.
+**Model per role.** Pick the role the work needs, then the model the role maps to in this machine's role configuration (the harness doc says where it lives; the `setup` playbook writes it). With no configuration, run the worker on the session's model and say so.
 
 | Role | Needs |
 |---|---|
@@ -113,7 +113,7 @@ Each entry says when it fits. Open its file and run it as **Opening the task** s
 - **Triage** (`playbooks/triage.md`): move new issues and outside pull requests through the triage roles.
 - **Pickup** (`playbooks/pickup.md`): take over work in flight from a handoff or a branch.
 - **Retro** (`playbooks/retro.md`): turn a finished session into changes to the agent's environment.
-- **Setup**: prepare this machine and project for smode. Not written yet.
+- **Setup** (`playbooks/setup.md`): prepare this machine and project for smode, including the role configuration.
 - **Factory**: run the agent-driven factory. Not written yet.
 
 The structure of this skill is adapted from `poteto-mode` in cursor/plugins `pstack` (MIT, Copyright (c) 2026 Lauren Tan).

@@ -25,6 +25,10 @@ Read a skill's `SKILL.md` with the `Read` tool and follow it.
 | Schedule or loop | The `loop` or `schedule` skills of Claude Code when the user asked for them; otherwise skip with the line. |
 | Watch a pull request | No native watch: skip with the line, or use `harness/t3.md` when inside T3. |
 
+## Models on offer
+
+The `Agent` tool's `model` values (`opus`, `sonnet`, `haiku`, `fable`) with the effort levels its schema lists. Write a role as `<model> <effort>`.
+
 ## Role configuration
 
-`~/.claude/rules/smode-roles.md`, written by the `setup` playbook. Claude Code loads every file in `~/.claude/rules/` into each new session, so the role lines are already in context; if they are not, read the file. One line per role: `<role>: <model> <effort>`, such as `thinker: opus high`. A missing file or line means the session's model.
+`~/.claude/rules/smode-roles.md`, written by the `setup` playbook. Claude Code loads every file in `~/.claude/rules/` into each new session, so the role lines are already in context; if they are not, read the file. The file holds only smode's roles, one line each: `<role>: <model> <effort>`, such as `thinker: opus high`, under a first line `# smode roles (written by the smode setup playbook)`. A missing file or line means the session's model.

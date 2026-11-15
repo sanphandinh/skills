@@ -13,6 +13,7 @@ const TEXT_EXT = new Set([".md", ".yaml", ".yml", ".json", ".sh", ".py", ".mjs",
 // invocation keys that Claude Code and OMP honour and Codex tolerates.
 export const SHARED_SKILL_KEYS = ["name", "description", "disable-model-invocation", "argument-hint", "license", "compatibility", "metadata"];
 const CLAUDE_MODEL_ALIASES = ["opus", "sonnet", "haiku", "inherit"];
+const ROLE_KEYS = ["purpose", "omp", "claude", "codex"];
 const OMP_BUILTIN_ROLES = ["default", "smol", "slow", "vision", "plan", "commit", "tiny", "memory", "task", "advisor", "web", "judge"];
 
 // ---------- small helpers ----------
@@ -279,6 +280,12 @@ export function validate(root) {
         add(ompCatalog, `${entry.name} is listed at ${entry.version} but its manifest says ${manifest.version}; OMP compares this version to decide upgrades`);
       }
     }
+  }
+
+  // Every role maps on every platform, so a skill naming it works everywhere.
+  for (const [name, r] of Object.entries(roles?.roles ?? {})) {
+    const missing = ROLE_KEYS.filter((k) => r?.[k] === undefined || r?.[k] === null || r?.[k] === "");
+    if (missing.length) add(path.join(root, "ROLES.md"), `role "${name}" has no ${missing.join(", ")}`);
   }
 
   const ompRoles = new Set(OMP_BUILTIN_ROLES);

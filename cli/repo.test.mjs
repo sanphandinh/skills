@@ -25,8 +25,10 @@ const CATALOG = `plugins:
 const ROLES = `---
 roles:
   reviewer:
+    purpose: code review
     omp: ["@reviewer", "@slow"]
     claude: opus
+    codex: high
 ---
 `;
 
@@ -296,4 +298,9 @@ test("harness and T3 tool names stay in harness/ and references/", () => {
   assert.match(msgs, /investigation\.md:2: names a T3 tool: delegate_task; tool names belong in harness\/ or references\/ \(ADR-0003\)/);
   assert.doesNotMatch(msgs, /harness\/t3\.md/);
   assert.doesNotMatch(msgs, /references\/t3\.md/);
+});
+
+test("every role in ROLES.md maps on every platform", () => {
+  const roles = `---\nroles:\n  reviewer:\n    purpose: code review\n    omp: ["@reviewer", "@slow"]\n    claude: opus\n    codex: high\n  coordinator:\n    purpose: runs many workers\n    claude: sonnet\n---\n`;
+  assert.match(messages(repo({ "ROLES.md": roles })), /ROLES\.md: role "coordinator" has no omp, codex/);
 });
