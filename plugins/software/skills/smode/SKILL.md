@@ -100,19 +100,19 @@ A `reviewer` runs on a different model family from the `worker` whose change it 
 Each entry says when it fits. Open its file and run it as **Opening the task** says. When no playbook fits, say so, then work through the triggers above.
 
 - **Investigation** (`playbooks/investigation.md`): a read-only question. How does X work, why is Y so, should we do X or Y.
-- **Bug fix**: a defect to reproduce, diagnose and fix with evidence. Not written yet.
-- **Feature**: new or changed behaviour. Not written yet.
-- **Refactor**: a change to structure that keeps behaviour. Not written yet.
-- **Prototype**: throwaway code that answers a design question. Not written yet.
-- **Spec**: from an idea to a spec and tickets on the tracker. Not written yet.
+- **Bug fix** (`playbooks/bug-fix.md`): a defect to reproduce, diagnose and fix with evidence.
+- **Feature** (`playbooks/feature.md`): new or changed behaviour.
+- **Refactor** (`playbooks/refactor.md`): a change to structure that keeps behaviour.
+- **Prototype** (`playbooks/prototype.md`): throwaway code that answers a design question.
+- **Spec** (`playbooks/spec.md`): from an idea to a spec and tickets on the tracker.
 - **Plan ticket** (`playbooks/plan-ticket.md`): a plan for one ticket before any code.
 - **Ticket** (`playbooks/ticket.md`): build one ticket from plan to pull request.
-- **Spec run**: build every ticket of a spec on an integration branch. Not written yet.
+- **Spec run** (`playbooks/spec-run.md`): build every ticket of a spec on an integration branch.
 - **Verify** (`playbooks/verify.md`): prove a change works on the real product, at one commit.
 - **Review** (`playbooks/review.md`): an independent review of a change, at one commit.
-- **Triage**: move new issues and outside pull requests through the triage roles. Not written yet.
-- **Pickup**: take over work in flight from a handoff or a branch. Not written yet.
-- **Retro**: turn a finished session into changes to the agent's environment. Not written yet.
+- **Triage** (`playbooks/triage.md`): move new issues and outside pull requests through the triage roles.
+- **Pickup** (`playbooks/pickup.md`): take over work in flight from a handoff or a branch.
+- **Retro** (`playbooks/retro.md`): turn a finished session into changes to the agent's environment.
 - **Setup**: prepare this machine and project for smode. Not written yet.
 - **Factory**: run the agent-driven factory. Not written yet.
 
