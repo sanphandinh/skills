@@ -4,7 +4,7 @@ Prepare this project and this machine for smode: the project's agent docs, and t
 
 1. When `docs/agents/issue-tracker.md` is missing, run the `setup-software-context` skill. When `docs/agents/verify.md` is missing, run the `setup-verification` skill. Both are the project's; skip them on a machine-only setup.
 2. Read the harness doc for this session's harness and find out which models it can run, the way that doc says. Never write a model you have not seen offered.
-3. Propose one model per role, from those models, and show the table to the user:
+3. Propose one model per role, from those models, and show the table to the user. A role that already has a value in the configuration (another skill may share the name, as factory v1 shares `reviewer`) keeps it in the proposal, marked as kept:
    - `scout`: the cheapest fast model;
    - `worker`: a reliable coding model;
    - `thinker`: the strongest reasoning model;
