@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { loadUpstream, saveUpstream, upstreamAdd, upstreamPull, upstreamStatus, validate } from "./lib.mjs";
+import { loadUpstream, renderSkillsIndex, saveUpstream, upstreamAdd, upstreamPull, upstreamStatus, validate, writeSkillsIndexes } from "./lib.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -25,8 +25,10 @@ const CATALOG = `plugins:
 const ROLES = `---
 roles:
   reviewer:
+    purpose: code review
     omp: ["@reviewer", "@slow"]
     claude: opus
+    codex: high
 ---
 `;
 
@@ -247,4 +249,68 @@ test("upstream copies with loose YAML frontmatter still import", () => {
   const r = upstreamPull(local, "foo-local");
   assert.deepEqual(r.conflicts, []);
   assert.match(fs.readFileSync(path.join(dir, "SKILL.md"), "utf8"), /^description: Use when testing upstream merges: three way\.$/m);
+});
+
+// A mode skill: a shared skill that carries a skills index and playbooks.
+function modeRepo(files = {}) {
+  const root = repo({
+    "plugins/core/skills/mode/SKILL.md": skill("mode", "disable-model-invocation: true\n", "Run the `investigation` playbook (playbooks/investigation.md); it calls the `alpha` skill.\n"),
+    "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n",
+    "plugins/core/skills/mode/skills-index.md": "",
+    ...files,
+  });
+  writeSkillsIndexes(root);
+  return root;
+}
+
+test("the skills index lists every shared skill with its plugin and goes stale when a skill is added", () => {
+  const root = modeRepo();
+  const index = fs.readFileSync(path.join(root, "plugins/core/skills/mode/skills-index.md"), "utf8");
+  assert.match(index, /^- alpha: core$/m);
+  assert.match(index, /^- mkt-launch: mkt$/m);
+  assert.match(index, /^- mode: core$/m);
+  assert.equal(index, renderSkillsIndex(root));
+  assert.equal(messages(root), "");
+  put(root, { "plugins/core/skills/gamma/SKILL.md": skill("gamma") });
+  assert.match(messages(root), /plugins\/core\/skills\/mode\/skills-index\.md: skills index is stale; run `npm run index`/);
+});
+
+test("a mode skill whose skills index is missing still fails validation", () => {
+  const root = modeRepo({ "plugins/core/skills/mode/playbooks/bug-fix.md": "1. Use the `nope` skill.\n" });
+  fs.rmSync(path.join(root, "plugins/core/skills/mode/skills-index.md"));
+  const msgs = messages(root);
+  assert.match(msgs, /plugins\/core\/skills\/mode\/skills-index\.md: mode skill has no skills index; run `npm run index`/);
+  assert.match(msgs, /bug-fix\.md:1: names skill "nope", which does not exist/);
+  writeSkillsIndexes(root);
+  assert.doesNotMatch(messages(root), /skills index/);
+});
+
+test("a mode skill may name only skills and playbooks that exist", () => {
+  const msgs = messages(
+    modeRepo({
+      "plugins/core/skills/mode/playbooks/bug-fix.md": "1. Use the `nope` skill, then the `ghost` playbook.\n2. See playbooks/missing.md.\n",
+    }),
+  );
+  assert.match(msgs, /bug-fix\.md:1: names skill "nope", which does not exist/);
+  assert.match(msgs, /bug-fix\.md:1: names playbook "ghost", which has no file in playbooks\//);
+  assert.match(msgs, /bug-fix\.md:2: links playbooks\/missing\.md, which does not exist/);
+});
+
+test("harness and T3 tool names stay in harness/ and references/", () => {
+  const msgs = messages(
+    modeRepo({
+      "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n2. Spawn a worker with delegate_task.\n",
+      "plugins/core/skills/mode/harness/t3.md": "| spawn a worker | `delegate_task` with `isolation: \"worktree\"` |\n| ask a person | AskUserQuestion, or `$alpha` |\n",
+      "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Read references/t3.md.\n"),
+      "plugins/core/skills/beta/references/t3.md": "Each step is a fresh `delegate_task`; wakes use `schedule_task`.\n",
+    }),
+  );
+  assert.match(msgs, /investigation\.md:2: names a T3 tool: delegate_task; tool names belong in harness\/ or references\/ \(ADR-0003\)/);
+  assert.doesNotMatch(msgs, /harness\/t3\.md/);
+  assert.doesNotMatch(msgs, /references\/t3\.md/);
+});
+
+test("every role in ROLES.md maps on every platform", () => {
+  const roles = `---\nroles:\n  reviewer:\n    purpose: code review\n    omp: ["@reviewer", "@slow"]\n    claude: opus\n    codex: high\n  coordinator:\n    purpose: runs many workers\n    claude: sonnet\n---\n`;
+  assert.match(messages(repo({ "ROLES.md": roles })), /ROLES\.md: role "coordinator" has no omp, codex/);
 });

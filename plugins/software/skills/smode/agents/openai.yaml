@@ -1,0 +1,5 @@
+interface:
+  display_name: "smode"
+  short_description: "Match the task to a playbook and run the repo's skills step by step"
+policy:
+  allow_implicit_invocation: false

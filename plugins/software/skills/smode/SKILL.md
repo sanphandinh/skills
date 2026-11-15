@@ -1,0 +1,119 @@
+---
+name: smode
+description: "Work in smode: restate the goal, match the task to a playbook, follow its steps verbatim, and run this repo's skills at the steps that need them."
+disable-model-invocation: true
+argument-hint: "<task>"
+---
+
+# smode
+
+smode is how engineering work runs here. It matches the task to one **playbook**, copies the playbook's steps into a todo list, and runs the skills of the `core`, `software` and `factory` plugins at the steps that need them.
+
+Files next to this one: `playbooks/<name>.md` (one per kind of task), `harness/<harness>.md` (how this session's tools do each action), and `skills-index.md` (which plugin ships each skill). Keep this file's absolute path: every work order you write includes it.
+
+## First, the harness
+
+Read the harness doc for the agent running this session: `harness/claude-code.md`, `harness/codex.md` or `harness/omp.md`. When the session also runs inside T3 Code, read `harness/t3.md` as well; it adds to the first doc. Where this file says "spawn a worker", "ask the user" or "schedule", the harness doc says how. A feature your harness lacks is skipped with one line in the reply, `Skipped in <harness>: <step>. <reason>.`, and the work goes on.
+
+## Opening the task
+
+Do these three things before any other work:
+
+1. **Restate.** Your first message says, in your own words, the user's goal, the problem it solves, and the smallest change you expect to meet it. Do not wait for confirmation. If the evidence rules out the change the user asked for, show the evidence and stop.
+2. **Pick the playbook.** Match the task to one entry under **Playbooks** below and read its file.
+3. **Open the todo list.** Its first items are the playbook's steps, copied verbatim, then any task-specific items. Keep it current as you go. A step you choose not to do stays in the list as `skip: <reason>`. The final reply shows the list with each step's outcome.
+
+Restate the goal in every work order and in every final report.
+
+## Running a skill by name
+
+**A step or trigger that names a skill runs that skill.** Read its whole `SKILL.md`, not its first lines, and follow it before doing the step. Doing the step your own way instead, even with the same tools, is a deviation: report it in the reply, under **Deviations**, with its reason.
+
+"The `tdd` skill" means: run that skill's `SKILL.md` and follow it. Find it in this order and use the first that works:
+
+1. The harness already loaded the skill: invoke it the harness's way.
+2. This file sits in a checkout of this repository (three folders up is a `plugins/` folder holding `core/`): read `plugins/<plugin>/skills/<skill>/SKILL.md`, taking `<plugin>` from `skills-index.md`.
+3. The harness's installed plugin `<plugin>@sanphan-skills`: read `<installPath>/skills/<skill>/SKILL.md`. The harness doc says where the install record lives.
+4. The harness's clone of the marketplace: read `plugins/<plugin>/skills/<skill>/SKILL.md` inside it.
+
+Step 3 comes before step 4 because a marketplace clone can be newer than the installed plugin. Reading the file also runs a skill the user must invoke by hand (`implement`, `to-tickets`), which a harness's skill command refuses to start for you. A skill that names another skill is resolved the same way. When no copy is found, say so and stop that step.
+
+## Triggers
+
+These fire inside any playbook, whenever the situation arises:
+
+| Situation | Run |
+|---|---|
+| The plan or the request is unclear, or a decision needs stress-testing | the `grilling` skill |
+| Domain terms are unclear, or `GLOSSARY.md` needs a term | the `domain-modeling` skill |
+| Designing or deepening a module's interface | the `codebase-design` skill |
+| Writing or changing code | the `tdd` skill |
+| A bug or a performance regression | the `diagnosing-bugs` skill |
+| A question of fact (docs, an API, a library) | the `research` skill |
+| A fork you could settle by running something (behaviour, layout, timing) | the `prototype` skill, instead of asking the user |
+| Writing a pull request body | the `pr` skill |
+| Writing a skill, `AGENTS.md` or `CLAUDE.md` | the `writing-for-agents` skill |
+| A step only a person can do (credentials, dashboards, secrets) | the `wizard` skill |
+
+Ask the user only for a product or preference call that no experiment settles.
+
+## Autonomy
+
+Reversible work proceeds without asking: edits, local commits, branches, test runs, drafts.
+
+**Always pause** before an irreversible or outward act: force-pushing a shared branch, deploying, deleting data, merging to trunk, messaging customers or other people. The user's explicit go for that act, in this session, is the only release.
+
+No is an acceptable answer. When asked whether to do something, give your real judgment, including "this does not earn its place".
+
+## Delegation
+
+**A fresh worker for each new piece of work.** Its work order carries the user's goal, the scope (paths it may and may not write), the evidence that proves it is done, every directive given since, and the previous worker's report and branch when there was one. Reuse a worker only when the work needs state that lives in it (an uncommitted checkout, a running process). Point to files by path instead of pasting them.
+
+**Every work order says** which playbook to run and gives the absolute path of this file, so the worker can run it on any harness.
+
+**Model per role.** Pick the role the work needs, then the model the role maps to in this machine's role configuration (the harness doc says where it lives; the `setup` playbook writes it). With no configuration, run the worker on the session's model and say so.
+
+| Role | Needs |
+|---|---|
+| scout | fast, cheap reading and searching |
+| worker | reliable code changes and test loops |
+| thinker | deep reasoning where a wrong answer is expensive: plans, diagnosis, design |
+| reviewer | independent judgment: reviews and verification |
+| coordinator | steady, cheap, small context: runs a program of many workers |
+
+A `reviewer` runs on a different model family from the `worker` whose change it checks.
+
+**Read-only is a rule, not a mode.** For a step that must not change files, the work order says "change no file and make no commit", and you check the worker's `git status` afterwards. No harness's planning mode is relied on.
+
+**You own the result.** Read the diff or the artifact, not only the worker's summary, and write your own report.
+
+## Writing the reply
+
+- Reply in the language `docs/agents/response-language.md` names; without that file, in the user's language.
+- Every claim carries its evidence or a label: measured, inferred, or guessed.
+- Never hand the user a check you could run yourself.
+- Short sentences. Nothing the playbook's reply asks for is dropped.
+- Link only what you produced or read this session.
+
+## Playbooks
+
+Each entry says when it fits. Open its file and run it as **Opening the task** says. When no playbook fits, say so, then work through the triggers above.
+
+- **Investigation** (`playbooks/investigation.md`): a read-only question. How does X work, why is Y so, should we do X or Y.
+- **Bug fix** (`playbooks/bug-fix.md`): a defect to reproduce, diagnose and fix with evidence.
+- **Feature** (`playbooks/feature.md`): new or changed behaviour.
+- **Refactor** (`playbooks/refactor.md`): a change to structure that keeps behaviour.
+- **Prototype** (`playbooks/prototype.md`): throwaway code that answers a design question.
+- **Spec** (`playbooks/spec.md`): from an idea to a spec and tickets on the tracker.
+- **Plan ticket** (`playbooks/plan-ticket.md`): a plan for one ticket before any code.
+- **Ticket** (`playbooks/ticket.md`): build one ticket from plan to pull request.
+- **Spec run** (`playbooks/spec-run.md`): build every ticket of a spec on an integration branch.
+- **Verify** (`playbooks/verify.md`): prove a change works on the real product, at one commit.
+- **Review** (`playbooks/review.md`): an independent review of a change, at one commit.
+- **Triage** (`playbooks/triage.md`): move new issues and outside pull requests through the triage roles.
+- **Pickup** (`playbooks/pickup.md`): take over work in flight from a handoff or a branch.
+- **Retro** (`playbooks/retro.md`): turn a finished session into changes to the agent's environment.
+- **Setup** (`playbooks/setup.md`): prepare this machine and project for smode, including the role configuration.
+- **Factory** (`playbooks/factory.md`): run the agent-driven factory, version 2.
+
+The structure of this skill is adapted from `poteto-mode` in cursor/plugins `pstack` (MIT, Copyright (c) 2026 Lauren Tan).
