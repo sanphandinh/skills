@@ -18,7 +18,7 @@ Read a skill's `SKILL.md` with `read` and follow it.
 |---|---|
 | Spawn a worker | The `task` tool with the bundled agent `task` (general purpose), the work order as its task. No agent definition is needed. |
 | Spawn a read-only worker | The bundled agent `scout` (fast, read-only tools) or `reviewer` (deep review, read-only tools, structured verdict). The work order still says "change no file and make no commit". |
-| Choose the model | `model` on the call takes one exact `provider/model-id`, optionally with `:level`. Role aliases such as `@slow` are refused. OMP approves the model only when a role in the **user** config names it, so take it from there (Role configuration below). Without a per-call model, the bundled agent runs on its own role (`task` on `@task`, `scout` on `@smol`, `reviewer` on `@slow`). |
+| Choose the model | `model` on the call takes one exact `provider/model-id`, optionally with `:level`. Role aliases such as `@slow` are refused. It works only with `task.perCallModel: on` in the **user** config (the default is `off`; a project config can turn it off but never on), and OMP approves the model only when a user-level role names it, so take it from there (Role configuration below). Without a per-call model, the bundled agent runs on its own role (`task` on `@task`, `scout` on `@smol`, `reviewer` on `@slow`). |
 | A separate checkout | Workers share the session's checkout. When the work needs its own, create a worktree, name it in the work order, and remove it after the push check. |
 | Ask the user | The `ask` tool. |
 | Open a todo list | The `todo` tool. |
@@ -31,6 +31,6 @@ Read a skill's `SKILL.md` with `read` and follow it.
 
 ## Role configuration
 
-`modelRoles` in `~/.omp/agent/config.yml`, the user config. smode's roles (`scout`, `worker`, `thinker`, `reviewer`, `coordinator`) are keys there next to OMP's own roles, each with an exact `provider/model-id:level`; `templates/roles.omp-config.yml` in this repository shows the shape. Keep them in the user config, not in a project's `.omp/config.yml`: OMP grants per-call models only from user-level settings. A missing role means the bundled agent's own role.
+`modelRoles` in `~/.omp/agent/config.yml`, the user config. smode's roles (`scout`, `worker`, `thinker`, `reviewer`, `coordinator`) are keys there next to OMP's own roles, each with an exact `provider/model-id:level`; `templates/roles.omp-config.yml` in this repository shows the shape. Keep them in the user config, not in a project's `.omp/config.yml`: OMP grants per-call models only from user-level settings. The Setup playbook also sets `perCallModel: on` under `task:` in the same file, after asking the user: OMP then accepts a per-call model, still only one the configuration already routes to. A missing role, or `perCallModel` left `off`, means the bundled agent's own role.
 
 OMP's rules from `software-omp` (the TDD guards) keep running in every worker; smode does not replace them.
