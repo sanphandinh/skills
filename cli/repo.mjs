@@ -4,7 +4,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { listAgents, listSkills, upstreamAdd, upstreamPull, upstreamStatus, validate } from "./lib.mjs";
+import { listAgents, listSkills, upstreamAdd, upstreamPull, upstreamStatus, validate, writeSkillsIndexes } from "./lib.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -12,6 +12,7 @@ const HELP = `repo <command> [options]
 
   list                      Skills and agents per plugin.
   validate                  Check skills, platform agents, and roles against the repo rules.
+  index                     Regenerate the skills index of every mode skill (skills-index.md).
   upstream status [--no-fetch]
                             Tracked upstream skills that changed, and untracked candidates.
   upstream pull <skill...|--all> [--no-fetch]
@@ -56,6 +57,10 @@ function main(argv) {
       for (const i of issues) console.log(`${i.file}: ${i.msg}`);
       console.log(`${skills.length} skills, ${agents.length} agents, ${issues.length} issue(s)`);
       if (issues.length) process.exitCode = 1;
+      return;
+    }
+    case "index": {
+      for (const file of writeSkillsIndexes(REPO_ROOT)) console.log(`wrote ${file}`);
       return;
     }
     case "upstream": {

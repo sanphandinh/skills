@@ -5,6 +5,7 @@
   "description": "Personal multi-domain agent skills, shipped as Claude Code, Codex, and Oh My Pi plugins.",
   "scripts": {
     "validate": "node cli/repo.mjs validate",
+    "index": "node cli/repo.mjs index",
     "upstream": "node cli/repo.mjs upstream",
     "list": "node cli/repo.mjs list",
     "test": "node --test cli/*.test.mjs plugins/*/skills/*/scripts/*.test.mjs"

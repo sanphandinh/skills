@@ -1,0 +1,30 @@
+# smode on Claude Code
+
+Read this once per session when the agent is Claude Code (the CLI, the desktop app, or the Claude provider inside T3 Code), then map each smode action with the tables below. Never pass a field or value the tool schema rejects; drop it and say so.
+
+## Finding skills
+
+| smode step | Claude Code |
+|---|---|
+| 1. Skill already loaded | The `Skill` tool, with the plugin prefix: `software:tdd`, `core:grilling`. It refuses skills marked `disable-model-invocation`; go to the next step for those. |
+| 3. Installed plugin | `~/.claude/plugins/installed_plugins.json` lists each `<plugin>@sanphan-skills` with its `installPath`. A project-scoped install is listed there too. |
+| 4. Marketplace clone | `~/.claude/plugins/marketplaces/sanphan-skills/` is a full clone of the repository: `plugins/<plugin>/skills/<skill>/SKILL.md`. |
+
+Read a skill's `SKILL.md` with the `Read` tool and follow it.
+
+## Actions
+
+| smode action | Claude Code |
+|---|---|
+| Spawn a worker | The `Agent` tool, `subagent_type: "general-purpose"`, the work order as `prompt`. Background is the default; wait for the notification instead of polling. |
+| Spawn a read-only worker | `subagent_type: "Explore"`. It still has `Bash`, so the work order still says "change no file and make no commit", and you check `git status` afterwards. |
+| Choose the model | `model` takes only `opus`, `sonnet`, `haiku`, `fable`. A role value `opus high` is `model: "opus"` and `effort: "high"`. A non-Claude model cannot run here: omit `model` and say so. |
+| A separate checkout | `isolation: "worktree"`. Name the branch or commit the worker starts from in the work order. |
+| Ask the user | `AskUserQuestion`. In print mode (`-p`) it is absent: ask in plain text and end the turn. |
+| Open a todo list | `TodoWrite` when the session has it; otherwise keep the list in the reply and update it at each step. |
+| Schedule or loop | The `loop` or `schedule` skills of Claude Code when the user asked for them; otherwise skip with the line. |
+| Watch a pull request | No native watch: skip with the line, or use `harness/t3.md` when inside T3. |
+
+## Role configuration
+
+`~/.claude/rules/smode-roles.md`, written by the `setup` playbook. Claude Code loads every file in `~/.claude/rules/` into each new session, so the role lines are already in context; if they are not, read the file. One line per role: `<role>: <model> <effort>`, such as `thinker: opus high`. A missing file or line means the session's model.
