@@ -10,6 +10,8 @@ Read this once per session when the agent is Claude Code (the CLI, the desktop a
 | 3. Installed plugin | `~/.claude/plugins/installed_plugins.json`, `plugins["<plugin>@sanphan-skills"]`: a list of installs, each with `scope`, `installPath` (`~/.claude/plugins/cache/sanphan-skills/<plugin>/<version>`) and, for `scope: "project"`, `projectPath`. Take the install whose `projectPath` is this project, else the `user` one. The plugin may be installed but disabled in this project's `.claude/settings.json`; its files are still there to read. Get the path with `python3 -c 'import json,os,sys; d=json.load(open(os.path.expanduser("~/.claude/plugins/installed_plugins.json")))["plugins"].get(sys.argv[1]+"@sanphan-skills",[]); c=os.getcwd(); m=[i for i in d if i.get("projectPath")==c] or [i for i in d if i.get("scope")=="user"]; print(m[0]["installPath"] if m else "")' <plugin>`. |
 | 4. Marketplace clone | `installLocation` of `sanphan-skills` in `~/.claude/plugins/known_marketplaces.json`: a clone of the repository under `~/.claude/plugins/marketplaces/` for a GitHub marketplace, or the source folder itself for a local one. Read `plugins/<plugin>/skills/<skill>/SKILL.md` there, only when step 3 found nothing. |
 
+Each plugin's `<version>` is its own (`software` 0.9.0 beside `core` 0.5.0), so never swap the plugin name in this skill's own path: run the one-liner (a real run that did read `core/0.9.0`, which does not exist, and had to search).
+
 A marketplace added from a local folder runs its plugins straight from that folder, so smode sits in a checkout and step 2 applies (verified); one added from GitHub runs them from `~/.claude/plugins/cache/`, where step 3 applies.
 
 Read a skill's `SKILL.md` with the `Read` tool and follow it.

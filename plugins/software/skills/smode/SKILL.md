@@ -33,7 +33,7 @@ Restate the goal in every work order and in every final report.
 
 1. The harness already loaded the skill: invoke it the harness's way.
 2. This file sits in a checkout of this repository (three folders up is a `plugins/` folder holding `core/`): read `plugins/<plugin>/skills/<skill>/SKILL.md`, taking `<plugin>` from `skills-index.md`.
-3. The harness's installed plugin `<plugin>@sanphan-skills`: read `<installPath>/skills/<skill>/SKILL.md`. The harness doc says where the install record lives.
+3. The harness's installed plugin `<plugin>@sanphan-skills`: read `<installPath>/skills/<skill>/SKILL.md`, with `installPath` taken from the harness's install record (the harness doc says where it lives and how to read it). Each plugin is installed at its own version, so never build another plugin's path from this file's path.
 4. The harness's clone of the marketplace: read `plugins/<plugin>/skills/<skill>/SKILL.md` inside it.
 
 Step 3 comes before step 4 because a marketplace clone can be newer than the installed plugin. Reading the file also runs a skill the user must invoke by hand (`implement`, `to-tickets`), which a harness's skill command refuses to start for you. A skill that names another skill is resolved the same way. When no copy is found, say so and stop that step.
