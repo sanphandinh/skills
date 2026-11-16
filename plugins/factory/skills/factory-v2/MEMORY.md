@@ -11,6 +11,8 @@ GitHub holds the truth about the work: tickets, pull requests, checks, comments.
 - `providers.md`: one line per provider and model the setup smoke test checked: `<provider>/<model> | asks: yes or no | files: tool or shell | result: PASS or FAIL <date>`. Routing uses only `PASS` lines; rerun the check after a provider changes.
 - `quota.md`: one line per blocked route candidate: `<provider>/<model> | blocked until <time> | since <time> | <ticket> <role> | <the error's words>`. A line whose time has passed is removed on the next wake.
 
+Every `<time>` is read from the clock when you write it (`date -u +%FT%RZ`), in UTC; never estimate or count it from earlier lines. An acceptance run that estimated wrote 01:10Z for a wake at 00:09Z, and the journal went out of order.
+
 The folder is a git repository (`git init` on setup). Commit once per wake, with the message `wake <time>`.
 
 ## Lessons
