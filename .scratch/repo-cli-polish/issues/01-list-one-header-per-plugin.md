@@ -4,17 +4,17 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** closed
 
 **Door:** two-way
 
-- [ ] Mỗi tiêu đề plugin xuất hiện đúng một lần trong output của `repo list`
+- [x] Mỗi tiêu đề plugin xuất hiện đúng một lần trong output của `repo list`
   Verify: `node cli/repo.mjs list | grep -c '^software-claude (claude):'` in ra `1`, và `node cli/repo.mjs list | grep -c '^software-omp (omp):'` in ra `1`
-- [ ] Dưới mỗi tiêu đề vẫn có đủ skill và agent như trước, cùng định dạng dòng `  skill  <name>` và `  agent  <name>`
+- [x] Dưới mỗi tiêu đề vẫn có đủ skill và agent như trước, cùng định dạng dòng `  skill  <name>` và `  agent  <name>`
   Verify: so `node cli/repo.mjs list | grep -E '^  (skill|agent) ' | sort` trước và sau thay đổi: giống nhau
-- [ ] Một test trong `cli/repo.test.mjs` hỏng với code cũ và pass với code mới
+- [x] Một test trong `cli/repo.test.mjs` hỏng với code cũ và pass với code mới
   Verify: `npm test`
-- [ ] `npm run validate` và `npm test` pass
+- [x] `npm run validate` và `npm test` pass
   Verify: chạy hai lệnh từ thư mục gốc của repo
 
 ## Comments
@@ -193,3 +193,13 @@ Không có. Điểm duy nhất có thể hiểu hai cách là thứ tự plugin,
 #### Split
 
 none
+
+## Handoff
+
+**Delivered:** `repo list` in mỗi tiêu đề plugin đúng một lần, skill rồi agent bên dưới; 44 dòng thay vì 52; định dạng dòng và thứ tự plugin không đổi; test mới đỏ với code cũ, xanh với code mới.
+**Interfaces introduced:** `renderList(root, catalog)`: trả về văn bản của `repo list` (mỗi dòng kết thúc bằng xuống dòng, chuỗi rỗng khi không có gì); plugin có skill đứng trước, rồi plugin chỉ có agent, cả hai theo thứ tự catalog.
+**Deviations from spec:** không có.
+**Decisions:** logic nằm trong thư viện (không phải trong lệnh CLI) vì lệnh CLI không import được trong test; in bằng ghi thẳng ra stdout để catalog rỗng không in byte nào; plugin không có gì thì không có tiêu đề.
+**Gotchas:** worktree mới cần `npm install` trước; `listSkills` và `listAgents` giữ nguyên và vẫn được export.
+**For the next ticket:** ticket 02 (README) không bị ảnh hưởng; output mẫu của `repo list` trong tài liệu, nếu có, nay không còn tiêu đề lặp.
+**Links:** pull request https://github.com/sanphandinh/skills/pull/15, merge commit `5af43312e54416189690b8594586e6d9d63f91c7`, verify PASS https://github.com/sanphandinh/skills/pull/15#issuecomment-6903682765, review pass https://github.com/sanphandinh/skills/pull/15#issuecomment-6903689530 (both on `d4c3cc4`)

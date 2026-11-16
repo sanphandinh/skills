@@ -1,6 +1,6 @@
 # Repo CLI polish
 
-**Status:** ready-for-agent
+**Status:** closed
 
 **Priority:** p2
 
@@ -20,3 +20,9 @@ Hai chỗ nhỏ của công cụ trong repo làm người mới đọc sai:
 
 - Thứ tự plugin, định dạng dòng `skill`/`agent`, và các lệnh khác của CLI không đổi.
 - Không đổi `PLATFORMS.md` hay `AGENTS.md`.
+
+## Comments
+
+## Factory summary
+
+2026-11-16, factory-v2: spec đã xong. Ticket 01 (`repo list` in một tiêu đề cho mỗi plugin) merge qua https://github.com/sanphandinh/skills/pull/15 (`5af4331`); ticket 02 (README có `npm run index`) merge qua https://github.com/sanphandinh/skills/pull/14 (`5505872`). Cả hai qua verify và review trên đúng head commit, không có vòng rework, không có câu hỏi cho người.
