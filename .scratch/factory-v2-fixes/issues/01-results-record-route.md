@@ -7,17 +7,17 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** closed
 
 **Door:** two-way
 
-- [ ] Phần chung của work order yêu cầu `route` trong mọi kết quả, với giá trị coordinator điền
+- [x] Phần chung của work order yêu cầu `route` trong mọi kết quả, với giá trị coordinator điền
   Verify: `grep -n '`route`' plugins/factory/skills/factory-v2/WORK-ORDERS.md`
-- [ ] Mục `results/` trong `MEMORY.md` của factory v2 nhắc trường `route`
+- [x] Mục `results/` trong `MEMORY.md` của factory v2 nhắc trường `route`
   Verify: `grep -n 'route' plugins/factory/skills/factory-v2/MEMORY.md`
-- [ ] Factory v1 (`plugins/factory/skills/factory/`) không đổi
+- [x] Factory v1 (`plugins/factory/skills/factory/`) không đổi
   Verify: `git diff --stat origin/main -- plugins/factory/skills/factory/` rỗng
-- [ ] `npm run validate` và `npm test` pass
+- [x] `npm run validate` và `npm test` pass
   Verify: chạy hai lệnh từ thư mục gốc của repo
 
 ## Comments
@@ -163,3 +163,13 @@ Không có.
 #### Split
 
 none
+
+## Handoff
+
+**Delivered:** Mọi kết quả của worker factory v2 có trường `route` (`<provider>/<model>`); work order định nghĩa `<route>` do coordinator điền (điền lại khi worker khởi động lại trên ứng viên khác), `MEMORY.md` mục `results/` nói trường đó dùng để kiểm họ model của verifier và reviewer. Cả bốn tiêu chí đạt: hai grep khớp, v1 không đổi, validate và test pass.
+**Interfaces introduced:** trường kết quả `route` (chuỗi, không kèm options); placeholder `<route>` trong work order.
+**Deviations from spec:** không có (ticket đứng riêng; không lệch plan).
+**Decisions:** `route` chép nguyên từ coordinator, worker không tự khai; câu ở PLAYBOOK Routing về "result path name" đổi thành trường `route`; plugin `factory` bump 0.4.1; không backfill kết quả cũ, không thêm luật validator.
+**Gotchas:** coordinator không đối chiếu `route` khi nhận `done` (journal là bản đối chứng). Kết quả cũ của lần nghiệm thu 2026-11-16 không có `route`.
+**For the next ticket:** không có ticket nào bị chặn bởi ticket này.
+**Links:** pull request https://github.com/sanphandinh/skills/pull/18, merge commit `a1d4b9351c1884c384ef434dbad06f837db83aae`, verify PASS https://github.com/sanphandinh/skills/pull/18#issuecomment-6903878140, review pass with one note (blast radius `docs` changed to `low` in the PR body) https://github.com/sanphandinh/skills/pull/18#issuecomment-6903887432 (both on `c7f6d17`)
