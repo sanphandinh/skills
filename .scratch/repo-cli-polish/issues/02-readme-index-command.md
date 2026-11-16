@@ -4,15 +4,15 @@
 
 **Blocked by:** none
 
-**Status:** ready-for-agent
+**Status:** closed
 
 **Door:** two-way
 
-- [ ] `README.md` có lệnh `npm run index` trong khối lệnh của mục "Work on this repo"
+- [x] `README.md` có lệnh `npm run index` trong khối lệnh của mục "Work on this repo"
   Verify: `grep -n 'npm run index' README.md`
-- [ ] README nói khi nào cần chạy lệnh đó, khớp với câu lỗi của validator
+- [x] README nói khi nào cần chạy lệnh đó, khớp với câu lỗi của validator
   Verify: đọc mục "Work on this repo", đối chiếu với câu "skills index is stale; run `npm run index`" trong `cli/lib.mjs`
-- [ ] `npm run validate` và `npm test` pass
+- [x] `npm run validate` và `npm test` pass
   Verify: chạy hai lệnh từ thư mục gốc của repo
 
 ## Comments
@@ -122,3 +122,13 @@ Môi trường hôm nay với tới mọi lệnh trên (đã đo): Node `v26.13.
 Không có câu hỏi sản phẩm nào còn mở: ticket đã cho nội dung của câu, và lời văn chính xác theo câu lỗi của validator.
 
 Split: none. Một file, một luồng, một lượt review.
+
+## Handoff
+
+**Delivered:** README.md liệt kê `npm run index` trong khối lệnh của mục "Work on this repo" và nói khi nào chạy, khớp câu lỗi "skills index is stale" của validator; validate và test vẫn xanh.
+**Interfaces introduced:** không có.
+**Deviations from spec:** không có.
+**Decisions:** `npm run index` đặt ngay sau `npm run validate`; câu giải thích là đoạn cuối file; không thêm test cho README vì validator và test không đọc nó.
+**Gotchas:** câu trong README chép chuỗi lỗi của validator, nếu chuỗi đó đổi thì README phải đổi theo; lỗi "mode skill has no skills index" cố ý không nhắc.
+**For the next ticket:** không có ticket nào bị chặn bởi ticket này.
+**Links:** pull request https://github.com/sanphandinh/skills/pull/14, merge commit `55058728791d68ab6a420d3a13a2f5cd7266fb7b`, verify PASS https://github.com/sanphandinh/skills/pull/14#issuecomment-6903637436, review pass https://github.com/sanphandinh/skills/pull/14#issuecomment-6903637848 (both on `2ed41cf`)
