@@ -24,7 +24,10 @@ In between, the `factory` plugin runs a coordinator agent inside an agent manage
 ```bash
 npm install
 npm run validate
+npm run index
 npm test
 npm run list
 npm run upstream -- status
 ```
+
+Run `npm run index` after adding, removing or renaming a skill, when `npm run validate` reports "skills index is stale; run `npm run index`": it regenerates the `skills-index.md` of every mode skill.
