@@ -122,6 +122,21 @@ export function listAgents(root, catalog = loadCatalog(root)) {
   return agents;
 }
 
+// The text of `repo list`: each plugin's header once, then its skills, then its
+// agents. Plugins with skills come first, then plugins with only agents, both
+// in catalog order.
+export function renderList(root, catalog = loadCatalog(root)) {
+  const skills = listSkills(root, catalog);
+  const agents = listAgents(root, catalog);
+  const lines = [];
+  for (const plugin of new Set([...skills, ...agents].map((e) => e.plugin))) {
+    lines.push(`${plugin} (${catalog.plugins[plugin].platform}):`);
+    for (const s of skills) if (s.plugin === plugin) lines.push(`  skill  ${s.name}`);
+    for (const a of agents) if (a.plugin === plugin) lines.push(`  agent  ${path.basename(a.file).replace(/\.(md|toml)$/, "")}`);
+  }
+  return lines.map((l) => `${l}\n`).join("");
+}
+
 // ROLES.md frontmatter: { roles: { <logical>: { omp: "@role" | [...], claude: alias, codex: {...} } } }
 export function loadRoles(root) {
   const file = path.join(root, "ROLES.md");

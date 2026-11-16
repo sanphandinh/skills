@@ -4,7 +4,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { listAgents, listSkills, upstreamAdd, upstreamPull, upstreamStatus, validate, writeSkillsIndexes } from "./lib.mjs";
+import { renderList, upstreamAdd, upstreamPull, upstreamStatus, validate, writeSkillsIndexes } from "./lib.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -43,13 +43,7 @@ function main(argv) {
 
   switch (cmd) {
     case "list": {
-      const agents = listAgents(REPO_ROOT);
-      let plugin;
-      for (const s of listSkills(REPO_ROOT)) {
-        if (s.plugin !== plugin) console.log(`${(plugin = s.plugin)} (${s.platform}):`);
-        console.log(`  skill  ${s.name}`);
-      }
-      for (const a of agents) console.log(`${a.plugin} (${a.platform}):\n  agent  ${path.basename(a.file).replace(/\.(md|toml)$/, "")}`);
+      process.stdout.write(renderList(REPO_ROOT));
       return;
     }
     case "validate": {
