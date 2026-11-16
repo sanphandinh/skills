@@ -11,15 +11,25 @@
 
 **Blocked by:** 03, 09
 
-**Status:** ready-for-agent
+**Status:** closed
 
 **Door:** two-way
 
-- [ ] `README.md`, `PLATFORMS.md` và `AGENTS.md` nói đúng những gì đã chạy được trong ticket 09
+- [x] `README.md`, `PLATFORMS.md` và `AGENTS.md` nói đúng những gì đã chạy được trong ticket 09
   Verify: đọc ba file, đối chiếu với kết quả nghiệm thu
-- [ ] `UPSTREAM.md` credit pstack, kèm link và giấy phép MIT
+- [x] `UPSTREAM.md` credit pstack, kèm link và giấy phép MIT
   Verify: `grep -n pstack UPSTREAM.md`
-- [ ] Mọi manifest của `software` và `factory` cùng một version mới, và catalog OMP khớp
+- [x] Mọi manifest của `software` và `factory` cùng một version mới, và catalog OMP khớp
   Verify: `npm test` (đã có test kiểm version của manifest)
-- [ ] `npm run validate` và `npm test` pass
+- [x] `npm run validate` và `npm test` pass
   Verify: chạy hai lệnh từ thư mục gốc của repo
+
+## Handoff
+
+**Delivered:** README, PLATFORMS và AGENTS mô tả `smode` và factory v2 đúng như lần nghiệm thu đã chạy (thread coordinator ở project root, full-access, watcher route `scout`, memory ở `~/.local/share/factory-v2/<repo>`). pstack được credit trong `UPSTREAM.md`. Version hiện tại: `software` 0.9.1, `factory` 0.4.3 trên mọi manifest và catalog OMP.
+**Interfaces introduced:** none
+**Deviations from spec:** version tăng thêm sau phát hành (0.9.1, 0.4.1 tới 0.4.3) vì các bản sửa từ nghiệm thu.
+**Decisions:** none
+**Gotchas:** mỗi bản sửa skill cần tăng version, nếu không máy đã cài không nhận.
+**For the next ticket:** none
+**Links:** #13, #17, #19, #20

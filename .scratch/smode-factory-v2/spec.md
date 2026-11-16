@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: closed
 
 # `smode` và factory v2
 
