@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { loadUpstream, renderSkillsIndex, saveUpstream, upstreamAdd, upstreamPull, upstreamStatus, validate, writeSkillsIndexes } from "./lib.mjs";
+import { loadUpstream, renderList, renderSkillsIndex, saveUpstream, upstreamAdd, upstreamPull, upstreamStatus, validate, writeSkillsIndexes } from "./lib.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -133,6 +133,38 @@ test("validate checks Claude agents use model aliases and agents stay out of sha
   );
   assert.match(msgs, /pinned\.md: model "claude-opus-5-5" should be one of opus, sonnet, haiku, inherit/);
   assert.match(msgs, /stray\.md: agents belong in a platform plugin/);
+});
+
+test("list prints one header per plugin, with its skills and then its agents below it", () => {
+  const root = repo({
+    "catalog.yaml": `${CATALOG}  empty:\n    platform: shared\n`,
+    "plugins/core-claude/skills/deep/SKILL.md": skill("deep"),
+    "plugins/core-claude/agents/planner.md": agent("planner", "model: opus\n"),
+    "plugins/core-omp/agents/nested/helper.toml": "",
+  });
+  assert.equal(
+    renderList(root),
+    [
+      "core (shared):",
+      "  skill  alpha",
+      "mkt (shared):",
+      "  skill  mkt-launch",
+      "core-claude (claude):",
+      "  skill  deep",
+      "  agent  planner",
+      "  agent  reviewer",
+      "core-omp (omp):",
+      "  agent  helper",
+      "  agent  reviewer",
+      "",
+    ].join("\n"),
+  );
+});
+
+test("list prints nothing for a catalog with no skills and no agents", () => {
+  const root = tmp();
+  put(root, { "catalog.yaml": "plugins:\n  empty:\n    platform: shared\n" });
+  assert.equal(renderList(root), "");
 });
 
 // ---------- upstream ----------
