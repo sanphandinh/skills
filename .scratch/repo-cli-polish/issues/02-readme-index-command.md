@@ -21,7 +21,7 @@
 
 2026-11-16, factory-v2 planner `02 planner` (claudeAgent/claude-fable-5-2). Door: `two-way`. Files to change: `README.md`. Files not to touch: `cli/repo.mjs`, `cli/lib.mjs`, `cli/repo.test.mjs`, `PLATFORMS.md`, `AGENTS.md`, `package.json`, `plugins/*/skills/*/skills-index.md`, `.scratch/**`.
 
-##### Plan: ticket 02 "README có `npm run index`"
+### Plan: ticket 02 "README có `npm run index`"
 
 Reply language: match-user, không có tin nhắn người dùng nên lấy theo ngôn ngữ của ticket và spec: **tiếng Việt**. Văn bản thêm vào `README.md` vẫn là tiếng Anh vì cả file đó viết bằng tiếng Anh.
 
