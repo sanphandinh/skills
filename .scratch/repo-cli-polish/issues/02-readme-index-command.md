@@ -21,13 +21,13 @@
 
 2026-11-16, factory-v2 planner `02 planner` (claudeAgent/claude-fable-5-2). Door: `two-way`. Files to change: `README.md`. Files not to touch: `cli/repo.mjs`, `cli/lib.mjs`, `cli/repo.test.mjs`, `PLATFORMS.md`, `AGENTS.md`, `package.json`, `plugins/*/skills/*/skills-index.md`, `.scratch/**`.
 
-### Plan: ticket 02 "README có `npm run index`"
+##### Plan: ticket 02 "README có `npm run index`"
 
 Reply language: match-user, không có tin nhắn người dùng nên lấy theo ngôn ngữ của ticket và spec: **tiếng Việt**. Văn bản thêm vào `README.md` vẫn là tiếng Anh vì cả file đó viết bằng tiếng Anh.
 
 Mục tiêu: mục "Work on this repo" của `README.md` liệt kê `npm run index` và nói khi nào chạy nó, để người gặp lỗi "skills index is stale" của validator tìm thấy lệnh sửa ngay trong README. Base: `main` tại `ec1ebb5` (bằng `origin/main`); nhánh `factory/02-readme-index-command` chưa có trên origin.
 
-## Decisions
+#### Decisions
 
 1. **Data shape: không có.** Ticket chỉ đổi văn bản tài liệu; không thêm kiểu, hàm, lệnh hay cấu hình nào. Lệnh `index` đã có sẵn (`package.json` scripts `index`, `cli/repo.mjs` HELP).
 2. **Chỉ sửa `README.md`, hai chỗ trong mục "Work on this repo"** (dòng 22 đến 30 hiện tại, cũng là cuối file). Lý do: spec ghi rõ không đổi `PLATFORMS.md` hay `AGENTS.md`, và các lệnh khác của CLI không đổi.
@@ -48,7 +48,7 @@ Mục tiêu: mục "Work on this repo" của `README.md` liệt kê `npm run ind
 8. **Không bump version plugin, không chạy `npm run index`.** `README.md` nằm ngoài mọi plugin và không skill nào đổi, nên index không cũ đi.
 9. **File cuối vẫn kết thúc bằng đúng một ký tự xuống dòng** (hiện tại là vậy, đo bằng `tail -c 1 README.md | xxd`).
 
-## Change map
+#### Change map
 
 Files to change:
 
@@ -80,11 +80,11 @@ Files not to touch:
 - `.scratch/**`: ticket và spec do coordinator ghi trên trunk, không nằm trong pull request.
 - Phần còn lại của `README.md` (dòng 1 đến 21): không thuộc ticket.
 
-## Interfaces
+#### Interfaces
 
 Không thêm hay đổi hàm, kiểu, lệnh, endpoint hay sự kiện nào. Bề mặt duy nhất thay đổi là văn bản mục "Work on this repo" của `README.md` như ở Change map.
 
-## Tests
+#### Tests
 
 Không có test tự động mới (Decision 7); `tdd` không áp dụng vì không có code thay đổi. Mỗi tiêu chí được kiểm bằng lệnh, chạy trước khi sửa để thấy đỏ rồi sau khi sửa để thấy xanh:
 
@@ -99,7 +99,7 @@ Không có test tự động mới (Decision 7); `tdd` không áp dụng vì kh�
 
 Nhánh lỗi: không có; thay đổi không thêm đường chạy nào.
 
-## Verify
+#### Verify
 
 Theo `docs/agents/verify.md`, từ thư mục gốc của checkout:
 
@@ -113,11 +113,11 @@ Theo `docs/agents/verify.md`, từ thư mục gốc của checkout:
 
 Môi trường hôm nay với tới mọi lệnh trên (đã đo): Node `v26.13.0` (cần >= 20), `npm install --dry-run` thành công, `validate` và `test` xanh trên bản sao của `ec1ebb5`. Không cần fixture, tài khoản, thiết bị hay dịch vụ nào. Journey 4 (upstream) không cần: ticket không chạm `UPSTREAM.md` hay lệnh upstream.
 
-## Door
+#### Door
 
 `two-way`. Chỉ thêm hai đoạn văn bản vào một file tài liệu; hoàn tác bằng một `git revert`, không có dữ liệu, API công bố hay tác động ra ngoài. Khớp dòng `Door: two-way` của ticket.
 
-## Questions
+#### Questions
 
 Không có câu hỏi sản phẩm nào còn mở: ticket đã cho nội dung của câu, và lời văn chính xác theo câu lỗi của validator.
 
