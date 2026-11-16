@@ -1,6 +1,6 @@
 # Work orders
 
-A work order is everything a worker gets; it starts with nothing else. Fill the common part and the role's part, replace every `<…>`, and pass the whole text to start-worker with the model **Routing** picked. Point to documents by link or path instead of pasting them. `<smode>` is the absolute folder of the `smode` skill on this machine, found as smode's **Running a skill by name** says; check that `<smode>/SKILL.md` exists before the first work order of a wake.
+A work order is everything a worker gets; it starts with nothing else. Fill the common part and the role's part, replace every `<…>`, and pass the whole text to start-worker with the model **Routing** picked. `<route>` is that candidate, written `<provider>/<model>` as its line in `providers.md` spells it, without its options; a worker restarted on another candidate (**Quota**) gets `<route>` filled again. Point to documents by link or path instead of pasting them. `<smode>` is the absolute folder of the `smode` skill on this machine, found as smode's **Running a skill by name** says; check that `<smode>/SKILL.md` exists before the first work order of a wake.
 
 ## Common part
 
@@ -15,7 +15,7 @@ A work order is everything a worker gets; it starts with nothing else. Fill the 
 >
 > When the step is finished, write the result below as one JSON object to `<memory>/results/<number>-<role>-<n>.json`, then report completion through the manager with that path: succeeded when the step is done, failed when it is not.
 >
-> Every result has: `role`, `ticket` (the number), `ok` (true when the step is done), `summary` (three sentences: what you did, what you found, what remains), `questions` (product questions you could not settle, each with its options and your recommendation; empty when none), `lessons` (facts a later worker would want to know, such as a trap, a command or a convention, each with its source: a file, a commit or a link; empty when none).
+> Every result has: `role`, `ticket` (the number), `route` (`<route>`: the provider and model the coordinator started this step on; copy it exactly, never your own guess), `ok` (true when the step is done), `summary` (three sentences: what you did, what you found, what remains), `questions` (product questions you could not settle, each with its options and your recommendation; empty when none), `lessons` (facts a later worker would want to know, such as a trap, a command or a convention, each with its source: a file, a commit or a link; empty when none).
 
 ## planner
 

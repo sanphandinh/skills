@@ -66,7 +66,7 @@ Every worker runs on one model, picked when it starts. Workers keep version 1's 
 3. is not blocked in `quota.md`, or its block has expired;
 4. for a `reviewer`, is of another model family than the model that built the head it checks (from that build's result).
 
-Pass it to start-worker and record it in the worker's result path name and the journal line. With every candidate of a route filtered out, start nothing for that step: the journal says which route waits, and until when when a quota block is the reason. Never run a step on a model outside its route.
+Pass it to start-worker, fill it into the work order as `<route>` so the result carries it (WORK-ORDERS.md), and record it in the journal line. With every candidate of a route filtered out, start nothing for that step: the journal says which route waits, and until when when a quota block is the reason. Never run a step on a model outside its route.
 
 ## Quota
 
