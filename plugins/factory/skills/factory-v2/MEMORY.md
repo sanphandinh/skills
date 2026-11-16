@@ -7,7 +7,7 @@ GitHub holds the truth about the work: tickets, pull requests, checks, comments.
 - `index.md`: the status line (`Status: running` or `Status: paused since <time>`), `Factory: v2`, the identifiers the manager's reference asks to keep (such as the coordinator's session), the date of the last lint, and one line per wiki page: its name and what it holds.
 - `journal.md`: one line per wake, newest last: `<time> | events: <…> | started: <…> | merged: <…> | waiting on people: <…>`.
 - `wiki/<topic>.md`: lessons by topic, such as the build, the tests, CI, the verification environment, or one area of the code.
-- `results/`: every worker's result, named by ticket, role and round.
+- `results/`: every worker's result, named by ticket, role and round. Each step result carries `route`, the `<provider>/<model>` its worker was started on, spelled as in `providers.md`. Routing reads the build's `route` to keep the `verifier` and the `reviewer` on another model family, and a reader compares the three results to check that it held; the family is the model's, not the provider's.
 - `providers.md`: one line per provider and model the setup smoke test checked: `<provider>/<model> | asks: yes or no | files: tool or shell | result: PASS or FAIL <date>`. Routing uses only `PASS` lines; rerun the check after a provider changes.
 - `quota.md`: one line per blocked route candidate: `<provider>/<model> | blocked until <time> | since <time> | <ticket> <role> | <the error's words>`. A line whose time has passed is removed on the next wake.
 
