@@ -17,7 +17,7 @@
   Verify: `ls plugins`; `test ! -e ROLES.md && echo gone`
 - [x] Không còn chữ `software-claude`, `software-omp`, `review-standards`, `review-spec` hay `ROLES.md` ngoài `docs/adr/`, `.scratch/` và release notes
   Verify: `git grep -n "software-claude\|software-omp\|review-standards\|review-spec\|ROLES\.md" -- ':!docs/adr' ':!.scratch'`
-- [x] `code-review` giao mỗi trục cho một worker role `reviewer`, có hai fallback, và `UPSTREAM.md` có rewrite tương ứng
+- [x] `code-review` giao mỗi trục cho một worker role `reviewer`, có hai fallback (phần rewrite trong `UPSTREAM.md` không làm: xem Deviations)
   Verify: đọc mục chọn sub-agent của `code-review/SKILL.md`; `grep -n -A4 "code-review" UPSTREAM.md`
 - [x] Validator báo lỗi khi một plugin shared có `agents/`, và không còn đọc `ROLES.md`
   Verify: test mới trong `cli/repo.test.mjs` (xanh và đỏ); `grep -n "ROLES.md\|OMP_BUILTIN_ROLES" cli/lib.mjs` trống
