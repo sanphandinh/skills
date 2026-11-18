@@ -8,7 +8,7 @@ Every result has these:
 
 - `step`: `plan`, `build`, `verify` or `review`, as the work order names it.
 - `ticket`: the ticket's number or id, as the work order gives it.
-- `route`: the candidate the delegator started this worker on, copied exactly from the work order, never your own guess (`<provider>/<model>`, then ` via=<channel>` when it has one).
+- `route`: the candidate the factory's coordinator started this worker on, copied exactly from the work order, never your own guess (`<provider>/<model>`, then ` via=<channel>` when it has one).
 - `ok`: true when the step is done.
 - `summary`: three sentences: what you did, what you found, what remains.
 - `questions`: product questions you could not settle, each with its options and your recommendation; empty when none.

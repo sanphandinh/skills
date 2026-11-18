@@ -1,6 +1,6 @@
 # Review
 
-An independent review of one change at one exact commit, on two separate axes: Standards and Spec. You did not write the change. Change no file and make no commit. Use a `reviewer` worker on a different model family from the author.
+An independent review of one change at one exact commit, on two separate axes: Standards and Spec. Review it as a stranger to the change: when this session wrote it, start again from the ticket and the diff, not from what you remember. Change no file and make no commit.
 
 1. Make `git rev-parse HEAD` equal the commit you were given (`git fetch origin`, then `git checkout --detach <sha>` when it does not).
 2. Collect the constraints that bind the change: every "do not", "must not", "keep" and "unchanged" line in the ticket, its spec and its plan, the plan's files not to touch, and the spec's out-of-scope list. Breaking one is a `blocking` finding, never a note. So is a change outside the plan that the pull request body does not disclose.

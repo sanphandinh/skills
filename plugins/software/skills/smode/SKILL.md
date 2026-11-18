@@ -8,7 +8,7 @@ argument-hint: "[<playbook>] <task>"
 
 smode is how engineering work runs here, and every request starts in it. It routes the task to one **playbook**, copies the playbook's steps into a todo list, and runs the skills of `core` and `software` at the steps that need them, however they were installed. The other skills of `software` do not start on their own: they run when a playbook or a trigger below names them, or when a person invokes one by hand.
 
-Files next to this one: `playbooks/<name>.md` (one per kind of task), `RESULTS.md` (the result object of each step a worker returns), `harness/<harness>.md` (how this session's tools do each action and run a role's candidates), `skills-index.md` (every skill smode may run, with the plugin that ships it), and `scripts/roles.mjs` (checks and shows the project's roles). Keep this file's absolute path: every work order you write includes it.
+Files next to this one: `playbooks/<name>.md` (one per kind of task), `RESULTS.md` (the result object a factory worker returns for its step), `harness/<harness>.md` (how this session's tools do each action), and `skills-index.md` (every skill smode may run, with the plugin that ships it).
 
 ## First, the harness
 
@@ -22,7 +22,7 @@ Do these three things before any other work:
 2. **Restate.** Then say, in your own words, the user's goal, the problem it solves, and the smallest change you expect to meet it; for `quick`, one sentence. Do not wait for confirmation. If the evidence rules out the change the user asked for, show the evidence and stop.
 3. **Open the todo list.** Its first items are the playbook's steps, copied verbatim, then any task-specific items. Keep it current as you go. A step you choose not to do stays in the list as `skip: <reason>`. The final reply shows the list with each step's outcome. `quick` keeps no list.
 
-Restate the goal in every work order and in every final report.
+Restate the goal in every final report.
 
 ## Running a skill by name
 
@@ -64,27 +64,19 @@ Reversible work proceeds without asking: edits, local commits, branches, test ru
 
 No is an acceptable answer. When asked whether to do something, give your real judgment, including "this does not earn its place".
 
-## Delegation
+## Working alone
 
-**A fresh worker for each new piece of work.** Its work order carries the user's goal, the scope (paths it may and may not write), the evidence that proves it is done, every directive given since, and the previous worker's report and branch when there was one. Reuse a worker only when the work needs state that lives in it (an uncommitted checkout, a running process). Point to files by path instead of pasting them.
+**smode spawns no worker and chooses no model.** Every step of a playbook runs in this session, on its model. Running work in other agents, on models chosen per step, is the job of the `factory` skill.
 
-**Every work order says** which playbook to run and gives the absolute path of this file, so the worker can run it on any harness.
+**A check is a separate step.** When a playbook runs the `verify` or `review` playbook, finish the step before it first, then start the check again from the ticket and the diff against its base, not from what you remember of writing the change. Its verdict is the check's, and the author's own checks are never that verdict.
 
-**Model per role.** Pick the role the work needs, then its model from the project's `docs/agents/roles.md`, the only role configuration: read it before the first delegation of the task, never from a harness's own settings. Each line is the role's **route**, candidates in order (`<provider>/<model>`, `effort=…`, `via=<channel>`); take the first one this harness can run, that is available and not out of quota, mapped to the harness's tools as its doc's **Candidates** section says. A role without a line, or a project without the file, runs the worker on the session's model: say so in the reply and suggest the `setup` playbook. `scripts/roles.mjs` next to this file checks the file (`check`) and prints each role's candidates (`show`).
+**Skills that use sub-agents keep them.** `code-review`, `implement-spec`, `research` and others start sub-agents by design: use the harness's default sub-agent (the harness doc says which), on the session's model, and pass no model. When the harness cannot start one, do that part yourself, one after the other.
 
-| Role | Needs |
-|---|---|
-| scout | fast, cheap reading and searching |
-| worker | reliable code changes and test loops |
-| thinker | deep reasoning where a wrong answer is expensive: plans, diagnosis, design |
-| reviewer | independent judgment: reviews and verification |
-| coordinator | steady, cheap, small context: runs a program of many workers |
+**A factory worker follows its work order.** When a work order started this session, it names the playbook and the rules; start no agent beyond what a skill needs.
 
-A `reviewer` runs on a different model family from the `worker` whose change it checks.
+**Read-only is a rule, not a mode.** For a step that must not change files, change none, make no commit, and check `git status` afterwards. No harness's planning mode is relied on.
 
-**Read-only is a rule, not a mode.** For a step that must not change files, the work order says "change no file and make no commit", and you check the worker's `git status` afterwards. No harness's planning mode is relied on.
-
-**You own the result.** Read the diff or the artifact, not only the worker's summary, and write your own report.
+**You own the result.** Read the diff or the artifact, including what a skill's sub-agents return, and write your own report.
 
 ## Writing the reply
 
@@ -128,7 +120,7 @@ Route by the signal in the request, not by how big it sounds. When two rows matc
 
 ### Step playbooks
 
-These run inside another playbook or a work order, most often in a fresh worker; a request reaches them directly only through their row above.
+These run as a step of another playbook, or in a factory worker's work order; a request reaches them directly only through their row above.
 
 | Step | Run by |
 |---|---|

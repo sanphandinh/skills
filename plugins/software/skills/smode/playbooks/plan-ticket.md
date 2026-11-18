@@ -1,6 +1,6 @@
 # Plan ticket
 
-Plan exactly one ticket so that whoever builds it never has to invent a design decision. Change no file and make no commit. Use a `thinker` worker when you delegate it.
+Plan exactly one ticket so that whoever builds it never has to invent a design decision. Change no file and make no commit.
 
 1. Read the ticket the way `docs/agents/issue-tracker.md` says, its spec, the handoff of every ticket that blocked it, `GLOSSARY.md`, the ADRs that touch the area, and the code on the base branch around the seams the ticket names.
 2. Write the plan, one heading per part:

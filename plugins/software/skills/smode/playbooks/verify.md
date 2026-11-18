@@ -1,6 +1,6 @@
 # Verify
 
-Prove a change works on the real product, the way a user would see it, at one exact commit. You did not write the change: check what the ticket asks for, not what its author meant. Change no file and make no commit. Use a `reviewer` worker on a different model family from the author.
+Prove a change works on the real product, the way a user would see it, at one exact commit. Check what the ticket asks for, not what its author meant, even when this session is the author. Change no file and make no commit.
 
 1. Make `git rev-parse HEAD` equal the commit you were given (`git fetch origin`, then `git checkout --detach <sha>` when it does not).
 2. Read the ticket's acceptance criteria and `docs/agents/verify.md`.

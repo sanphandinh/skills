@@ -389,6 +389,18 @@ test("argument-hint is one quoted line, and the mode skill's lets a person name 
   assert.doesNotMatch(mode('argument-hint: "[<playbook>] <task>"\n'), /name the playbook/);
 });
 
+test("the mode skill works alone: no roles, no fresh workers (ADR-0006)", () => {
+  const msgs = messages(
+    modeRepo({
+      "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n2. Spawn `scout` workers.\n3. Read docs/agents/roles.md.\n4. Verify in a fresh worker.\n",
+    }),
+  );
+  assert.match(msgs, /investigation\.md:2: delegates by role \("`scout`"\)/);
+  assert.match(msgs, /investigation\.md:3: delegates by role \("docs\/agents\/roles\.md"\)/);
+  assert.match(msgs, /investigation\.md:4: delegates by role \("fresh worker"\)/);
+  assert.equal(messages(modeRepo({ "plugins/core/skills/mode/harness/claude-code.md": "The `reviewer` sub-agent type.\n" })), "");
+});
+
 test("every playbook is routed from the mode skill's Playbooks section", () => {
   const msgs = messages(modeRepo({ "plugins/core/skills/mode/playbooks/orphan.md": "1. Do it.\n" }));
   assert.match(msgs, /mode\/playbooks\/orphan\.md: no row of the Playbooks section in SKILL\.md routes to this playbook/);

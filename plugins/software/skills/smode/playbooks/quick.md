@@ -1,6 +1,6 @@
 # Quick
 
-A small request a person would just answer or do: a question a few reads settle, or a change of a few lines that changes no visible behaviour (a typo, a comment, a doc line, a setting the user named). No todo list, no fresh worker, no verify or review playbook.
+A small request a person would just answer or do: a question a few reads settle, or a change of a few lines that changes no visible behaviour (a typo, a comment, a doc line, a setting the user named). No todo list, no verify or review playbook.
 
 **Limits.** Every one holds, or this is the wrong playbook:
 

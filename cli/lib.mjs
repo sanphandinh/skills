@@ -283,6 +283,9 @@ export function validate(root) {
           for (const m of line.matchAll(/\bplaybooks\/([a-z][a-z0-9-]*)\.md\b/g)) {
             if (!playbooks.has(m[1])) add(where, `links playbooks/${m[1]}.md, which does not exist`);
           }
+          // The mode skill works alone; delegation by role is the factory's (ADR-0006).
+          const delegation = line.match(/docs\/agents\/roles\.md|\broles\.mjs\b|`(?:scout|thinker|reviewer|coordinator)`|\bfresh worker/);
+          if (delegation) add(where, `delegates by role ("${delegation[0]}"); the mode skill works alone, and only the factory delegates (ADR-0006)`);
         });
     }
   }
