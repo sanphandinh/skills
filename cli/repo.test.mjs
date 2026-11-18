@@ -251,9 +251,16 @@ test("upstream copies with loose YAML frontmatter still import", () => {
 });
 
 // A mode skill: a shared skill that carries a skills index and playbooks.
+// A skill that starts only when named: the frontmatter key and the Codex policy.
+const userSkill = (name, body = "Body.\n") => ({
+  [`plugins/core/skills/${name}/SKILL.md`]: skill(name, "disable-model-invocation: true\n", body),
+  [`plugins/core/skills/${name}/agents/openai.yaml`]: "policy:\n  allow_implicit_invocation: false\n",
+});
+
 function modeRepo(files = {}) {
   const root = repo({
-    "plugins/core/skills/mode/SKILL.md": skill("mode", "disable-model-invocation: true\n", "Run the `investigation` playbook (playbooks/investigation.md); it calls the `alpha` skill.\n"),
+    "plugins/core/skills/mode/SKILL.md": skill("mode", "", "It calls the `alpha` skill.\n\n## Playbooks\n\n| Signal | Playbook |\n|---|---|\n| a question | Investigation (`playbooks/investigation.md`) |\n"),
+    "plugins/core/skills/mode/agents/openai.yaml": "policy:\n  allow_implicit_invocation: true\n",
     "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n",
     "plugins/core/skills/mode/skills-index.md": "",
     ...files,
@@ -300,7 +307,7 @@ test("harness and T3 tool names stay in harness/ and references/", () => {
     modeRepo({
       "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n2. Spawn a worker with delegate_task.\n",
       "plugins/core/skills/mode/harness/t3.md": "| spawn a worker | `delegate_task` with `isolation: \"worktree\"` |\n| ask a person | AskUserQuestion, or `$alpha` |\n",
-      "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Read references/t3.md.\n"),
+      ...userSkill("beta", "Read references/t3.md.\n"),
       "plugins/core/skills/beta/references/t3.md": "Each step is a fresh `delegate_task`; wakes use `schedule_task`.\n",
     }),
   );
@@ -314,7 +321,7 @@ test("harness config paths stay in harness/ and references/; skills read docs/ag
     modeRepo({
       "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n2. Read the roles in ~/.claude/rules/smode-roles.md.\n",
       "plugins/core/skills/mode/harness/omp.md": "Sync the roles into `~/.omp/agent/config.yml`.\n",
-      "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Write `~/.codex/agents/worker.toml`.\n"),
+      ...userSkill("beta", "Write `~/.codex/agents/worker.toml`.\n"),
     }),
   );
   assert.match(msgs, /investigation\.md:2: names a harness's config path: ~\/\.claude; skills read docs\/agents\//);
@@ -333,16 +340,37 @@ test("a skill reads only result keys that the mode skill's RESULTS.md defines", 
   const results = "# Result objects\n\n## Common keys\n\n- `step`: the step.\n\n## build\n\n- `head_sha`: the commit.\n- `criteria`: per criterion:\n  - `status`: pass or fail.\n";
   const ok = modeRepo({
     "plugins/core/skills/mode/RESULTS.md": results,
-    "plugins/core/skills/beta/SKILL.md": skill("beta"),
+    ...userSkill("beta"),
     "plugins/core/skills/beta/PLAYBOOK.md": "Check the result's `step`, then the build result's `head_sha` and each criterion's result's `status`.\n",
   });
   assert.equal(messages(ok), "");
   const msgs = messages(
     modeRepo({
       "plugins/core/skills/mode/RESULTS.md": results,
-      "plugins/core/skills/beta/SKILL.md": skill("beta"),
+      ...userSkill("beta"),
       "plugins/core/skills/beta/PLAYBOOK.md": "Merge at the result's `headSha`.\n",
     }),
   );
   assert.match(msgs, /beta\/PLAYBOOK\.md:1: reads the result key "headSha", which RESULTS\.md does not define/);
+});
+
+test("in a plugin with a mode skill, only the mode skill starts on its own (ADR-0005)", () => {
+  assert.equal(messages(modeRepo(userSkill("beta"))), "");
+  const msgs = messages(
+    modeRepo({
+      "plugins/core/skills/beta/SKILL.md": skill("beta"),
+      "plugins/core/skills/gamma/SKILL.md": skill("gamma", "disable-model-invocation: true\n"),
+      "plugins/core/skills/mode/agents/openai.yaml": "policy:\n  allow_implicit_invocation: false\n",
+    }),
+  );
+  assert.match(msgs, /beta\/SKILL\.md: starts on its own beside the mode skill "mode"; set disable-model-invocation: true/);
+  assert.match(msgs, /gamma\/agents\/openai\.yaml: starts on its own on Codex beside the mode skill "mode"; set policy\.allow_implicit_invocation: false/);
+  assert.match(msgs, /mode\/agents\/openai\.yaml: the mode skill is the entry point; Codex must be allowed to start it/);
+  assert.match(messages(modeRepo({ "plugins/core/skills/mode/SKILL.md": skill("mode", "disable-model-invocation: true\n", "## Playbooks\n\n(`playbooks/investigation.md`)\n") })), /mode\/SKILL\.md: the mode skill is the entry point; remove disable-model-invocation/);
+});
+
+test("every playbook is routed from the mode skill's Playbooks section", () => {
+  const msgs = messages(modeRepo({ "plugins/core/skills/mode/playbooks/orphan.md": "1. Do it.\n" }));
+  assert.match(msgs, /mode\/playbooks\/orphan\.md: no row of the Playbooks section in SKILL\.md routes to this playbook/);
+  assert.doesNotMatch(msgs, /investigation\.md: no row/);
 });

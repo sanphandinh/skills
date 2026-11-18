@@ -292,6 +292,39 @@ export function validate(root) {
     }
   }
 
+  // A mode skill is the entry point of its plugin (ADR-0005): it starts on its
+  // own, and every other skill of the plugin starts only when named.
+  const implicitOn = (dir) => {
+    const file = path.join(dir, "agents", "openai.yaml");
+    const policy = fs.existsSync(file) ? readYaml(file, {})?.policy : undefined;
+    return { file, allowed: policy?.allow_implicit_invocation !== false };
+  };
+  for (const mode of modeSkills(root, catalog)) {
+    const modeFile = path.join(mode.dir, "SKILL.md");
+    if (parseSkillMd(fs.readFileSync(modeFile, "utf8")).frontmatter?.["disable-model-invocation"] === true) {
+      add(modeFile, "the mode skill is the entry point; remove disable-model-invocation");
+    }
+    const modeCodex = implicitOn(mode.dir);
+    if (!modeCodex.allowed) add(modeCodex.file, "the mode skill is the entry point; Codex must be allowed to start it (policy.allow_implicit_invocation: true)");
+    for (const other of skills.filter((s) => s.plugin === mode.plugin && s.name !== mode.name)) {
+      const file = path.join(other.dir, "SKILL.md");
+      if (parseSkillMd(fs.readFileSync(file, "utf8")).frontmatter?.["disable-model-invocation"] !== true) {
+        add(file, `starts on its own beside the mode skill "${mode.name}"; set disable-model-invocation: true`);
+      }
+      const codex = implicitOn(other.dir);
+      if (codex.allowed) add(codex.file, `starts on its own on Codex beside the mode skill "${mode.name}"; set policy.allow_implicit_invocation: false`);
+    }
+    // Every playbook is reachable: a row of the Playbooks section links it.
+    const text = fs.readFileSync(modeFile, "utf8");
+    const at = text.search(/^## Playbooks\b/m);
+    // From "## Playbooks" up to the next level-2 heading; its ### tables are inside.
+    const section = at < 0 ? "" : text.slice(at).split(/\n(?=## (?!#))/)[0];
+    const routed = new Set([...section.matchAll(/\bplaybooks\/([a-z][a-z0-9-]*)\.md\b/g)].map((m) => m[1]));
+    for (const file of walk(path.join(mode.dir, "playbooks")).filter((f) => f.endsWith(".md"))) {
+      if (!routed.has(file.slice(0, -3))) add(path.join(mode.dir, "playbooks", file), "no row of the Playbooks section in SKILL.md routes to this playbook");
+    }
+  }
+
   // Result objects are defined once, in a mode skill's RESULTS.md (ADR-0005): a
   // skill that reads "the result's `<key>`" may read only keys defined there.
   const resultKeys = new Set();
