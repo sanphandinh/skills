@@ -1,11 +1,11 @@
 # Agent-manager interface
 
-The factory needs ten operations from an agent manager. Version 2 changes two of them: start-worker takes a model, and inspect also reports which providers and models can take work now. Each file in `references/` maps them to one manager's commands and lists that manager's traps. A reference is ready when the setup smoke test passes every operation on it.
+The factory needs ten operations from an agent manager. Each file in `references/` maps them to one manager's commands and lists that manager's traps. A reference is ready when the setup smoke test passes every operation on it.
 
 ## Vocabulary
 
 - **Workspace**: one checkout, a git worktree on its own branch, for one ticket. Only the manager creates and removes workspaces.
-- **Worker**: one fresh agent session in a workspace, doing one step of one ticket under one **work order** (its self-contained instructions). Its name is `<ticket> <role>`.
+- **Worker**: one fresh agent session in a workspace, doing one step of one ticket under one **work order** (its self-contained instructions). Its name is `<ticket> <step>`, the step being `plan`, `build`, `verify` or `review`.
 - **Event**: what the manager reports about workers. Every event is one of `done`, `failed`, `question`, `blocked`, `message` or `timeout`.
 - **Result**: the JSON file a worker writes, at the path its work order names, before it reports `done` or `failed`.
 
@@ -31,5 +31,5 @@ The factory needs ten operations from an agent manager. Version 2 changes two of
 - **Questions carry options.** A `question` event holds the worker's question and its options; the answer goes back through the manager's reply or `send`.
 - **Push check before close.** In the workspace, `git status --porcelain` prints nothing, and after `git fetch origin`, `git log origin/<branch>..HEAD` prints nothing, where `<branch>` is the ticket's branch on the remote (for a branch never pushed, `git log origin/<trunk>..HEAD` instead). Otherwise keep the workspace and say what is unpushed.
 - **Acknowledge after handling.** When the manager batches events with an acknowledgment, handle every event of the batch first, then acknowledge.
-- **One coordinator per repository.** A second coordinator on the same repository takes events away from the first, and so does version 1 of the factory running on it.
+- **One coordinator per repository.** A second coordinator on the same repository takes events away from the first.
 - **The model is the one asked for.** start-worker runs the worker on the model it was given or fails; it never falls back on its own, because routing and quota are the coordinator's.

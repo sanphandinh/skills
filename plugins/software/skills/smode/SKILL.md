@@ -7,7 +7,7 @@ argument-hint: "<task>"
 
 # smode
 
-smode is how engineering work runs here. It matches the task to one **playbook**, copies the playbook's steps into a todo list, and runs the skills of the `core`, `software` and `factory` plugins at the steps that need them.
+smode is how engineering work runs here. It matches the task to one **playbook**, copies the playbook's steps into a todo list, and runs the skills of the `core` and `software` plugins at the steps that need them.
 
 Files next to this one: `playbooks/<name>.md` (one per kind of task), `harness/<harness>.md` (how this session's tools do each action and run a role's candidates), `skills-index.md` (which plugin ships each skill), and `scripts/roles.mjs` (checks and shows the project's roles). Keep this file's absolute path: every work order you write includes it.
 
@@ -114,6 +114,6 @@ Each entry says when it fits. Open its file and run it as **Opening the task** s
 - **Pickup** (`playbooks/pickup.md`): take over work in flight from a handoff or a branch.
 - **Retro** (`playbooks/retro.md`): turn a finished session into changes to the agent's environment.
 - **Setup** (`playbooks/setup.md`): prepare this project for smode and write its `docs/agents/roles.md`; `setup override` changes chosen roles only.
-- **Factory** (`playbooks/factory.md`): run the agent-driven factory, version 2.
+- **Factory** (`playbooks/factory.md`): run the agent-driven factory.
 
 The structure of this skill is adapted from `poteto-mode` in cursor/plugins `pstack` (MIT, Copyright (c) 2026 Lauren Tan).

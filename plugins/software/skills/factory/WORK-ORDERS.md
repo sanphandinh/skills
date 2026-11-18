@@ -1,31 +1,31 @@
 # Work orders
 
-A work order is everything a worker gets; it starts with nothing else. Fill the common part and the role's part, replace every `<…>`, and pass the whole text to start-worker. Point to documents by link or path instead of pasting them.
+A work order is everything a worker gets; it starts with nothing else. Fill the common part and the step's part, replace every `<…>`, and pass the whole text to start-worker with the model **Routing** picked. `<route>` is that candidate's id, written as its line in `providers.md` spells it (MEMORY.md), without `effort`; a worker restarted on another candidate (**Quota**) gets `<route>` filled again. Point to documents by link or path instead of pasting them. `<smode>` is the absolute folder of the `smode` skill on this machine, found as smode's **Running a skill by name** says; check that `<smode>/SKILL.md` exists before the first work order of a wake.
 
 ## Common part
 
-> Factory worker `<number> <role>` for `<owner>/<repo>`, ticket #<number> "<title>"<, rework round <n>>.
+> Factory worker `<number> <step>` for `<owner>/<repo>`, ticket #<number> "<title>"<, rework round <n>>.
 >
 > Workspace: this checkout, branch `<branch>`, trunk `<trunk>`. Read the project's `AGENTS.md` first and the docs it points to; the tracker doc is `docs/agents/issue-tracker.md`. Reply language: read `docs/agents/response-language.md` when it exists (else `match-user`). Copy its `Reply language:` value into every brief and human-facing comment. When that value is `match-user` and there is no live user message, resolve the language as the ticket or spec when it has prose, else the latest human comment on it, else English, and name that resolved language in the brief.
 > Ticket: <url>. Spec: <url, or "none">. Plan: <url of the latest `## Factory plan` comment, or "none yet">. Handoffs of the tickets that blocked it: <urls, or "none">.
 >
-> <The role's delegation line, from its section below.>
+> You run in smode. Read the whole file `<smode>/SKILL.md`, then run its `<playbook>` playbook (`<smode>/playbooks/<playbook>.md`) for this step, under the rules below. Skills it names are at: <one absolute `SKILL.md` path per skill the playbook names, resolved by the coordinator>. These paths are outside your workspace: when your file tool refuses one, read or write it with the shell. Run every command from this checkout, not from the shell's start folder, and never inside a folder this order names by absolute path: those paths are only to read or to write the result. Run every command in the foreground and wait for it; never move one to the background and end your turn, because the manager then counts the step as finished.
 >
-> Talk to your coordinator only through the agent manager: read its follow-ups at each checkpoint, and ask through the manager, never in your own terminal. Leave GitHub to the coordinator: no comments, pull requests, labels or statuses; it posts from your result. Never merge, force-push, deploy or delete data.
+> Talk to your coordinator only through the agent manager: read its follow-ups at each checkpoint, and ask through the manager, never in your own terminal. When the manager gives you no way to ask, do not guess: report failed with the question in `questions`. Leave GitHub to the coordinator: no comments, pull requests, labels or statuses; it posts from your result. Never merge, force-push, deploy or delete data.
 >
-> When the step is finished, write the result below as one JSON object to `<memory>/results/<number>-<role>-<n>.json`, then report completion through the manager with that path: succeeded when the step is done, failed when it is not.
+> When the step is finished, write the result below as one JSON object to `<memory>/results/<number>-<step>-<n>.json`, then report completion through the manager with that path: succeeded when the step is done, failed when it is not.
 >
-> Every result has: `role`, `ticket` (the number), `ok` (true when the step is done), `summary` (three sentences: what you did, what you found, what remains), `questions` (product questions you could not settle, each with its options and your recommendation; empty when none), `lessons` (facts a later worker would want to know, such as a trap, a command or a convention, each with its source: a file, a commit or a link; empty when none).
+> Every result has: `step` (`<step>`), `ticket` (the number), `route` (`<route>`: the provider and model the coordinator started this step on; copy it exactly, never your own guess), `ok` (true when the step is done), `summary` (three sentences: what you did, what you found, what remains), `questions` (product questions you could not settle, each with its options and your recommendation; empty when none), `lessons` (facts a later worker would want to know, such as a trap, a command or a convention, each with its source: a file, a commit or a link; empty when none).
 
-## planner
+## plan
 
 > Step: plan the ticket. Read only: change no file and make no commit. <On a revision: revise the latest plan to resolve these findings, keeping what still holds: <findings>.>
 >
 > Result also has: `plan` (markdown with the headings Decisions, Change map, Interfaces, Tests, Verify, Door, Questions), `door` (`one-way` or `two-way`), `files_to_change`, `files_not_to_touch`.
 
-Delegation line: "Delegate the step, with this whole work order, to the `planner` agent. When this session has no agent by that name, do the step yourself under the same rules. When the agent exists but fails (a provider error, a rate limit), report failed with the error instead of doing its step yourself."
+Playbook: `plan-ticket`. Role: `thinker`. Skills to resolve: none beyond the playbook's.
 
-## implementer
+## build
 
 > Step: build the ticket test-first, following the plan. Work on the local branch `<local branch>` (switch to it first: a checker may have left this checkout detached); the remote branch is `<branch>`. When `origin/<branch>` exists, start with `git pull --ff-only origin <branch>`. Commit each finished unit and push after every commit (`git push -u origin HEAD:<branch>`). Before finishing, merge trunk into the branch if trunk moved, resolve conflicts, run the tests, and push. <On rework round <n>: fix exactly these findings, keeping the earlier work: <findings>.>
 >
@@ -46,9 +46,9 @@ Delegation line: "Delegate the step, with this whole work order, to the `planner
 > **For the next ticket:** one entry per ticket this one unblocks
 > ```
 
-Delegation line: the planner's, with the `implementer` agent.
+Playbook: `ticket`, which stops at its step 7: this work order says the coordinator verifies, reviews and opens the pull request. Role: `worker`. Skills to resolve: `tdd`, `pr`.
 
-## verifier
+## verify
 
 > Step: prove the ticket works on the real product at commit `<head_sha>` of pull request <url>, following `docs/agents/verify.md`. First make `git rev-parse HEAD` equal `<head_sha>` (`git fetch origin` and `git checkout --detach <head_sha>` when it does not). Read only: change no file and make no commit.
 >
@@ -58,9 +58,9 @@ Delegation line: the planner's, with the `implementer` agent.
 >
 > Result also has: `verdict` (`FAIL` when any criterion is `fail`; else `UNVERIFIED` when any is `unverified`; else `PASS`, or `PASS+NOTES` when you have notes), `head_sha` (the commit you checked), `criteria` (each with `criterion`, `status` `pass`, `fail` or `unverified`, and `reason` for the last two), `evidence` (per criterion: what you ran or did, and what you saw), `findings` (each with `severity` `blocking` or `note`, `kind` `design`, `code`, `test` or `scope`, and `detail`).
 
-Delegation line: the planner's, with the `verifier` agent.
+Playbook: `verify`. Role: `reviewer`, of another model family than the build's. Skills to resolve: none beyond the playbook's.
 
-## reviewer
+## review
 
 > Step: review pull request <url> at commit `<head_sha>` with the `code-review` skill: fixed point `origin/<trunk>`, the spec axis against the ticket and its plan, the standards axis against the repository's standards. First make `git rev-parse HEAD` equal `<head_sha>` as above. Read only.
 >
@@ -68,4 +68,4 @@ Delegation line: the planner's, with the `verifier` agent.
 >
 > Result also has: `verdict` (`pass` when no finding is blocking, else `fail`), `head_sha`, `findings` (each with `severity`, `kind` and `detail`, as above). You decide the severity; the coordinator does not change it.
 
-Delegation line: "Do the step yourself with the `code-review` skill; it starts its own review agents."
+Playbook: `review`. Role: `reviewer`, of another model family than the build's. Skills to resolve: `code-review`.

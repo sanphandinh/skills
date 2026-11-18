@@ -15,7 +15,7 @@ plugins:
     prefix: ""
   software:
     platform: shared
-    description: "Software factory skills: spec, tickets, implement with TDD, review, diagnose, project setup."
+    description: "Software skills: smode (the entry point), spec, tickets, implement with TDD, review, diagnose, project setup, and the agent-driven factory."
     prefix: ""
   software-claude:
     platform: claude
@@ -24,8 +24,4 @@ plugins:
   software-omp:
     platform: omp
     description: "Oh My Pi agents and rules for the software skills: role-based reviewers, TDD guard rules."
-    prefix: ""
-  factory:
-    platform: shared
-    description: "Agent-driven software factory: a coordinator agent builds approved specs through an agent manager (Orca, or T3 Code for version 2)."
     prefix: ""

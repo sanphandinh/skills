@@ -1,15 +1,15 @@
 # Memory
 
-GitHub holds the truth about the work: tickets, pull requests, checks, comments. The agent manager holds the workers in flight. The memory folder holds what neither does: the journal, the lessons, and every worker's result. The folder is on this machine, outside the repository; the repository keeps only its path, on the `Memory:` line of `docs/agents/factory-v2.md` (default `~/.local/share/factory-v2/<repository name>`). You are its only writer.
+The tracker and the git host hold the truth about the work: tickets, pull requests, checks, comments. The agent manager holds the workers in flight. The memory folder holds what neither does: the journal, the lessons, and every worker's result. The folder is on this machine, outside the repository; the repository keeps only its path, on the `Memory:` line of `docs/agents/factory.md` (default `~/.local/share/factory/<repository name>`). You are its only writer.
 
 ## Layout
 
-- `index.md`: the status line (`Status: running` or `Status: paused since <time>`), `Factory: v2`, the identifiers the manager's reference asks to keep (such as the coordinator's session), the date of the last lint, and one line per wiki page: its name and what it holds.
+- `index.md`: the status line (`Status: running` or `Status: paused since <time>`), the identifiers the manager's reference asks to keep (such as the coordinator's session), the date of the last lint, and one line per wiki page: its name and what it holds.
 - `journal.md`: one line per wake, newest last: `<time> | events: <…> | started: <…> | merged: <…> | waiting on people: <…>`.
 - `wiki/<topic>.md`: lessons by topic, such as the build, the tests, CI, the verification environment, or one area of the code.
-- `results/`: every worker's result, named by ticket, role and round. Each step result carries `route`, the id of the candidate its worker was started on, spelled as in `providers.md`. Routing reads the build's `route` to keep the `verifier` and the `reviewer` on another model family, and a reader compares the three results to check that it held; the family is the model's, not the provider's.
+- `results/`: every worker's result, named by ticket, step and round. Each step result carries `route`, the id of the candidate its worker was started on, spelled as in `providers.md`. Routing reads the build's `route` to keep the `verifier` and the `reviewer` on another model family, and a reader compares the three results to check that it held; the family is the model's, not the provider's.
 - `providers.md`: one line per candidate the setup smoke test checked: `<candidate> | asks: yes or no | files: tool or shell | result: PASS or FAIL <date>`. Routing uses only `PASS` lines; rerun the check after a provider changes.
-- `quota.md`: one line per blocked route candidate: `<candidate> | blocked until <time> | since <time> | <ticket> <role> | <the error's words>`. A line whose time has passed is removed on the next wake.
+- `quota.md`: one line per blocked route candidate: `<candidate> | blocked until <time> | since <time> | <ticket> <step> | <the error's words>`. A line whose time has passed is removed on the next wake.
 
 Every `<time>` is read from the clock when you write it (`date -u +%FT%RZ`), in UTC; never estimate or count it from earlier lines. An acceptance run that estimated wrote 01:10Z for a wake at 00:09Z, and the journal went out of order.
 

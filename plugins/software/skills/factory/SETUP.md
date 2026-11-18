@@ -2,9 +2,16 @@
 
 Prepare one project for the factory, then prove the setup with a smoke test against the real agent manager. Run it from the project's main checkout, in a terminal of the agent manager. Running it again is safe: every step looks before it writes.
 
+## Converting older settings
+
+Do this first, in `setup` and in `setup override`, before reading any setting:
+
+- **`docs/agents/factory-v2.md` exists** (written by the factory when it was called `factory-v2`): rename it to `docs/agents/factory.md` with `git mv`, drop its `Factory: v2` line and any `Routes:` line, and keep every other line as it is, `Memory:` included, so the journal, the wiki and the results carry on. In the memory index, drop the `Factory: v2` line. Commit on trunk as "Convert factory settings from factory-v2" and push.
+- **`docs/agents/factory.md` has an `Agent:` line and no `Coordinator:` line** (the version 1 factory, which ran on Orca): it no longer runs. Tell the user, stop its Orca wakes if they still run (the user removes the automation in Orca), and propose a new file from section 3 that keeps `Trunk`, `Max workers`, `Scarce resources`, `Fix rounds`, `Required checks`, `Trunk checks`, `Wake timeout` and `Memory` as they are. Write it only on the user's yes; then go on with setup from section 2.
+
 ## Override
 
-`setup override` changes settings of a project already set up, instead of setting it up again. Read `docs/agents/factory-v2.md`, list every setting with its value, and ask which ones to change; the default is to keep each one. Propose a new value only for the settings picked, the way section 3 proposes it (reading CI for the checks, asking for scarce resources), and leave every other line byte for byte. A leftover `Routes:` line (before ADR-0004) is dropped. Show the diff, then commit it on trunk on its own as "Override factory-v2 config: <settings>" and push. The coordinator rereads the file on its next wake. When `Manager:` or `Memory:` changed, run sections 4 and 5 again; otherwise stop here. Routes are not settings of this file: change them with smode's `setup override`.
+`setup override` changes settings of a project already set up, instead of setting it up again. Read `docs/agents/factory.md`, list every setting with its value, and ask which ones to change; the default is to keep each one. Propose a new value only for the settings picked, the way section 3 proposes it (reading CI for the checks, asking for scarce resources), and leave every other line byte for byte. A leftover `Routes:` line (before ADR-0004) is dropped. Show the diff, then commit it on trunk on its own as "Override factory config: <settings>" and push. The coordinator rereads the file on its next wake. When `Manager:` or `Memory:` changed, run sections 4 and 5 again; otherwise stop here. Routes are not settings of this file: change them with smode's `setup override`.
 
 ## 1. Check the documents the factory reads
 
@@ -14,15 +21,13 @@ Prepare one project for the factory, then prove the setup with a smoke test agai
 
 Stop at the first missing file in the first and third bullets and tell the user which skill writes it. A missing `response-language.md` does not stop setup.
 
-Then check the version: when `docs/agents/factory.md` exists, read its `Manager:` and `Memory:` lines and look up version 1's wake schedule for this repository with that manager (the `factory` skill's reference for it says how, under schedule-wakes). When a schedule exists and is enabled, stop and tell the user to stop version 1 first ("stop" to its coordinator). A memory index that says `Status: running` with no schedule behind it is a leftover: say so and go on. One repository runs one version.
-
 Then check smode: the `smode` skill is reachable on this machine (smode's **Running a skill by name**), and the project's `docs/agents/roles.md` has a route for `thinker`, `worker` and `reviewer` (`roles.mjs check` in smode's `scripts/` passes). Without one, run smode's `setup` playbook first.
 
 ## 2. Pick the agent manager
 
 Each file in `references/` is one supported manager. Recommend the one whose own check answers (each reference's **Before the first wake** says how) and confirm it with the user.
 
-## 3. Write `docs/agents/factory-v2.md`
+## 3. Write `docs/agents/factory.md`
 
 Fill the template and show it to the user before writing:
 
@@ -31,14 +36,13 @@ Fill the template and show it to the user before writing:
 - **Required checks**: the CI checks a pull request must pass, by name. Read them from the latest merged pull request (`gh pr checks <number>`) or the job names in the CI configuration, and confirm them with the user; `none` when pull requests get no CI.
 - **Trunk checks**: the CI checks whose failure on trunk stops merging, by name. Read them from trunk's latest commits (`gh api repos/<owner>/<repo>/commits/<sha>/check-runs`); usually the same as the required checks, but some CI runs only on trunk (an archive or deploy build). `none` when trunk gets no CI.
 - **Scarce resources**: ask whether checking a change needs something only some workers can use at once (a simulator, a device, a GPU, a port). Write each as `<resource>: <how many at once>, held by <roles>`, or `none`. For each one, `docs/agents/verify.md` must say how to bring it to a clean state and how to stop a command left hanging on it (a stuck runner, a leftover process); a verifier follows both. When it does not, show the user what is missing and suggest adding it with the `setup-verification` skill before the first run.
-- **Memory**: a folder outside the repository; default `~/.local/share/factory-v2/<repository name>`.
+- **Memory**: a folder outside the repository; default `~/.local/share/factory/<repository name>`.
 
 ```markdown
 # Factory
 
-Settings for the `factory-v2` skill. The coordinator rereads this file on every wake, so a change applies on the next wake. Merge rules live in `merge-policy.md`.
+Settings for the `factory` skill. The coordinator rereads this file on every wake, so a change applies on the next wake. Merge rules live in `merge-policy.md`.
 
-Factory: v2
 Manager: <reference name>
 Coordinator: <candidate id>
 Trunk: main
@@ -48,15 +52,15 @@ Fix rounds: 2
 Required checks: test
 Trunk checks: test
 Wake timeout: 15 minutes
-Memory: ~/.local/share/factory-v2/<repository name>
+Memory: ~/.local/share/factory/<repository name>
 ```
 
-Commit it on trunk as "Configure the software factory v2" and push.
+Commit it on trunk as "Configure the software factory" and push.
 
 ## 4. Prepare
 
-- Create the memory folder as [MEMORY.md](MEMORY.md) lays it out (`index.md` with `Status: running` and `Factory: v2`, `journal.md`, `wiki/`, `results/`, `providers.md`, `quota.md`) and `git init` it.
-- When version 1's memory folder exists, offer to copy its `wiki/` pages in, keeping their dates and sources.
+- Create the memory folder as [MEMORY.md](MEMORY.md) lays it out (`index.md` with `Status: running`, `journal.md`, `wiki/`, `results/`, `providers.md`, `quota.md`) and `git init` it.
+- When the folder already exists, look before you write. A folder without `providers.md` and `quota.md` is a version 1 memory: its layout is a subset of this one, so add the two files and keep `journal.md`, `wiki/` and `results/` as they are; drop identifiers in `index.md` that belong to another manager (`orca-run`, `orca-wake`). Commit the folder as `upgrade <time>`.
 - Follow the reference's **Before the first wake** section, and write the identifiers it asks to keep into `index.md`.
 - On a GitHub tracker, create the labels the factory uses: `gh label create <name> --force` for `factory:hold`, `priority:p1`, `priority:p2` and `priority:p3`.
 

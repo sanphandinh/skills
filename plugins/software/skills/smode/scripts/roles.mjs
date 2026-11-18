@@ -7,7 +7,7 @@
 // `check` reports format errors and exits 1 when there are any.
 // `show` prints every role's candidates in order with what the factory's memory
 // says about each (provider check, quota block, last use) when the project runs
-// factory-v2. `--channels` lists the channels this session's harness runs (its
+// the factory. `--channels` lists the channels this session's harness runs (its
 // harness doc says which); without it the "here" column is `?`.
 // No dependencies: it runs from an installed plugin, which has no node_modules.
 import fs from "node:fs";
@@ -99,15 +99,17 @@ export function loadRoles(root) {
   return { file, ...parseRoles(fs.readFileSync(file, "utf8")) };
 }
 
-// ---------- the factory's memory (factory-v2), read only ----------
+// ---------- the factory's memory, read only ----------
 
 function expandHome(p) {
   return p.replace(/^~(?=$|\/)/, os.homedir());
 }
 
+// The settings are `docs/agents/factory.md`; `factory-v2.md` is the name they had
+// before ADR-0005, kept until the project's factory setup converts it.
 export function factoryMemory(root) {
-  const settings = path.join(root, "docs", "agents", "factory-v2.md");
-  if (!fs.existsSync(settings)) return null;
+  const settings = ["factory.md", "factory-v2.md"].map((f) => path.join(root, "docs", "agents", f)).find((f) => fs.existsSync(f));
+  if (!settings) return null;
   const m = fs.readFileSync(settings, "utf8").match(/^Memory:\s*(.+?)\s*$/m);
   if (!m) return null;
   const dir = expandHome(m[1]);
@@ -194,7 +196,7 @@ export function renderShow(root, { channels, now = new Date() } = {}) {
   const out = rows.map((r) => r.map((cell, col) => cell.padEnd(widths[col])).join("  ").trimEnd());
   out.splice(1, 0, widths.map((w) => "-".repeat(w)).join("  "));
   const notes = [];
-  if (!memoryDir) notes.push("No factory-v2 memory for this project: provider check, quota and last use are empty.");
+  if (!memoryDir) notes.push("No factory memory for this project: provider check, quota and last use are empty.");
   for (const e of loaded.errors) notes.push(`error: ${ROLES_FILE}:${e.line}: ${e.msg}`);
   for (const w of loaded.warnings) notes.push(`warning: ${w}`);
   return [...out, ...(notes.length ? ["", ...notes] : [])].join("\n") + "\n";

@@ -14,7 +14,7 @@ Prepare this project for smode: its agent docs, and `docs/agents/roles.md`, the 
 
    A role whose value came from an old place (step 2) is proposed as it was, marked as migrated.
 5. Ask the user to accept the table or change roles. Change only what they name.
-6. Write `docs/agents/roles.md` from `roles-template.md` next to this skill's `SKILL.md` (its explanation, then one line per role). Run `roles.mjs check` and fix every error. Show the diff, then commit it on trunk on its own: "Configure smode roles", or "Override smode roles: <roles>" with `override`. A project that runs `factory-v2` drops the `Routes:` line from `docs/agents/factory-v2.md` in the same commit; the factory reads this file now.
+6. Write `docs/agents/roles.md` from `roles-template.md` next to this skill's `SKILL.md` (its explanation, then one line per role). Run `roles.mjs check` and fix every error. Show the diff, then commit it on trunk on its own: "Configure smode roles", or "Override smode roles: <roles>" with `override`. A project that runs the factory drops any `Routes:` line from `docs/agents/factory.md` in the same commit; the factory reads this file now.
 7. Do what the harness doc's **Candidates** section asks for this harness beyond reading the file (Oh My Pi needs its user config to grant the models; Codex reads generated agent files). Ask before you write anything outside the repository.
 8. When step 2 migrated from an old place, ask whether to delete that old file now; delete it only on a yes. A file there that a harness loads into every session (the harness doc says which) keeps steering sessions in every project until it is gone.
 9. Prove it: spawn one `scout` worker with the role's first candidate this harness can run, and compare the model it reports.

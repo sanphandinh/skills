@@ -90,11 +90,11 @@ test("show lists roles in order, marks a missing role, and says which candidates
   assert.match(out, /^\s+2\s+google\/gemini-3\.8-flash via=antigravity\s+low\s+no$/m);
   assert.match(out, /^\s+2\s+cursor\/composer-2\.5\s+no$/m);
   assert.match(out, /^coordinator\s+-\s+\(session model\)$/m);
-  assert.match(out, /No factory-v2 memory for this project/);
+  assert.match(out, /No factory memory for this project/);
   assert.match(run(project({ "docs/agents/roles.md": ROLES }), "show").out, /^scout\s+1\s+anthropic\/claude-haiku-5-5\s+low\s+\?$/m);
 });
 
-test("show reads provider checks, quota blocks and last use from the factory-v2 memory", () => {
+test("show reads provider checks, quota blocks and last use from the factory's memory", () => {
   const memory = fs.mkdtempSync(path.join(os.tmpdir(), "smode-memory-"));
   const files = {
     "providers.md": [
@@ -108,19 +108,19 @@ test("show reads provider checks, quota blocks and last use from the factory-v2 
     "quota.md": [
       "# Quota",
       "",
-      "google/gemini-4-hydrogen via=antigravity | blocked until 2026-11-18T12:00Z | since 2026-11-18T10:00Z | 01 reviewer | usage limit",
-      "anthropic/claude-fable-5-2 | blocked until 2026-11-17T08:00Z | since 2026-11-16T08:00Z | 02 planner | weekly usage",
+      "google/gemini-4-hydrogen via=antigravity | blocked until 2026-11-18T12:00Z | since 2026-11-18T10:00Z | 01 review | usage limit",
+      "anthropic/claude-fable-5-2 | blocked until 2026-11-17T08:00Z | since 2026-11-16T08:00Z | 02 plan | weekly usage",
     ].join("\n"),
-    "results/01-implementer-1.json": JSON.stringify({ route: "anthropic/claude-sonnet-5-5" }),
-    "results/01-planner-1.json": JSON.stringify({ role: "planner" }),
+    "results/01-build-1.json": JSON.stringify({ step: "build", route: "anthropic/claude-sonnet-5-5" }),
+    "results/01-plan-1.json": JSON.stringify({ step: "plan" }),
     "results/broken.json": "{",
   };
   for (const [rel, content] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(memory, rel)), { recursive: true });
     fs.writeFileSync(path.join(memory, rel), content);
   }
-  fs.utimesSync(path.join(memory, "results/01-implementer-1.json"), new Date("2026-11-17T09:30:00Z"), new Date("2026-11-17T09:30:00Z"));
-  const root = project({ "docs/agents/roles.md": ROLES, "docs/agents/factory-v2.md": `# Factory\n\nFactory: v2\nMemory: ${memory}\n` });
+  fs.utimesSync(path.join(memory, "results/01-build-1.json"), new Date("2026-11-17T09:30:00Z"), new Date("2026-11-17T09:30:00Z"));
+  const root = project({ "docs/agents/roles.md": ROLES, "docs/agents/factory.md": `# Factory\n\nManager: t3\nMemory: ${memory}\n` });
   const out = run(root, "show", "--now", "2026-11-18T11:00:00Z").out;
   assert.match(out, /anthropic\/claude-haiku-5-5\s+low\s+\?\s+PASS 2026-11-15/);
   assert.match(out, /cursor\/composer-2\.5\s+\?\s+PASS 2026-11-16/);
@@ -128,7 +128,15 @@ test("show reads provider checks, quota blocks and last use from the factory-v2 
   assert.match(out, /google\/gemini-4-hydrogen via=antigravity\s+high\s+\?\s+not checked\s+blocked until 2026-11-18T12:00Z/);
   assert.match(out, /anthropic\/claude-fable-5-2\s+high\s+\?\s+not checked\s+expired 2026-11-17T08:00Z/);
   assert.match(out, /anthropic\/claude-sonnet-5-5\s+medium\s+\?\s+not checked\s+2026-11-17T09:30Z/);
-  assert.doesNotMatch(out, /No factory-v2 memory/);
+  assert.doesNotMatch(out, /No factory memory/);
+});
+
+test("show still finds the memory of a project whose settings are not converted from factory-v2 yet", () => {
+  const memory = fs.mkdtempSync(path.join(os.tmpdir(), "smode-memory-"));
+  fs.writeFileSync(path.join(memory, "providers.md"), "anthropic/claude-haiku-5-5 | asks: yes | files: tool | result: PASS 2026-11-15\n");
+  const root = project({ "docs/agents/roles.md": ROLES, "docs/agents/factory-v2.md": `# Factory v2\n\nFactory: v2\nMemory: ${memory}\n` });
+  const out = run(root, "show").out;
+  assert.match(out, /anthropic\/claude-haiku-5-5\s+low\s+\?\s+PASS 2026-11-15/);
 });
 
 test("show and check refuse unknown commands and flags without values", () => {

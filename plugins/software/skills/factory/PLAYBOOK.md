@@ -2,12 +2,12 @@
 
 You are the coordinator. Each **wake** is one pass of the steps below, then you end your turn with a short report: what you found, what you started, what you merged and what waits for a person. The next wake comes on its own: the scheduled wakes `run` set up, the manager's events and a person's messages all start one. An idle board is not a reason to cancel the scheduled wakes; only a person's "stop" is.
 
-Decide, delegate, record. Workers read and write code; you read tickets, results, summaries and check states, never diffs or source files. Everything a wake needs is on GitHub, in the agent manager or in the memory folder, so a wake starts from what those say, not from what you remember.
+Decide, delegate, record. Workers read and write code; you read tickets, results, summaries and check states, never diffs or source files. Everything a wake needs is in the tracker, on the git host, in the agent manager or in the memory folder, so a wake starts from what those say, not from what you remember.
 
 ## Each wake
 
 1. **Wait.** wait-events, up to `Wake timeout`, only while a worker is live and the wake has nothing else to do; otherwise skip it. A scheduled wake does not need to wait: it came to look at the board, and on a manager that delivers events as turns this step is always skipped.
-2. **Reload.** Read `docs/agents/factory-v2.md`, `docs/agents/merge-policy.md`, and `docs/agents/response-language.md` when it exists. If that file is missing, reply language is `match-user` with no live user message: the language of the ticket or spec when it has prose, else the latest human comment on it, else English; note the missing file in the journal. Also read the memory index, `providers.md` and `quota.md` (MEMORY.md), and the routes in `docs/agents/roles.md`. On the first wake, and whenever you can no longer quote this playbook's steps, read this playbook and WORK-ORDERS.md again.
+2. **Reload.** Read `docs/agents/factory.md`, `docs/agents/merge-policy.md`, and `docs/agents/response-language.md` when it exists. If that file is missing, reply language is `match-user` with no live user message: the language of the ticket or spec when it has prose, else the latest human comment on it, else English; note the missing file in the journal. Also read the memory index, `providers.md` and `quota.md` (MEMORY.md), and the routes in `docs/agents/roles.md`. On the first wake, and whenever you can no longer quote this playbook's steps, read this playbook and WORK-ORDERS.md again.
 3. **Handle events**, every one, as **Events** says. A `failed` worker is first checked for a usage limit (**Quota**).
 4. **Look at the workers.** Inspect every live worker and handle each `blocked` one, on every wake: a worker stuck at a prompt sends no event.
 5. **Read the board.** From the tracker as `docs/agents/issue-tracker.md` says: approved specs, their tickets, standalone tickets, holds, and comments people added since your last wake. From GitHub: every open pull request with its checks and statuses, and the CI of trunk's head commit.
@@ -16,9 +16,9 @@ Decide, delegate, record. Workers read and write code; you read tickets, results
 
 ## Ticket chain
 
-A spec is **approved** when it carries the agent-ready label from `triage-labels.md`. Its **frontier** is every open ticket whose blockers are all closed and that carries no `factory:hold`. Read each ticket's state from GitHub every time, then take its next step:
+A spec is **approved** when it carries the agent-ready label from `triage-labels.md`. Its **frontier** is every open ticket whose blockers are all closed and that carries no `factory:hold`. Read each ticket's state from the tracker and the git host every time, then take its next step:
 
-| What GitHub shows | Next step |
+| What the tracker and the pull request show | Next step |
 |---|---|
 | no comment headed `## Factory plan` | **Plan** |
 | a plan, no pull request | **Build** |
@@ -27,15 +27,15 @@ A spec is **approved** when it carries the agent-ready label from `triage-labels
 | both verdict statuses `success` on the head | **Land** |
 | the pull request merged, the ticket still open or its workspace still there | **Close** |
 
-A step whose worker is still live is waiting, not due: never start a second worker for it. Names: workspace `<number>-<slug>`, branch `factory/<number>-<slug>`, workers `<number> <role>`.
+A step whose worker is still live is waiting, not due: never start a second worker for it. Names: workspace `<number>-<slug>`, branch `factory/<number>-<slug>`, workers `<number> <step>`.
 
 The ticket's **pull request** is the open one that closes it, whoever opened it (`gh pr list --state open --search "<number> in:body" --json number,headRefName,body`, then keep the one whose body says `Closes #<number>`, `Fixes` or `Resolves`). Its branch is the ticket's branch, whatever its name, and the factory carries it on from where it is.
 
-**Plan.** open-workspace on the ticket's branch: the pull request's branch when there is one, else a new branch from trunk. Then start a `planner` worker in it. On `done`, post the result's plan on the ticket as a comment headed `## Factory plan`, with the door and the files to change. A plan with questions goes on **hold** with them, before any code.
+**Plan.** open-workspace on the ticket's branch: the pull request's branch when there is one, else a new branch from trunk. Then start a `plan` worker in it. On `done`, post the result's plan on the ticket as a comment headed `## Factory plan`, with the door and the files to change. A plan with questions goes on **hold** with them, before any code.
 
-**Build.** Start an `implementer` worker in the ticket's workspace. On `done`, confirm the branch is on the remote at the result's `head_sha` (`git ls-remote origin <branch>`), then open the pull request from the result: `gh pr create --head <branch> --base <trunk> --title "<pr_title>" --body "<pr_body>"`. Link it to the workspace, set the workspace status to in-review.
+**Build.** Start a `build` worker in the ticket's workspace. On `done`, confirm the branch is on the remote at the result's `head_sha` (`git ls-remote origin <branch>`), then open the pull request from the result: `gh pr create --head <branch> --base <trunk> --title "<pr_title>" --body "<pr_body>"`. Link it to the workspace, set the workspace status to in-review.
 
-**Check.** For the pull request's head commit, start a `verifier` and a `reviewer` worker in the ticket's workspace, together when the limits allow. On each `done`, act only if the result's `head_sha` is still the head: post the evidence or the findings as a pull request comment headed `## Factory verify` or `## Factory review`, then set the verdict status on that commit, linking the comment:
+**Check.** For the pull request's head commit, start a `verify` and a `review` worker in the ticket's workspace, together when the limits allow. On each `done`, act only if the result's `head_sha` is still the head: post the evidence or the findings as a pull request comment headed `## Factory verify` or `## Factory review`, then set the verdict status on that commit, linking the comment:
 
 ```bash
 gh api repos/<owner>/<repo>/statuses/<head_sha> -f state=<success|failure|pending> -f context=factory/verify -f description="<one line>" -f target_url=<comment url>
@@ -43,28 +43,28 @@ gh api repos/<owner>/<repo>/statuses/<head_sha> -f state=<success|failure|pendin
 
 Each verdict goes on as the worker gave it:
 
-- `factory/verify`: `PASS` and `PASS+NOTES` are `success`, `FAIL` is `failure`, `UNVERIFIED` is `pending`. An `UNVERIFIED` costs no rework round: start one fresh `verifier` for the same head, with the criteria still open and the reasons in its work order, plus any lesson from the memory that applies. Still `UNVERIFIED`: **hold** with a brief listing exactly what a person must check by hand on which commit; the person answers by setting `factory/verify` themselves or replying.
-- `factory/review`: `pass` is `success`, `fail` is `failure`. The reviewer owns severity: never turn its `pass` into `fail` or its `fail` into `pass`. When a note looks blocking to you, start one fresh `reviewer` asking about that note alone, or hold with a brief.
+- `factory/verify`: `PASS` and `PASS+NOTES` are `success`, `FAIL` is `failure`, `UNVERIFIED` is `pending`. An `UNVERIFIED` costs no rework round: start one fresh `verify` worker for the same head, with the criteria still open and the reasons in its work order, plus any lesson from the memory that applies. Still `UNVERIFIED`: **hold** with a brief listing exactly what a person must check by hand on which commit; the person answers by setting `factory/verify` themselves or replying.
+- `factory/review`: `pass` is `success`, `fail` is `failure`. The review worker owns severity: never turn its `pass` into `fail` or its `fail` into `pass`. When a note looks blocking to you, start one fresh `review` worker asking about that note alone, or hold with a brief.
 
 A result for an older head is stale: drop it.
 
-**Rework.** Count the rework rounds already posted (`## Factory rework` comments). Below `Fix rounds`, post `## Factory rework <n>` listing the blocking findings, then start a fresh worker: a `planner` first when any finding is of kind `design` (its revised plan goes up as a new `## Factory plan`), else an `implementer` with the findings. A failed required check counts as a finding of kind `code`, with the check's name and log link. At `Fix rounds`, **hold** with a brief instead. When a person grants extra rounds, say in every later brief how many were granted, and offer splitting what is left into a follow-up ticket as one of the options.
+**Rework.** Count the rework rounds already posted (`## Factory rework` comments). Below `Fix rounds`, post `## Factory rework <n>` listing the blocking findings, then start a fresh worker: a `plan` worker first when any finding is of kind `design` (its revised plan goes up as a new `## Factory plan`), else a `build` worker with the findings. A failed required check counts as a finding of kind `code`, with the check's name and log link. At `Fix rounds`, **hold** with a brief instead. When a person grants extra rounds, say in every later brief how many were granted, and offer splitting what is left into a follow-up ticket as one of the options.
 
 **Land.** When the merge guard passes, merge: `gh pr merge <number> --squash --match-head-commit <head_sha>`. When a merge-policy line fails, **hold** with the reason. After a person releases the hold:
 
 - a one-way door or a disallowed blast radius: the person chose it, so merge on the next wake if the rest of the guard passes;
 - a protected path, or a fix or revert pull request for a red trunk: a person merges it — you never merge it; after the merge do **Close**.
 
-**Close.** After the merge: post the implementer's handoff on the ticket as a comment starting `## Handoff`, close the ticket if the merge did not, set the workspace status to completed, run the push check, close-workspace, then delete the branch: `git push origin --delete <branch>` when it is still on the remote, and the workspace's local branch in the main checkout when it is still there (`git branch --list <local branch>`, then `git branch -D <local branch>`). When every ticket of a spec is closed, close the spec with a short summary.
+**Close.** After the merge: post the build result's handoff on the ticket as a comment starting `## Handoff`, close the ticket if the merge did not, set the workspace status to completed, run the push check, close-workspace, then delete the branch: `git push origin --delete <branch>` when it is still on the remote, and the workspace's local branch in the main checkout when it is still there (`git branch --list <local branch>`, then `git branch -D <local branch>`). When every ticket of a spec is closed, close the spec with a short summary.
 
 ## Routing
 
-Every worker runs on one model, picked when it starts. Workers keep version 1's names by step, and each step takes a smode role: `planner` runs on `thinker`, `implementer` on `worker`, `verifier` and `reviewer` on `reviewer`. Each role has a **route** in the project's `docs/agents/roles.md` (ADR-0004), reread on every wake: its candidates in order. Take the first candidate the manager can run (its reference says how a candidate maps to it) that:
+Every worker runs on one model, picked when it starts. Workers are named by step, and each step takes a smode role: `plan` runs on `thinker`, `build` on `worker`, `verify` and `review` on `reviewer`. Each role has a **route** in the project's `docs/agents/roles.md` (ADR-0004), reread on every wake: its candidates in order. Take the first candidate the manager can run (its reference says how a candidate maps to it) that:
 
 1. passed the provider check of the setup smoke test (`providers.md`);
 2. inspect reports as able to take work now;
 3. is not blocked in `quota.md`, or its block has expired;
-4. for a `reviewer`, is of another model family than the model that built the head it checks (from that build's result).
+4. for the `reviewer` role, is of another model family than the model that built the head it checks (from that build's result).
 
 Pass it to start-worker, fill it into the work order as `<route>` so the result carries it (WORK-ORDERS.md), and record it in the journal line. With every candidate of a route filtered out, start nothing for that step: the journal says which route waits, and until when when a quota block is the reason. Never run a step on a model outside its route.
 
@@ -128,7 +128,7 @@ Each wake, for every held ticket whose label a person removed: read the comments
 
 ## Events
 
-- `done`: read the result at the path the event gives; check its `role` and `ticket` match the worker's name; take the step's outcome above; record its `lessons` (MEMORY.md); release the worker.
+- `done`: read the result at the path the event gives; check its `step` and `ticket` match the worker's name; take the step's outcome above; record its `lessons` (MEMORY.md); release the worker.
 - `failed`: as **Failed workers** says; release the worker.
 - `question`: as **Worker questions** says.
 - `blocked`: as **Blocked workers** says.

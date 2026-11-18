@@ -18,11 +18,6 @@
       "name": "software-claude",
       "source": "./plugins/software-claude",
       "description": "Claude Code agents for the software skills: planner, implementer, verifier, review-standards, and review-spec."
-    },
-    {
-      "name": "factory",
-      "source": "./plugins/factory",
-      "description": "Agent-driven software factory: a coordinator agent builds approved specs through an agent manager (Orca, or T3 Code for version 2), with planned tickets, independent checks, and guarded automatic merges."
     }
   ]
 }
