@@ -9,7 +9,7 @@ Part of `core` and `software` is derived from mattpocock/skills; see `UPSTREAM.m
 - **Two layers.** Skills and playbooks name a role (`scout`, `worker`, `thinker`, `reviewer`, `coordinator`, defined by smode's `scripts/roles.mjs`); each project maps roles to models in its `docs/agents/roles.md` (ADR-0004). The model is chosen when work is delegated. No plugin carries agents (ADR-0005), and no skill names a concrete model.
 - **One entry point per domain.** `smode` starts on its own for every software request and routes it to a playbook; every other skill of `software` is user-invoked and runs when smode or a person names it (ADR-0005).
 - **Configuration lives in the project.** Every setting a skill reads is a file in the project's `docs/agents/`, committed with the code; a setup skill that writes one also takes `override` to change chosen settings. Nothing is read from a harness's own config except in `harness/` docs and `references/`.
-- **Native plugins only.** Projects install with each agent's own plugin commands at project scope. Do not add tooling that copies skills into projects.
+- **Native plugins first, any install works.** Projects install with each agent's own plugin commands at project scope, and this repo adds no tooling that copies skills into projects. A skill still works when another tool (`npx skills add`) copies it into a skills folder, so no skill assumes an install layout: skills are found by name (smode's **Running a skill by name**), never by a path like `plugins/<plugin>/skills/` or a marketplace name; the validator rejects both.
 - **Few and precise.** Every extra skill costs context and invites wrong triggers.
 
 ## Layout

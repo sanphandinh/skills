@@ -302,6 +302,18 @@ test("a mode skill may name only skills and playbooks that exist", () => {
   assert.match(msgs, /bug-fix\.md:2: links playbooks\/missing\.md, which does not exist/);
 });
 
+test("skills assume no install layout: plugin folders, a marketplace name, a checkout's depth", () => {
+  const msgs = messages(
+    repo({
+      "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Read plugins/core/skills/alpha/SKILL.md, three folders up.\n"),
+      "plugins/core/skills/beta/harness/claude-code.md": "Read `core@sanphan-skills` from the install record.\n",
+    }),
+  );
+  assert.match(msgs, /beta\/SKILL\.md:\d+: assumes one install layout: plugins\/core\/skills\//);
+  assert.match(msgs, /beta\/harness\/claude-code\.md:1: assumes one install layout: @sanphan-skills/);
+  assert.equal(messages(repo({ "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Read `alpha/SKILL.md` next to this skill's folder.\n") })), "");
+});
+
 test("harness and T3 tool names stay in harness/ and references/", () => {
   const msgs = messages(
     modeRepo({

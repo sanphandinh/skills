@@ -7,8 +7,9 @@ Read this once per session when the agent is Oh My Pi (OMP), then map each smode
 | smode step | OMP |
 |---|---|
 | 1. Skill already loaded | A skill in the session's skill list: load it the way OMP loads skills (`skill://<name>`). |
-| 3. Installed plugin | `~/.omp/plugins/installed_plugins.json` (user scope) or `.omp/plugins/installed_plugins.json` (project scope): `plugins["<plugin>@sanphan-skills"][0].installPath`. Each plugin is its own folder, such as `~/.omp/plugins/cache/plugins/sanphan-skills___core___0.4.0/`, so a relative path from `software` never reaches `core`. |
-| 4. Marketplace clone | `~/.omp/plugins/cache/marketplaces/sanphan-skills/` is a full clone of the repository: `plugins/<plugin>/skills/<skill>/SKILL.md`. |
+| 3. Skill locations | In order, as OMP discovers them: `.omp/skills/<skill>/` from the working directory up (closest first); `~/.omp/agent/skills/<skill>/`; `.claude/skills/`, `.agents/skills/` and `.codex/skills/` up from the working directory, then `~/.agents/skills/` and `~/.codex/skills/`; then the installed plugins in `.omp/plugins/installed_plugins.json` (project scope) and `~/.omp/plugins/installed_plugins.json` (user scope): every `<plugin>@<marketplace>` entry, whatever the marketplace, read as `<installPath>/skills/<skill>/SKILL.md`. Each plugin is its own folder, such as `~/.omp/plugins/cache/plugins/<marketplace>___core___0.4.0/`, so a relative path from `software` never reaches `core`. |
+
+The folders OMP scans for skills were read from its source, not run. Because OMP also reads `.claude/skills/` and `.agents/skills/`, skills installed there by `npx skills add` reach OMP too.
 
 Read a skill's `SKILL.md` with `read` and follow it.
 

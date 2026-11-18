@@ -9,7 +9,7 @@
 // says about each (provider check, quota block, last use) when the project runs
 // the factory. `--channels` lists the channels this session's harness runs (its
 // harness doc says which); without it the "here" column is `?`.
-// No dependencies: it runs from an installed plugin, which has no node_modules.
+// No dependencies: it runs from wherever the skill is installed (a plugin, a skills folder), which has no node_modules.
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";

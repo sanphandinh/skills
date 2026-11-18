@@ -142,6 +142,11 @@ const T3_TOOL_NAMES =
 // A harness's own configuration paths. Skills read the project's docs/agents/
 // (ADR-0004); only a harness doc or a manager's reference may name these.
 const HARNESS_CONFIG_PATHS = /(~\/\.(?:claude|omp|codex)\b|\.claude\/rules\b)/;
+// Paths that hold only for one way of installing skills: a plugin folder, a
+// marketplace name, or a checkout's layout. A skill may be installed by a
+// plugin, copied into a skills folder (`npx skills add`), or run from a
+// checkout, so skills are found by name (smode's "Running a skill by name").
+const INSTALL_LAYOUT = /(@sanphan-skills\b|\bplugins\/[a-z0-9-]+\/skills\/|\b(?:two|three|four) folders up\b)/;
 // Folders of a shared skill whose job is naming one harness's or manager's tools.
 const TOOL_MAPPING_DIRS = ["harness", "references"];
 export const SKILLS_INDEX = "skills-index.md";
@@ -235,6 +240,7 @@ export function validate(root) {
       text.split("\n").forEach((line, i) => {
         const where = `${path.join(skill.dir, file)}:${i + 1}`;
         if (/^(<{7}|>{7})( |$)/.test(line)) add(where, "unresolved merge conflict marker");
+        if (INSTALL_LAYOUT.test(line)) add(where, `assumes one install layout: ${line.match(INSTALL_LAYOUT)[0]}; find a skill by name, as smode's "Running a skill by name" does`);
         if (mapsTools) return;
         if (TOOL_NAMES.test(line)) add(where, `names a specific agent tool: ${line.match(TOOL_NAMES)[0]}`);
         if (T3_TOOL_NAMES.test(line)) add(where, `names a T3 tool: ${line.match(T3_TOOL_NAMES)[0]}; tool names belong in harness/ or references/ (ADR-0003)`);

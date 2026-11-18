@@ -72,6 +72,21 @@ Commit `.claude/settings.json` and `.codex/config.toml`; add `.omp/plugins/` to
 `.gitignore`. Teammates run the same install commands once. Then run smode's
 `setup` playbook ("smode setup") to write `docs/agents/roles.md`.
 
+### Without plugins
+
+Skills also run when a tool copies them into an agent's skills folder:
+
+```bash
+npx skills add sanphandinh/skills --skill '*' -a claude-code -a codex
+```
+
+This puts every skill side by side in `.claude/skills/` and `.agents/skills/`
+(OMP reads both), without the plugin prefix and without per-plugin versions;
+`npx skills update` updates them. Install all of them, or at least `smode` with
+every skill it runs: smode finds a skill by name (its **Running a skill by
+name**), next to its own folder first, so the result is the same as with
+plugins. Verified on Claude Code with a project install.
+
 ## Harnesses and managers
 
 The roles live in the project, in `docs/agents/roles.md` (ADR-0004), on every

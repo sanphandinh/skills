@@ -7,8 +7,9 @@ Read this once per session when the agent is Codex (the CLI, the app, or the Cod
 | smode step | Codex |
 |---|---|
 | 1. Skill already loaded | A skill Codex lists for the session: invoke it by name (`$tdd`). Skills with `policy.allow_implicit_invocation: false` in `agents/openai.yaml` are not started implicitly; read their file instead. |
-| 3. Installed plugin | **Unchecked.** The plugin cache under the Codex home (`~/.codex`, or `CODEX_HOME`): find the folder of `<plugin>@sanphan-skills` and read `skills/<skill>/SKILL.md` in it. |
-| 4. Marketplace clone | **Unchecked.** The marketplace clone Codex keeps for `sanphan-skills` under the Codex home: `plugins/<plugin>/skills/<skill>/SKILL.md`. |
+| 3. Skill locations | In order: `.agents/skills/<skill>/` from the working directory up to the repository root; `~/.agents/skills/<skill>/`; then **(unchecked)** the plugin cache under the Codex home (`~/.codex`, or `CODEX_HOME`): any installed plugin folder, whatever marketplace it came from, that holds `skills/<skill>/SKILL.md`. |
+
+`npx skills add` with `-a codex` copies or links every skill, with its `agents/openai.yaml`, into `.agents/skills/` (or `~/.agents/skills/` with `-g`), side by side, so step 2 finds them (verified).
 
 ## Actions
 

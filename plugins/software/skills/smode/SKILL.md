@@ -6,9 +6,9 @@ argument-hint: "[<playbook>] <task>"
 
 # smode
 
-smode is how engineering work runs here, and every request starts in it (ADR-0005). It routes the task to one **playbook**, copies the playbook's steps into a todo list, and runs the skills of the `core` and `software` plugins at the steps that need them. The other skills of `software` do not start on their own: they run when a playbook or a trigger below names them, or when a person invokes one by hand.
+smode is how engineering work runs here, and every request starts in it (ADR-0005). It routes the task to one **playbook**, copies the playbook's steps into a todo list, and runs the skills of `core` and `software` at the steps that need them, however they were installed. The other skills of `software` do not start on their own: they run when a playbook or a trigger below names them, or when a person invokes one by hand.
 
-Files next to this one: `playbooks/<name>.md` (one per kind of task), `RESULTS.md` (the result object of each step a worker returns), `harness/<harness>.md` (how this session's tools do each action and run a role's candidates), `skills-index.md` (which plugin ships each skill), and `scripts/roles.mjs` (checks and shows the project's roles). Keep this file's absolute path: every work order you write includes it.
+Files next to this one: `playbooks/<name>.md` (one per kind of task), `RESULTS.md` (the result object of each step a worker returns), `harness/<harness>.md` (how this session's tools do each action and run a role's candidates), `skills-index.md` (every skill smode may run, with the plugin that ships it), and `scripts/roles.mjs` (checks and shows the project's roles). Keep this file's absolute path: every work order you write includes it.
 
 ## First, the harness
 
@@ -28,14 +28,14 @@ Restate the goal in every work order and in every final report.
 
 **A step or trigger that names a skill runs that skill.** Read its whole `SKILL.md`, not its first lines, and follow it before doing the step. Doing the step your own way instead, even with the same tools, is a deviation: report it in the reply, under **Deviations**, with its reason.
 
-"The `tdd` skill" means: run that skill's `SKILL.md` and follow it. Find it in this order and use the first that works:
+"The `tdd` skill" means: run that skill's `SKILL.md` and follow it. Skills are found by name, never by where this file sits: they may come from a plugin, from a tool that copies skills into a skills folder (such as `npx skills add`), or from a checkout. A copy counts only when it is a folder named `<skill>` holding a `SKILL.md` whose `name` is `<skill>`. Find it in this order and use the first that works:
 
-1. The harness already loaded the skill: invoke it the harness's way.
-2. This file sits in a checkout of this repository (three folders up is a `plugins/` folder holding `core/`): read `plugins/<plugin>/skills/<skill>/SKILL.md`, taking `<plugin>` from `skills-index.md`.
-3. The harness's installed plugin `<plugin>@sanphan-skills`: read `<installPath>/skills/<skill>/SKILL.md`, with `installPath` taken from the harness's install record (the harness doc says where it lives and how to read it). Each plugin is installed at its own version, so never build another plugin's path from this file's path.
-4. The harness's clone of the marketplace: read `plugins/<plugin>/skills/<skill>/SKILL.md` inside it.
+1. The harness already loaded the skill: invoke it the harness's way, under the name the session lists it by (with a plugin prefix or without).
+2. Next to this skill: `<skill>/SKILL.md` in the folder that holds this skill's folder. Skills installed into a skills folder sit there side by side, and so do the skills of one plugin.
+3. The harness's skill locations, in the order its harness doc lists them: the project's and the user's skills folders, then the skills of each installed plugin (whatever marketplace it came from).
+4. Up from this skill: the nearest ancestor folder holding `<any folder>/skills/<skill>/SKILL.md`, which is how a checkout of a plugin repository keeps another plugin's skills.
 
-Step 3 comes before step 4 because a marketplace clone can be newer than the installed plugin. Reading the file also runs a skill the user must invoke by hand (`implement`, `to-tickets`), which a harness's skill command refuses to start for you. A skill that names another skill is resolved the same way. When no copy is found, say so and stop that step.
+Reading the file also runs a skill the user must invoke by hand (`implement`, `to-tickets`), which a harness's skill command refuses to start for you. A skill that names another skill is resolved the same way. When no copy is found, say so, name what ships it (`skills-index.md` lists the plugin), and stop that step.
 
 ## Triggers
 
