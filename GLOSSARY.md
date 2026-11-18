@@ -53,7 +53,7 @@ The rule that nothing merges while trunk is red.
 _Avoid_: freeze, merge block
 
 **Harness**:
-The agent that runs a session and owns its tools: Claude Code, Codex, Oh My Pi, or a provider session inside T3 Code. A mode skill maps its actions to one harness's tools in a harness doc. Distinct from the agent manager, which creates workspaces and runs workers.
+The agent that runs a session and owns its tools: Claude Code, OpenCode, Antigravity or Cursor, alone or as a provider session inside T3 Code (ADR-0006). A mode skill maps its actions to one harness's tools in a harness doc. Distinct from the agent manager, which creates workspaces and runs workers.
 _Avoid_: platform (that is the plugin catalog's word), runtime
 
 **Mode skill**:
@@ -65,11 +65,11 @@ One short, ordered list of steps for one kind of task inside a mode skill, copie
 _Avoid_: recipe, workflow, script
 
 **Role**:
-What a piece of delegated work needs from a model (deep reasoning, cheap and fast, independent from the author), described by traits and mapped to models in the project's `docs/agents/roles.md` (ADR-0004). One of five: scout, worker, thinker, reviewer, coordinator. Never a model name.
+What a factory worker needs from a model (deep reasoning, cheap and fast, independent from the author), described by traits and mapped to models in the project's `docs/agents/roles.md` (ADR-0004). One of five: scout, worker, thinker, reviewer, coordinator. Only the factory delegates by role; smode works alone (ADR-0006). Never a model name.
 _Avoid_: tier, agent type
 
 **Route**:
-The ordered list of candidates for one role, one line of `docs/agents/roles.md`; whoever delegates takes the first candidate the harness can run that is qualified, available and not out of quota.
+The ordered list of candidates for one role, one line of `docs/agents/roles.md`; the factory's coordinator takes the first candidate the harness can run that is qualified, available and not out of quota.
 _Avoid_: fallback chain, model list
 
 **Candidate**:

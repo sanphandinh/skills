@@ -4,11 +4,17 @@
 
 **Blocked by:** không
 
-**Status:** ready-for-agent
+**Status:** closed
 
 **Door:** two-way
 
-- [ ] `docs/adr/0006-*.md` có quyết định, phương án đã cân nhắc, hệ quả
+- [x] `docs/adr/0006-*.md` có quyết định, phương án đã cân nhắc, hệ quả
   Verify: đọc file
-- [ ] `GLOSSARY.md` không còn nói smode chọn model theo role
+- [x] `GLOSSARY.md` không còn nói smode chọn model theo role
   Verify: `grep -n -i "role" GLOSSARY.md`
+
+## Handoff
+
+**Delivered:** `docs/adr/0006-four-native-harnesses-smode-works-alone.md` với số đo của bốn harness; `GLOSSARY.md` (Harness: bốn harness; Role: chỉ factory delegate theo role; Route: coordinator của factory chọn).
+**Deviations from spec:** không.
+**For the next ticket:** 02 xoá OMP và Codex.
