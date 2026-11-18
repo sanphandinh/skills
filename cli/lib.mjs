@@ -147,6 +147,8 @@ const HARNESS_CONFIG_PATHS = /(~\/\.(?:claude|cursor|gemini)\b|~\/\.config\/open
 // plugin, copied into a skills folder (`npx skills add`), or run from a
 // checkout, so skills are found by name (smode's "Running a skill by name").
 const INSTALL_LAYOUT = /(@sanphan-skills\b|\bplugins\/[a-z0-9-]+\/skills\/|\b(?:two|three|four) folders up\b)/;
+// The harnesses this repository supports, one doc each in a mode skill's harness/ (ADR-0006).
+export const HARNESS_DOCS = ["claude-code.md", "opencode.md", "antigravity.md", "cursor.md"];
 // Folders of a shared skill whose job is naming one harness's or manager's tools.
 const TOOL_MAPPING_DIRS = ["harness", "references"];
 export const SKILLS_INDEX = "skills-index.md";
@@ -320,6 +322,13 @@ export function validate(root) {
       if (parseSkillMd(fs.readFileSync(file, "utf8")).frontmatter?.["disable-model-invocation"] !== true) {
         add(file, `starts on its own beside the mode skill "${mode.name}"; set disable-model-invocation: true`);
       }
+    }
+    // The supported harnesses (ADR-0006): a mode skill's harness/ holds one doc for each, and no other.
+    const harnessDir = path.join(mode.dir, "harness");
+    if (fs.existsSync(harnessDir)) {
+      const docs = fs.readdirSync(harnessDir).filter((f) => f.endsWith(".md"));
+      for (const want of HARNESS_DOCS) if (!docs.includes(want)) add(path.join(harnessDir, want), "missing: every supported harness has a harness doc (ADR-0006)");
+      for (const doc of docs) if (!HARNESS_DOCS.includes(doc)) add(path.join(harnessDir, doc), `not a supported harness; the harness docs are ${HARNESS_DOCS.join(", ")} (ADR-0006)`);
     }
     // Every playbook is reachable: a row of the Playbooks section links it.
     const text = fs.readFileSync(modeFile, "utf8");

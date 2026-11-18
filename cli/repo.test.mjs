@@ -318,13 +318,13 @@ test("harness and T3 tool names stay in harness/ and references/", () => {
   const msgs = messages(
     modeRepo({
       "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n2. Spawn a worker with delegate_task.\n",
-      "plugins/core/skills/mode/harness/t3.md": "| spawn a worker | `delegate_task` with `isolation: \"worktree\"` |\n| ask a person | AskUserQuestion, or `$alpha` |\n",
+      "plugins/core/skills/mode/harness/claude-code.md": "| start a sub-agent | `Agent` with `isolation: \"worktree\"` |\n| ask a person | AskUserQuestion, or `$alpha` |\n",
       ...userSkill("beta", "Read references/t3.md.\n"),
       "plugins/core/skills/beta/references/t3.md": "Each step is a fresh `delegate_task`; wakes use `schedule_task`.\n",
     }),
   );
   assert.match(msgs, /investigation\.md:2: names a T3 tool: delegate_task; tool names belong in harness\/ or references\/ \(ADR-0003\)/);
-  assert.doesNotMatch(msgs, /harness\/t3\.md/);
+  assert.doesNotMatch(msgs, /harness\/claude-code\.md:\d+:/);
   assert.doesNotMatch(msgs, /references\/t3\.md/);
 });
 
@@ -398,7 +398,16 @@ test("the mode skill works alone: no roles, no fresh workers (ADR-0006)", () => 
   assert.match(msgs, /investigation\.md:2: delegates by role \("`scout`"\)/);
   assert.match(msgs, /investigation\.md:3: delegates by role \("docs\/agents\/roles\.md"\)/);
   assert.match(msgs, /investigation\.md:4: delegates by role \("fresh worker"\)/);
-  assert.equal(messages(modeRepo({ "plugins/core/skills/mode/harness/claude-code.md": "The `reviewer` sub-agent type.\n" })), "");
+  assert.doesNotMatch(messages(modeRepo({ "plugins/core/skills/mode/harness/claude-code.md": "The `reviewer` sub-agent type.\n" })), /delegates by role/);
+});
+
+test("a mode skill's harness/ has one doc per supported harness and no other (ADR-0006)", () => {
+  const docs = Object.fromEntries(["claude-code", "opencode", "antigravity", "cursor"].map((h) => [`plugins/core/skills/mode/harness/${h}.md`, `# ${h}\n`]));
+  assert.equal(messages(modeRepo(docs)), "");
+  const { ["plugins/core/skills/mode/harness/cursor.md"]: _, ...threeDocs } = docs;
+  const msgs = messages(modeRepo({ ...threeDocs, "plugins/core/skills/mode/harness/omp.md": "# omp\n" }));
+  assert.match(msgs, /mode\/harness\/cursor\.md: missing: every supported harness has a harness doc/);
+  assert.match(msgs, /mode\/harness\/omp\.md: not a supported harness/);
 });
 
 test("every playbook is routed from the mode skill's Playbooks section", () => {
