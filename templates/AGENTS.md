@@ -22,9 +22,12 @@ Skills come from the `sanphan-skills` plugin marketplace, installed at project
 scope with each agent's own plugin commands (see PLATFORMS.md in that repo).
 Change skills in the source repo, not in this project.
 
-- Claude Code: `software`, `software-claude` (enabled in `.claude/settings.json`)
-- Codex: `software` (enabled in `.codex/config.toml`)
-- Oh My Pi: `software`, `software-omp` (run `omp plugin install <name>@sanphan-skills --scope project`)
+- Claude Code: `core`, `software` (enabled in `.claude/settings.json`)
+- Codex: `core`, `software` (enabled in `.codex/config.toml`)
+- Oh My Pi: `core`, `software` (run `omp plugin install <name>@sanphan-skills --scope project`)
+
+Every software request starts in the `smode` skill, which routes it to a
+playbook; the other software skills run when smode or a person names them.
 
 Every setting the skills read lives in `docs/agents/`, committed with this
 project. The model each role (`scout`, `worker`, `thinker`, `reviewer`,
