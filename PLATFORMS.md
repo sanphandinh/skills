@@ -8,7 +8,7 @@ There are two plugins, both shared: `core` and `software`.
 |---|---|---|---|
 | Catalog it reads | `.claude-plugin/marketplace.json` | `.agents/plugins/marketplace.json` | `.omp-plugin/marketplace.json` (preferred over the Claude one) |
 | Plugin manifest | `.claude-plugin/plugin.json` | `.codex-plugin/plugin.json` | `.omp-plugin/plugin.json`, else `.claude-plugin/plugin.json` |
-| Model per worker | chosen at delegation (`harness/claude-code.md`) | generated `.codex/agents/<role>.toml` in the project | per-call model, granted by user-level keys (`harness/omp.md`) |
+| Model per worker | chosen at delegation (`harness/claude-code.md`) | the session's model (no model per worker) | per-call model, granted by user-level keys (`harness/omp.md`) |
 | Extra components | hooks, Claude-only skill keys (`model`, `effort`, `context: fork`, `agent`) | `agents/openai.yaml` per skill | `rules/`, `commands/`, `tools/`, `hooks/`, `package.json#omp` extensions |
 | Project scope | `.claude/settings.json` `enabledPlugins` (commit it) | `.codex/config.toml` `[plugins."x@sanphan-skills"] enabled = true` (commit it) | `.omp/plugins/installed_plugins.json` (machine paths: do not commit) |
 
@@ -97,7 +97,7 @@ the ones it cannot run.
 |---|---|---|---|---|
 | Claude Code | `harness/claude-code.md` | `anthropic` | nothing | yes |
 | Oh My Pi | `harness/omp.md` | every channel `omp models` lists | grant keys `smode-<repo>-<role>-<n>` in `~/.omp/agent/config.yml`, `task.perCallModel: on` | yes |
-| Codex | `harness/codex.md` | `openai` | generated `.codex/agents/<role>.toml` | not yet |
+| Codex | `harness/codex.md` | none: every worker runs on the session's model | nothing | no Codex session run yet |
 | a provider inside T3 Code | `harness/t3.md`, on top of the provider's own doc | every provider T3 offers | nothing | yes (Claude, Cursor, Antigravity) |
 
 smode's `setup` playbook writes `docs/agents/roles.md` (and what the table's
