@@ -22,15 +22,15 @@ const CATALOG = `plugins:
     platform: claude
 `;
 
-const ROLES = `---
-roles:
-  reviewer:
-    purpose: code review
-    omp: ["@reviewer", "@slow"]
-    claude: opus
-    codex: high
----
-`;
+const role = (name, omp, claude, codex) => `  ${name}:\n    purpose: ${name} work\n    omp: ${omp}\n    claude: ${claude}\n    codex: ${codex}\n`;
+const FIVE_ROLES = [
+  role("scout", '["@scout", "@smol"]', "haiku", "low"),
+  role("worker", '["@worker", "@task"]', "inherit", "medium"),
+  role("thinker", '["@thinker", "@slow"]', "opus", "high"),
+  role("reviewer", '["@reviewer", "@slow"]', "opus", "high"),
+  role("coordinator", '["@coordinator", "@default"]', "sonnet", "medium"),
+];
+const ROLES = `---\nroles:\n${FIVE_ROLES.join("")}---\n`;
 
 function tmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "skills-test-"));
@@ -117,7 +117,8 @@ test("validate checks OMP agents use roles and carry an OMP manifest", () => {
   );
   assert.match(msgs, /concrete\.md: model "anthropic\/claude-opus-5-5" is a concrete model/);
   assert.match(msgs, /unknown-role\.md: role "@ghost" is not a built-in OMP role/);
-  assert.doesNotMatch(msgs, /builtin\.md/);
+  assert.match(msgs, /builtin\.md: model names none of the roles in ROLES\.md/);
+  assert.doesNotMatch(msgs, /builtin\.md: role/);
 
   const root = repo();
   fs.rmSync(path.join(root, "plugins/core-omp/.omp-plugin"), { recursive: true });
@@ -131,7 +132,7 @@ test("validate checks Claude agents use model aliases and agents stay out of sha
       "plugins/core/agents/stray.md": agent("stray"),
     }),
   );
-  assert.match(msgs, /pinned\.md: model "claude-opus-5-5" should be one of opus, sonnet, haiku, inherit/);
+  assert.match(msgs, /pinned\.md: model "claude-opus-5-5" should be one of opus, sonnet, haiku, fable, inherit/);
   assert.match(msgs, /stray\.md: agents belong in a platform plugin/);
 });
 
@@ -343,6 +344,33 @@ test("harness and T3 tool names stay in harness/ and references/", () => {
 });
 
 test("every role in ROLES.md maps on every platform", () => {
-  const roles = `---\nroles:\n  reviewer:\n    purpose: code review\n    omp: ["@reviewer", "@slow"]\n    claude: opus\n    codex: high\n  coordinator:\n    purpose: runs many workers\n    claude: sonnet\n---\n`;
+  const roles = `---\nroles:\n${FIVE_ROLES.slice(0, 4).join("")}  coordinator:\n    purpose: runs many workers\n    claude: sonnet\n---\n`;
   assert.match(messages(repo({ "ROLES.md": roles })), /ROLES\.md: role "coordinator" has no omp, codex/);
+});
+
+test("ROLES.md holds exactly the five roles, so a second role system cannot grow back", () => {
+  const roles = `---\nroles:\n${FIVE_ROLES.slice(1).join("")}${role("architect", '["@architect", "@plan"]', "opus", "high")}---\n`;
+  const msgs = messages(repo({ "ROLES.md": roles }));
+  assert.match(msgs, /ROLES\.md: role "architect" is not one of the five roles \(scout, worker, thinker, reviewer, coordinator\)/);
+  assert.match(msgs, /ROLES\.md: role "scout" is missing/);
+});
+
+test("harness config paths stay in harness/ and references/; skills read docs/agents/", () => {
+  const msgs = messages(
+    modeRepo({
+      "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n2. Read the roles in ~/.claude/rules/smode-roles.md.\n",
+      "plugins/core/skills/mode/harness/omp.md": "Sync the roles into `~/.omp/agent/config.yml`.\n",
+      "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Write `~/.codex/agents/worker.toml`.\n"),
+    }),
+  );
+  assert.match(msgs, /investigation\.md:2: names a harness's config path: ~\/\.claude; skills read docs\/agents\//);
+  assert.match(msgs, /beta\/SKILL\.md:\d+: names a harness's config path: ~\/\.codex/);
+  assert.doesNotMatch(msgs, /harness\/omp\.md/);
+});
+
+test("the roles template a project copies must pass the roles check", () => {
+  assert.equal(messages(modeRepo({ "plugins/core/skills/mode/roles-template.md": "# Roles\n\nworker: anthropic/claude-sonnet-5-5 effort=medium\n" })), "");
+  const msgs = messages(modeRepo({ "plugins/core/skills/mode/roles-template.md": "# Roles\n\narchitect: anthropic/claude-opus-5-5\nworker: sonnet\n" }));
+  assert.match(msgs, /mode\/roles-template\.md:3: "architect" is not a role/);
+  assert.match(msgs, /mode\/roles-template\.md:4: worker: "sonnet" is not <provider>\/<model>/);
 });

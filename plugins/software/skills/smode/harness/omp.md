@@ -18,7 +18,7 @@ Read a skill's `SKILL.md` with `read` and follow it.
 |---|---|
 | Spawn a worker | The `task` tool with the bundled agent `task` (general purpose), the work order as its task. No agent definition is needed. |
 | Spawn a read-only worker | The bundled agent `scout` (fast, read-only tools) or `reviewer` (deep review, read-only tools, structured verdict). The work order still says "change no file and make no commit". |
-| Choose the model | `model` on the call takes one exact `provider/model-id`, optionally with `:level`. Role aliases such as `@slow` are refused. It works only with `task.perCallModel: on` in the **user** config (the default is `off`; a project config can turn it off but never on), and OMP approves the model only when a user-level role names it, so take it from there (Role configuration below). Without a per-call model, the bundled agent runs on its own role (`task` on `@task`, `scout` on `@smol`, `reviewer` on `@slow`). |
+| Choose the model | `model` on the call takes one exact `provider/model-id`, optionally with `:level`, mapped from the role's first runnable candidate (**Candidates** below). Role aliases such as `@slow` are refused. It works only with `task.perCallModel: on` in the **user** config (the default is `off`; a project config can turn it off but never on), and OMP approves the model only when a user-level role names it (**Grants** below). Without a per-call model, the bundled agent runs on its own role (`task` on `@task`, `scout` on `@smol`, `reviewer` on `@slow`). |
 | A separate checkout | Workers share the session's checkout. When the work needs its own, create a worktree, name it in the work order, and remove it after the push check. |
 | Ask the user | The `ask` tool. |
 | Open a todo list | The `todo` tool. |
@@ -29,8 +29,17 @@ Read a skill's `SKILL.md` with `read` and follow it.
 
 `omp models` lists the exact `provider/model-id` values this machine can run.
 
-## Role configuration
+## Candidates
 
-`modelRoles` in `~/.omp/agent/config.yml`, the user config. smode's roles (`scout`, `worker`, `thinker`, `reviewer`, `coordinator`) are keys there next to OMP's own roles, each with an exact `provider/model-id:level`; `templates/roles.omp-config.yml` in this repository shows the shape. Keep them in the user config, not in a project's `.omp/config.yml`: OMP grants per-call models only from user-level settings. The Setup playbook also sets `perCallModel: on` under `task:` in the same file, after asking the user: OMP then accepts a per-call model, still only one the configuration already routes to. A missing role, or `perCallModel` left `off`, means the bundled agent's own role.
+OMP runs a candidate when `omp models` lists a model for its channel (`via`, else the provider) with that id. For `roles.mjs show`, pass the channels `omp models` lists as `--channels`, named the way `roles.md` names them.
+
+- **Selector:** `<OMP provider>/<model id>:<level>`. The OMP provider is the channel's: `antigravity` → `antigravity-cli`; the others keep their name (`anthropic`, `openai`, `google`, `cursor`). Take the exact id `omp models` lists.
+- **Effort:** `effort=<level>` → `:<level>`.
+- **Grants.** OMP accepts a per-call model only when a role in the **user** config names it (spike S1 of `project-config-roles`: any key under `modelRoles` grants, project config never does), and only with `task.perCallModel: on` there. So smode's `setup` playbook (step 7), after asking, adds to `~/.omp/agent/config.yml` one key per runnable candidate, named for this project so it never overwrites another project's: `smode-<repository name>-<role>-<n>: <selector>`. It replaces only this project's `smode-<repository name>-*` keys, leaves every other key alone, and sets `perCallModel: on` under `task:`. Rerun it after `roles.md` changes.
+- **Platform agents** (`software-omp`) name `@thinker`, `@worker`, `@reviewer` first and fall back to OMP's built-in roles. Plain keys of those names in the user config serve every project; setup leaves them as they are unless the user asks.
+
+## Migration
+
+Before ADR-0004, smode's roles were the plain keys `scout`, `worker`, `thinker`, `reviewer`, `coordinator` under `modelRoles` in the user config. Convert each `<OMP provider>/<model>:<level>` back: `antigravity-cli` and `cursor` become `via` unless they are the model's maker (the maker comes from the model id as `harness/t3.md` says under **Migration**), and `:<level>` becomes `effort=<level>`. Keep the plain keys: OMP's platform agents still use them.
 
 OMP's rules from `software-omp` (the TDD guards) keep running in every worker; smode does not replace them.

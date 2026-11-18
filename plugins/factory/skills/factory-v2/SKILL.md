@@ -2,18 +2,18 @@
 name: factory-v2
 description: "Agent-driven software factory, version 2: a coordinator builds approved specs through an agent manager, each worker step a smode playbook on the model its role routes to."
 disable-model-invocation: true
-argument-hint: "setup | run | once"
+argument-hint: "setup | setup override | run | once"
 ---
 
 # Factory v2
 
 The factory builds approved specs from the issue tracker, with a person in the loop only for real decisions. A **coordinator** agent decides, delegates and records; **workers**, fresh agent sessions each in a workspace the agent manager created, read and write code. Version 2 sits beside the `factory` skill (version 1, ADR-0002), keeps its ticket chain, merge guard and memory, and changes two things (ADR-0003): every worker step runs a playbook of the `smode` skill, and every worker runs on the model its role routes to, skipping providers that are out of quota.
 
-The factory reaches the agent manager only through the operations in [INTERFACE.md](INTERFACE.md). How each operation runs on one manager is in that manager's reference under `references/`; read only the reference `docs/agents/factory-v2.md` names on its `Manager:` line. Its settings live in `docs/agents/factory-v2.md`, never in version 1's file, and one repository runs one version at a time.
+The factory reaches the agent manager only through the operations in [INTERFACE.md](INTERFACE.md). How each operation runs on one manager is in that manager's reference under `references/`; read only the reference `docs/agents/factory-v2.md` names on its `Manager:` line. Its settings live in `docs/agents/factory-v2.md`, never in version 1's file, and the model each role runs on in the project's `docs/agents/roles.md` (ADR-0004). One repository runs one version at a time.
 
 ## Modes
 
-- `setup`: prepare this project for the factory and prove it with a smoke test. Follow [SETUP.md](SETUP.md).
+- `setup`: prepare this project for the factory and prove it with a smoke test. Follow [SETUP.md](SETUP.md). `setup override` changes chosen settings of `docs/agents/factory-v2.md` only (SETUP.md, **Override**).
 - `run`: start the factory and leave it running. Do schedule-wakes for the main checkout, every `Wake timeout`, with the wake prompt the reference gives (it runs this skill in mode `once`), report that the factory is running and in which session, and end your turn. From then on the scheduled session is the coordinator: each wake it receives is a `once`. Follow [PLAYBOOK.md](PLAYBOOK.md), with [WORK-ORDERS.md](WORK-ORDERS.md) for every worker started and [MEMORY.md](MEMORY.md) for the journal, the lessons, the providers and the quota. To stop the factory, a person tells the coordinator "stop", which cancels the scheduled wakes.
 - `once`: do exactly one wake of the playbook, report it, and stop. The scheduled wakes of `run` send this; on its own it lets a person watch one wake.
 

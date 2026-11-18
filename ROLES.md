@@ -1,134 +1,81 @@
 ---
 roles:
   scout:
-    purpose: fast reading and searching, gathering context for another agent
-    omp: "@smol"
+    purpose: fast, cheap reading and searching; quick pass or fail checks against a written standard
+    omp: ["@scout", "@smol"]
     claude: haiku
     codex: low
   worker:
-    purpose: implementation, TDD loops, routine edits
-    omp: "@task"
+    purpose: reliable code changes and test loops
+    omp: ["@worker", "@task"]
     claude: inherit
     codex: medium
   thinker:
-    purpose: diagnosis, deep analysis, anything where a wrong answer is expensive
-    omp: "@slow"
+    purpose: deep reasoning where a wrong answer is expensive; plans, specs, diagnosis, interface design
+    omp: ["@thinker", "@slow"]
+    claude: opus
+    codex: high
+  reviewer:
+    purpose: strong reasoning, and a different model family from the worker whose change it checks; reviews and verification
+    omp: ["@reviewer", "@slow"]
     claude: opus
     codex: high
   coordinator:
     purpose: runs a program of many workers (smode delegation, the factory); steady, cheap, small context, never writes code
-    omp: "@default"
-    claude: sonnet
-    codex: medium
-  architect:
-    purpose: specs, ticket breakdown, interface design
-    omp: "@plan"
-    claude: opus
-    codex: high
-  judge:
-    purpose: quick pass or fail checks against a written standard
-    omp: "@judge"
-    claude: haiku
-    codex: low
-  reviewer:
-    purpose: code review on standards and spec (software)
-    custom: true
-    omp: ["@reviewer", "@slow"]
-    claude: opus
-    codex: high
-  planner:
-    purpose: planning one ticket before code (decisions, change map, tests, door, questions) (software)
-    custom: true
-    omp: ["@planner", "@plan"]
-    claude: opus
-    codex: high
-  implementer:
-    purpose: building one factory ticket test-first (software)
-    custom: true
-    omp: ["@implementer", "@task"]
-    claude: inherit
-    codex: medium
-  verifier:
-    purpose: proving a change works on the real product, independent of its author (software)
-    custom: true
-    omp: ["@verifier", "@slow"]
-    claude: opus
-    codex: high
-  writer:
-    purpose: drafting copy and articles in the brand voice (marketing, seo)
-    custom: true
-    omp: ["@writer", "@default"]
+    omp: ["@coordinator", "@default"]
     claude: sonnet
     codex: medium
 ---
 # Model roles
 
-Skills never name a model. Agents name a **role**, and each platform maps the
-role to a model. Change models in your config, not in this repo.
+Skills never name a model. Work is delegated by **role**, described by what the
+work needs, and each project maps the role to models in its own
+`docs/agents/roles.md` (ADR-0004). There are five roles; `npm run validate`
+fails on any other.
 
-| Role | Purpose | Oh My Pi | Claude Code | Codex (effort) |
-|---|---|---|---|---|
-| scout | fast reading and searching | `@smol` | `haiku` | low |
-| worker | implementation, TDD loops | `@task` | `inherit` | medium |
-| thinker | diagnosis, deep analysis | `@slow` | `opus` | high |
-| coordinator | runs many workers; steady, cheap, small context | `@default` | `sonnet` | medium |
-| architect | specs, tickets, interface design | `@plan` | `opus` | high |
-| judge | quick pass or fail checks (OMP judged rules use this role) | `@judge` | `haiku` | low |
-| reviewer (custom) | code review | `@reviewer`, falls back to `@slow` | `opus` | high |
-| planner (custom) | planning one ticket before code | `@planner`, falls back to `@plan` | `opus` | high |
-| implementer (custom) | building one factory ticket | `@implementer`, falls back to `@task` | `inherit` | medium |
-| verifier (custom) | proving a change works, not its author | `@verifier`, falls back to `@slow` | `opus` | high |
-| writer (custom) | copy and articles | `@writer`, falls back to `@default` | `sonnet` | medium |
+| Role | Needs | Platform agents on it |
+|---|---|---|
+| scout | fast, cheap reading and searching; quick pass or fail checks | |
+| worker | reliable code changes and test loops | `implementer` |
+| thinker | deep reasoning: plans, specs, diagnosis, design | `planner` |
+| reviewer | strong reasoning, another model family than the worker | `verifier`, `review-standards`, `review-spec` |
+| coordinator | runs many workers; steady, cheap, never writes code | |
 
-`smode` (ADR-0003) delegates by role: `scout`, `worker`, `thinker`, `reviewer` and
-`coordinator`, described by what the work needs, never by model. A `reviewer`
-always runs on a different model family from the `worker` whose change it
-checks, so its verdict is independent. On a manager that runs several providers
-(T3 Code), each role is a **route**: an ordered list of `provider/model`
-candidates on the machine, written by smode's Setup playbook.
+## The project's roles: `docs/agents/roles.md`
 
-The frontmatter above is the machine-readable copy; `npm run validate` checks
-that every OMP agent uses a role from it (or a built-in OMP role) and every
-Claude agent uses one of `opus`, `sonnet`, `haiku`, `inherit`.
+One line per role, its **route**: candidates in order of preference.
 
-## Oh My Pi
-
-Built-in roles (`default`, `smol`, `slow`, `plan`, `task`, `tiny`, `advisor`,
-`web`, `judge`, ...) already exist. Custom roles are any extra key under
-`modelRoles`. An agent lists roles in order; OMP uses the first one that
-resolves, so an unassigned custom role falls back cleanly:
-
-```yaml
-model: ["@reviewer", "@slow"]
+```
+reviewer: google/gemini-4-hydrogen effort=high via=antigravity, anthropic/claude-opus-5-5 effort=high
 ```
 
-Assign custom roles per project in `.omp/config.yml`, which overrides your
-`~/.omp/agent/config.yml`. Add only the custom keys: setting a built-in role
-such as `task` or `slow` there changes every subagent, not just these agents.
-Pick model ids from `omp models`:
+A candidate is `<provider>/<model>`, where the provider is the model's maker
+(`anthropic`, `openai`, `google`, `xai`, `cursor`, …), then options: `effort`
+(`low`, `medium`, `high`, `xhigh`, `max`) and `via`, the channel that runs the
+model when it is not its maker (`cursor`, `antigravity`). No harness's own ids
+appear here: each harness doc of `smode` maps candidates to its tools and skips
+the ones it cannot run. A role without a line runs on the session's model.
 
-```yaml
-modelRoles:
-  planner: <provider>/<model>:<level>
-  implementer: <provider>/<model>:<level>
-  verifier: <provider>/<model>:<level>
-  reviewer: <provider>/<model>:<level>
-```
+smode's `setup` playbook writes the file (`setup override` changes one role);
+`smode/scripts/roles.mjs check` checks it and `show` prints each candidate with
+what the factory's memory knows about it.
 
-An unassigned custom role falls back to the next role in the agent's list, so
-leaving them out is safe.
+## Platform agents
 
-To change one agent without touching its role, use `task.agentModelOverrides`
-in the same file.
+The agents in `software-claude` and `software-omp` (used by factory version 1
+and by skills that name an agent) cannot read the project's file, so the
+frontmatter above gives each platform a selector:
 
-## Claude Code
+- **Oh My Pi:** `model:` lists the role first, then a built-in OMP role it
+  falls back to (`["@thinker", "@slow"]`). OMP resolves `@thinker` from
+  `modelRoles` in the user config when a key of that name exists, else the
+  fallback.
+- **Claude Code:** `model:` is the alias in the `claude` column (`opus`,
+  `sonnet`, `haiku`, `fable`, `inherit`). smode passes the model when it
+  delegates, which overrides it.
+- **Codex:** custom agents cannot ship in a plugin; the `codex` column is the
+  `model_reasoning_effort` smode's setup uses when it generates
+  `.codex/agents/<role>.toml` for a project.
 
-Agents take `model: opus | sonnet | haiku | inherit`. Claude-only skills (in a
-`-claude` plugin) may also set `model`, `effort`, `context: fork`, and `agent`.
-
-## Codex
-
-Codex custom agents cannot ship in a plugin, so this repo has no Codex agents
-yet. Skills that mention an agent fall back to doing the work themselves. The
-`codex` column is the `model_reasoning_effort` to use if you add agents under
-`.codex/agents/` later.
+`npm run validate` checks that `ROLES.md` holds exactly the five roles, that
+every OMP agent names one of them, and that every Claude agent uses an alias.

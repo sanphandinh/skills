@@ -22,7 +22,7 @@ Read a skill's `SKILL.md` with the `Read` tool and follow it.
 |---|---|
 | Spawn a worker | The `Agent` tool, `subagent_type: "general-purpose"`, the work order as `prompt`. Background is the default; wait for the notification instead of polling. |
 | Spawn a read-only worker | `subagent_type: "Explore"` for reading and searching only: it may be refused the shell. A worker that must run commands read-only (the `verify` and `review` playbooks) is `general-purpose`, with "change no file and make no commit" in its work order and a `git status` check afterwards. |
-| Choose the model | `model` takes only `opus`, `sonnet`, `haiku`, `fable`. A role value `opus high` is `model: "opus"` and `effort: "high"`. A non-Claude model cannot run here: omit `model` and say so. |
+| Choose the model | `model` takes only `opus`, `sonnet`, `haiku`, `fable`: map the role's first runnable candidate as **Candidates** says (`anthropic/claude-opus-5-5 effort=high` is `model: "opus"`, `effort: "high"`). With no runnable candidate, omit `model` and say so. |
 | A separate checkout | `isolation: "worktree"`. Name the branch or commit the worker starts from in the work order. |
 | Ask the user | `AskUserQuestion`. In print mode (`-p`) it is absent: ask in plain text and end the turn. |
 | Open a todo list | `TodoWrite` when the session has it; otherwise keep the list in the reply and update it at each step. |
@@ -31,8 +31,16 @@ Read a skill's `SKILL.md` with the `Read` tool and follow it.
 
 ## Models on offer
 
-The `Agent` tool's `model` values (`opus`, `sonnet`, `haiku`, `fable`) with the effort levels its schema lists. Write a role as `<model> <effort>`.
+The `Agent` tool's `model` values (`opus`, `sonnet`, `haiku`, `fable`) with the effort levels its schema lists; a candidate names the full model id behind the alias (`anthropic/claude-opus-5-5`).
 
-## Role configuration
+## Candidates
 
-`~/.claude/rules/smode-roles.md`, written by the `setup` playbook. Claude Code loads every file in `~/.claude/rules/` into each new session, so the role lines are already in context; if they are not, read the file. The file holds only smode's roles, one line each: `<role>: <model> <effort>`, such as `thinker: opus high`, under a first line `# smode roles (written by the smode setup playbook)`. A missing file or line means the session's model.
+Claude Code runs the candidates whose channel is `anthropic` (`via` absent, provider `anthropic`) and skips every other one. For `roles.mjs show`, pass `--channels anthropic`.
+
+- **Model:** the `Agent` tool takes an alias, so map the model id to it: `claude-opus-*` → `opus`, `claude-sonnet-*` → `sonnet`, `claude-haiku-*` → `haiku`, `claude-fable-*` → `fable`. Which version an alias runs is Claude Code's setting (`ANTHROPIC_DEFAULT_OPUS_MODEL` and the like); when it differs from the candidate's version, say so in the reply.
+- **Effort:** `effort=<level>` → the tool's `effort`, when its schema lists that level.
+- A role whose candidates are all skipped runs on the session's model: say so.
+
+## Migration
+
+Before ADR-0004 the roles lived in `~/.claude/rules/smode-roles.md`, which Claude Code loads into every new session of every project. Its plain lines `<role>: <alias> <effort>` become `anthropic/<model id the alias runs> effort=<effort>`; its `route <role>: …` lines are T3 candidates, converted as `harness/t3.md` says under **Migration**. After the project's file is committed, offer to delete the old one (smode's `setup` playbook, step 8); until then it keeps steering sessions everywhere.

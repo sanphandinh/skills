@@ -1,7 +1,7 @@
 ---
 name: implementer
 description: "Builds one factory ticket test-first on its branch, writes the ticket's handoff and the pull request body. Never reviews its own work."
-model: ["@implementer", "@task"]
+model: ["@worker", "@task"]
 thinking-level: high
 autoloadSkills: [tdd, codebase-design]
 output:

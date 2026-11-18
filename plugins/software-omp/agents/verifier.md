@@ -3,7 +3,7 @@ name: verifier
 description: "Proves a factory change works on the real product the way a user would, following the project's verification doc. Never edits code, never wrote the change."
 tools: read, find, grep, glob, bash, lsp
 spawns: scout
-model: ["@verifier", "@slow"]
+model: ["@reviewer", "@slow"]
 thinking-level: high
 structured: true
 output:

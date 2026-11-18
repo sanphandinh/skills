@@ -99,8 +99,10 @@ Each machine needs:
   see a project's `.omp/plugins/`: `omp plugin install software-omp@sanphan-skills`
   (planner, implementer, verifier, reviewers). An agent file with the same name
   in `~/.omp/agent/agents/` takes precedence over the plugin's.
-- Role models in `.omp/config.yml` (`templates/roles.omp-config.yml`). Workers
-  start on `@smol` and delegate their step to the role agent.
+- Role models under `modelRoles` in `~/.omp/agent/config.yml`
+  (`templates/roles.omp-config.yml`): the agents name `@thinker`, `@worker`
+  and `@reviewer` and fall back to OMP's built-in roles. Workers start on
+  `@smol` and delegate their step to the role agent.
 
 Each project needs, from `setup-software-context` and `setup-verification`:
 `docs/agents/issue-tracker.md` with its `## Factory` section,
@@ -134,14 +136,25 @@ stopped, and a worker that failed on the limit is restarted once.
 
 ## Harnesses and managers (smode and factory v2)
 
-`smode` and `factory-v2` (ADR-0003) separate two layers:
+`smode` and `factory-v2` (ADR-0003) separate two layers. The roles live in
+the project, in `docs/agents/roles.md` (ADR-0004), on every harness; each
+harness doc maps a role's candidates to its tools and skips the ones it cannot
+run.
 
-| Harness (runs a session) | smode harness doc | Roles live in | Checked |
-|---|---|---|---|
-| Claude Code | `harness/claude-code.md` | `~/.claude/rules/smode-roles.md` | yes |
-| Oh My Pi | `harness/omp.md` | `modelRoles` in `~/.omp/agent/config.yml`, with `task.perCallModel: on` | yes |
-| Codex | `harness/codex.md` | `~/.codex/agents/<role>.toml` | not yet |
-| a provider inside T3 Code | `harness/t3.md`, on top of the provider's own doc | `route <role>:` lines in the coordinator's role file | yes (Claude, Cursor, Antigravity) |
+| Harness (runs a session) | smode harness doc | Runs candidates via | Also needs | Checked |
+|---|---|---|---|---|
+| Claude Code | `harness/claude-code.md` | `anthropic` | nothing | yes |
+| Oh My Pi | `harness/omp.md` | every channel `omp models` lists | grant keys `smode-<repo>-<role>-<n>` in `~/.omp/agent/config.yml`, `task.perCallModel: on` | yes |
+| Codex | `harness/codex.md` | `openai` | generated `.codex/agents/<role>.toml` | not yet |
+| a provider inside T3 Code | `harness/t3.md`, on top of the provider's own doc | every provider T3 offers | nothing | yes (Claude, Cursor, Antigravity) |
+
+smode's `setup` playbook writes `docs/agents/roles.md` (and what the table's
+last column asks), and `setup override` changes chosen roles. To see where each
+role runs now:
+
+```bash
+node <smode>/scripts/roles.mjs show --channels anthropic,cursor,antigravity
+```
 
 | Agent manager | `factory` (v1) | `factory-v2` |
 |---|---|---|
@@ -150,7 +163,7 @@ stopped, and a worker that failed on the limit is restarted once.
 
 ## Running the factory, version 2
 
-Each machine needs smode's role configuration with a route for `thinker`, `worker` and `reviewer` (smode's `setup` playbook), and T3 Code with the providers those routes name. Each project needs the same `docs/agents/` files as version 1. Then, in a T3 thread on the project root, in full-access mode:
+Each project needs `docs/agents/roles.md` with a route for `thinker`, `worker` and `reviewer` (smode's `setup` playbook) and the same `docs/agents/` files as version 1; each machine needs T3 Code with the providers those routes name. Then, in a T3 thread on the project root, in full-access mode:
 
 ```text
 factory-v2 setup   write docs/agents/factory-v2.md, check each provider, smoke-test T3

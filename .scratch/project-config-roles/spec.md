@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: closed
 
 # Config của skill ở project scope, một hệ role, mode `override`
 
@@ -234,3 +234,15 @@ Người dùng chạy cùng bộ skill trên nhiều project và nhiều harness
 
   Ticket OMP chờ spike.
 - Sau khi spec này xong, playbook `setup` của `smode` không còn đụng tới `~/.claude/rules/`. File `~/.claude/rules/smode-roles.md` trên máy này chỉ bị xoá khi người dùng đồng ý ở bước migration.
+
+## Comments
+
+## Handoff
+
+**Delivered:** spec làm trọn trong một nhánh, không tách ticket. `docs/agents/roles.md` là nguồn duy nhất của model theo role, dạng trung lập; 4 harness doc có mục **Candidates** và **Migration**; `ROLES.md` còn 5 role; 5 setup có `override`; `roles.mjs check` và `show`; factory-v2 đọc route từ `roles.md` và memory ghi id ứng viên trung lập; ADR-0004, glossary, `AGENTS.md`, `PLATFORMS.md`. Repo này đã có `docs/agents/roles.md` (chuyển từ `~/.claude/rules/smode-roles.md`), `docs/agents/factory-v2.md` bỏ `Routes:`, memory factory-v2 của repo đã chuyển sang id trung lập.
+**Interfaces introduced:** `docs/agents/roles.md` (`<role>: <provider>/<model> effort=… via=…, …`); id ứng viên `<provider>/<model>[ via=<channel>]`; `node <smode>/scripts/roles.mjs check|show [--root] [--channels] [--now]`; key cấp quyền OMP `smode-<repo>-<role>-<n>`; đối số `override` của các setup.
+**Deviations from spec:** template nằm ở `smode/roles-template.md` thay vì `templates/`, vì plugin cài đặt không mang theo `templates/` của repo. Agent Claude giữ alias theo `ROLES.md` (không đổi sang `inherit`). Validator không quét prose của skill để tìm tên role lạ (user story 33 chỉ làm phần `ROLES.md`, agent OMP và template). Harness nào chạy được ứng viên do `--channels` truyền vào, theo harness doc, để script không chứa hiểu biết về harness.
+**Decisions:** spike S1 (`research/s1-omp-namespaced-roles.md`): mọi key `modelRoles` ở user config cấp quyền, nên dùng key có namespace; không cần đồng bộ dạng hợp. Mỗi ứng viên một key. `Coordinator:` trong `factory-v2.md` cũng viết bằng id trung lập.
+**Gotchas:** plugin đã cài (`software` 0.9.1) vẫn đọc file cũ cho tới khi cập nhật lên 0.10.0; chỉ xoá `~/.claude/rules/smode-roles.md` sau khi cập nhật. Phần văn bản (playbook `setup`, `override`, đồng bộ OMP, sinh agent Codex) chưa chạy thật lần nào; Codex vẫn "unchecked".
+**For the next ticket:** spec harness doc cho Antigravity, Cursor, OpenCode xây trên mục **Candidates**.
+**Links:** nhánh `feat/project-config-roles`.

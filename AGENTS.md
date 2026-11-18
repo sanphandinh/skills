@@ -6,7 +6,8 @@ Part of `core` and `software` is derived from mattpocock/skills; see `UPSTREAM.m
 ## Principles
 
 - **Skills are process, context is knowledge.** A skill says how to do something and is the same in every project. Project knowledge (domain, architecture, brand voice, SEO competitors) belongs in that project's `AGENTS.md` and `CONTEXT.*.md`, never in a skill.
-- **Three layers.** Skills (shared, portable) name agents; agents (per platform) name roles; roles (`ROLES.md`) map to models in the user's config. Never write a concrete model into a skill or agent.
+- **Three layers.** Skills (shared, portable) name agents or roles; agents (per platform) name roles; roles (the five in `ROLES.md`) map to models in each project's `docs/agents/roles.md` (ADR-0004). Never write a concrete model into a skill or agent.
+- **Configuration lives in the project.** Every setting a skill reads is a file in the project's `docs/agents/`, committed with the code; a setup skill that writes one also takes `override` to change chosen settings. Nothing is read from a harness's own config except in `harness/` docs and `references/`.
 - **Native plugins only.** Projects install with each agent's own plugin commands at project scope. Do not add tooling that copies skills into projects.
 - **Few and precise.** Every extra skill costs context and invites wrong triggers.
 
@@ -17,7 +18,7 @@ Part of `core` and `software` is derived from mattpocock/skills; see `UPSTREAM.m
 - `plugins/<domain>-claude/`: Claude Code agents and Claude-only components.
 - `plugins/<domain>-omp/`: Oh My Pi agents, rules, commands, tools, extensions. Needs `.omp-plugin/plugin.json`.
 - `.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`, `.omp-plugin/marketplace.json`: one catalog per agent.
-- `ROLES.md`: logical roles and their mapping per platform (frontmatter is machine-read).
+- `ROLES.md`: the five roles and the fallback selector per platform for platform agents (frontmatter is machine-read).
 - `PLATFORMS.md`: what each agent supports and how projects install.
 - `UPSTREAM.md`: tracked upstream skills, rewrite rules, upstream MIT license.
 - `cli/`: `repo.mjs` (list, validate, upstream) and tests.
@@ -56,7 +57,7 @@ Skills listed in `UPSTREAM.md` came from mattpocock/skills. Edit them freely; `n
 
 `software` (shared):
 
-- Entry point: `smode` (user-invoked, ADR-0003) restates the goal, matches the task to one of its 16 playbooks (`investigation`, `bug-fix`, `feature`, `refactor`, `prototype`, `spec`, `plan-ticket`, `ticket`, `spec-run`, `verify`, `review`, `triage`, `pickup`, `retro`, `setup`, `factory`), copies the steps into a todo list, and runs the skills below at the steps that need them. It finds a skill by name through its generated `skills-index.md` (`npm run index`), delegates by role with the model chosen at delegation (its `setup` playbook writes the role configuration), and maps actions to each harness in `harness/` (`claude-code`, `codex`, `omp`, `t3`).
+- Entry point: `smode` (user-invoked, ADR-0003) restates the goal, matches the task to one of its 16 playbooks (`investigation`, `bug-fix`, `feature`, `refactor`, `prototype`, `spec`, `plan-ticket`, `ticket`, `spec-run`, `verify`, `review`, `triage`, `pickup`, `retro`, `setup`, `factory`), copies the steps into a todo list, and runs the skills below at the steps that need them. It finds a skill by name through its generated `skills-index.md` (`npm run index`), delegates by role with the model chosen at delegation, and maps actions and role candidates to each harness in `harness/` (`claude-code`, `codex`, `omp`, `t3`). Models per role come from the project's `docs/agents/roles.md` (ADR-0004), written by its `setup` playbook (`setup override` changes chosen roles); `scripts/roles.mjs` checks it and shows each candidate's provider check, quota and last use.
 - Factory pipeline (idea, grilling, spec, tickets, implement with TDD, review, PR, handoff): `setup-software-context` (also installs the bug issue template into the tracker), `grill-with-docs`, `to-spec`, `to-tickets` (user-invoked); `implement` for one ticket or small work, `implement-spec` for a whole spec with parallel implementers on an integration branch (both user-invoked); `tdd`, `code-review`, `pr`.
 - Unattended build: the `factory` plugin (below) runs the agent-driven factory; `setup-verification` (user-invoked) writes the `docs/agents/verify.md` its verifiers follow. Use `implement` for a single ticket by hand and `implement-spec` for one integration branch per spec.
 - Large or unclear efforts: `wayfinder` (user-invoked) maps decision tickets on the tracker, then hands off to `to-spec`.
@@ -68,11 +69,11 @@ Skills listed in `UPSTREAM.md` came from mattpocock/skills. Edit them freely; `n
 
 `software-claude`: agents `planner` (opus), `implementer` (inherit), `verifier`, `review-standards`, `review-spec` (opus).
 
-`software-omp`: agents `planner` (`@planner` falling back to `@plan`), `implementer` (`@implementer` falling back to `@task`), `verifier` (`@verifier` falling back to `@slow`), `review-standards`, `review-spec` (`@reviewer` falling back to `@slow`), all with typed output; rules `tdd-no-skipped-tests` (interrupts on skip/only), `tdd-no-weakened-assertions` (judge question on test edits).
+`software-omp`: agents `planner` (`@thinker` falling back to `@slow`), `implementer` (`@worker` falling back to `@task`), `verifier`, `review-standards`, `review-spec` (`@reviewer` falling back to `@slow`), all with typed output; rules `tdd-no-skipped-tests` (interrupts on skip/only), `tdd-no-weakened-assertions` (judge question on test edits).
 
 `factory` (shared): `factory` (user-invoked) is the agent-driven software factory (ADR-0002). `setup` writes the project's `docs/agents/factory.md` and smoke-tests the agent manager; `run` makes the session the coordinator, woken on a schedule by the agent manager, that builds every approved spec and standalone ticket through plan, build, check, rework and land, with each step a fresh worker in its own worktree; `once` does one wake. The coordinator follows `PLAYBOOK.md` and `WORK-ORDERS.md`, reaches the agent manager only through the ten operations in `INTERFACE.md`, and keeps its journal and wiki outside the repository (`MEMORY.md`). One reference per manager (`references/orca.md` today) maps the operations to commands. No scripts: merge safety is verdict statuses on the exact head commit plus `gh pr merge --match-head-commit`.
 
-`factory` also ships `factory-v2` (user-invoked, ADR-0003) beside an unchanged version 1: the same ticket chain, merge guard and memory, but every worker step runs a `smode` playbook (`plan-ticket`, `ticket`, `verify`, `review`) on the model its role routes to, with quota blocks in `quota.md` and per-provider checks in `providers.md`. Settings in `docs/agents/factory-v2.md`, memory in `~/.local/share/factory-v2/<repo>`; one repository runs one version. Its only reference today is `references/t3.md` (T3 Code, with a watcher thread for wakes).
+`factory` also ships `factory-v2` (user-invoked, ADR-0003) beside an unchanged version 1: the same ticket chain, merge guard and memory, but every worker step runs a `smode` playbook (`plan-ticket`, `ticket`, `verify`, `review`) on the model its role routes to, with quota blocks in `quota.md` and per-provider checks in `providers.md`. Settings in `docs/agents/factory-v2.md` and routes in `docs/agents/roles.md`, memory in `~/.local/share/factory-v2/<repo>`; one repository runs one version. Its only reference today is `references/t3.md` (T3 Code, with a watcher thread for wakes).
 
 ## Agent skills
 

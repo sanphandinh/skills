@@ -65,9 +65,13 @@ One short, ordered list of steps for one kind of task inside a mode skill, copie
 _Avoid_: recipe, workflow, script
 
 **Role**:
-What a piece of delegated work needs from a model (deep reasoning, cheap and fast, independent from the author), described by traits and mapped to a model per machine and harness. Never a model name.
+What a piece of delegated work needs from a model (deep reasoning, cheap and fast, independent from the author), described by traits and mapped to models in the project's `docs/agents/roles.md` (ADR-0004). One of five: scout, worker, thinker, reviewer, coordinator. Never a model name.
 _Avoid_: tier, agent type
 
 **Route**:
-The ordered list of `provider/model` candidates for one role on a manager that runs several providers; the coordinator takes the first one that is qualified, available and not out of quota.
+The ordered list of candidates for one role, one line of `docs/agents/roles.md`; whoever delegates takes the first candidate the harness can run that is qualified, available and not out of quota.
 _Avoid_: fallback chain, model list
+
+**Candidate**:
+One model a route may run: `<provider>/<model>`, the provider being the model's maker, with `effort` and, when another service runs it, `via=<channel>`. Its id (without `effort`) names it in the factory's memory. Never a harness's own id.
+_Avoid_: target, model selector

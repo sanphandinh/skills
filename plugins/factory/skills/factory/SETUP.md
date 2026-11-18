@@ -2,6 +2,10 @@
 
 Prepare one project for the factory, then prove the setup with a smoke test against the real agent manager. Run it from the project's main checkout, in a terminal of the agent manager. Running it again is safe: every step looks before it writes.
 
+## Override
+
+`setup override` changes settings of a project already set up, instead of setting it up again (ADR-0004; the only change to version 1 since ADR-0003 froze it). Read `docs/agents/factory.md`, list every setting with its value, and ask which ones to change; the default is to keep each one. Propose a new value only for the settings picked, the way this file proposes it for a first setup, and leave every other line byte for byte. Show the diff, then commit it on trunk on its own as "Override factory config: <settings>" and push. The coordinator rereads the file on its next wake. When `Manager:`, `Agent:` or `Memory:` changed, run the rest of setup again from the step after writing the file; otherwise stop here.
+
 ## 1. Check the documents the factory reads
 
 - `docs/agents/issue-tracker.md` with its `## Factory` section and `Tracker:` line, `docs/agents/triage-labels.md`, and `docs/agents/merge-policy.md`: written by the `setup-software-context` skill.
@@ -62,7 +66,7 @@ Prove every interface operation on the real manager with a throwaway workspace. 
    - Wait for events. The `question` event comes first: answer `beta`.
    - While it sleeps, inspect it (`working`), and send it "Record the word gamma."
    - Wait for its `done` and read its result.
-   - PASS when the answer is `beta`, the follow-ups hold `gamma`, the model matches what the manager reports for the worker, and the agents include `planner`, `implementer`, `verifier`, `review-spec` and `review-standards`. Missing agents mean the plugins that ship them are not reachable from a new workspace: install those plugins at user scope and repeat this check. An agent file with the same name in the user's own agents folder (for Oh My Pi, `~/.omp/agent/agents/`) takes precedence over the plugin's, so an old copy there must be moved aside.
+   - PASS when the answer is `beta`, the follow-ups hold `gamma`, the model matches what the manager reports for the worker, and the agents include `planner`, `implementer`, `verifier`, `review-spec` and `review-standards`. Missing agents mean the plugins that ship them are not reachable from a new workspace: install those plugins at user scope and repeat this check. An agent file with the same name in the agent's own user-level agents folder (Oh My Pi has one under its user config folder) takes precedence over the plugin's, so an old copy there must be moved aside.
 3. **flag-human**: flag the workspace with "factory smoke test"; confirm through the manager that it shows as waiting for a person; clear it.
 4. **resume**: start worker `smoke sleeper` told to run `sleep 600`, then report. Run the reference's resume test while it sleeps.
 5. **stop-worker**: stop `smoke sleeper`; inspect it: `stopped`.

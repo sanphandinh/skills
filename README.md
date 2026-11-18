@@ -7,7 +7,7 @@ installs them per project with its own plugin commands.
 - [ROLES.md](ROLES.md): model roles that agents use, and how to map them to models.
 - [UPSTREAM.md](UPSTREAM.md): syncing the skills derived from mattpocock/skills.
 - [AGENTS.md](AGENTS.md): rules for writing skills and agents in this repo.
-- `templates/`: `AGENTS.md`, `CLAUDE.md`, `CONTEXT.software.md`, and per-harness role model examples to copy into a project.
+- `templates/`: `AGENTS.md`, `CLAUDE.md`, `CONTEXT.software.md`, Claude Code model pins and Oh My Pi roles for platform agents. A project's models per role are its own `docs/agents/roles.md`, written by smode's `setup` playbook.
 
 ## Start here: `smode`
 

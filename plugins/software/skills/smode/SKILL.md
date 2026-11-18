@@ -9,7 +9,7 @@ argument-hint: "<task>"
 
 smode is how engineering work runs here. It matches the task to one **playbook**, copies the playbook's steps into a todo list, and runs the skills of the `core`, `software` and `factory` plugins at the steps that need them.
 
-Files next to this one: `playbooks/<name>.md` (one per kind of task), `harness/<harness>.md` (how this session's tools do each action), and `skills-index.md` (which plugin ships each skill). Keep this file's absolute path: every work order you write includes it.
+Files next to this one: `playbooks/<name>.md` (one per kind of task), `harness/<harness>.md` (how this session's tools do each action and run a role's candidates), `skills-index.md` (which plugin ships each skill), and `scripts/roles.mjs` (checks and shows the project's roles). Keep this file's absolute path: every work order you write includes it.
 
 ## First, the harness
 
@@ -71,7 +71,7 @@ No is an acceptable answer. When asked whether to do something, give your real j
 
 **Every work order says** which playbook to run and gives the absolute path of this file, so the worker can run it on any harness.
 
-**Model per role.** Pick the role the work needs, then the model the role maps to in this machine's role configuration (the harness doc says where it lives; the `setup` playbook writes it). With no configuration, run the worker on the session's model and say so.
+**Model per role.** Pick the role the work needs, then its model from the project's `docs/agents/roles.md`, the only role configuration (ADR-0004): read it before the first delegation of the task, never from a harness's own settings. Each line is the role's **route**, candidates in order (`<provider>/<model>`, `effort=…`, `via=<channel>`); take the first one this harness can run, that is available and not out of quota, mapped to the harness's tools as its doc's **Candidates** section says. A role without a line, or a project without the file, runs the worker on the session's model: say so in the reply and suggest the `setup` playbook. `scripts/roles.mjs` next to this file checks the file (`check`) and prints each role's candidates (`show`).
 
 | Role | Needs |
 |---|---|
@@ -113,7 +113,7 @@ Each entry says when it fits. Open its file and run it as **Opening the task** s
 - **Triage** (`playbooks/triage.md`): move new issues and outside pull requests through the triage roles.
 - **Pickup** (`playbooks/pickup.md`): take over work in flight from a handoff or a branch.
 - **Retro** (`playbooks/retro.md`): turn a finished session into changes to the agent's environment.
-- **Setup** (`playbooks/setup.md`): prepare this machine and project for smode, including the role configuration.
+- **Setup** (`playbooks/setup.md`): prepare this project for smode and write its `docs/agents/roles.md`; `setup override` changes chosen roles only.
 - **Factory** (`playbooks/factory.md`): run the agent-driven factory, version 2.
 
 The structure of this skill is adapted from `poteto-mode` in cursor/plugins `pstack` (MIT, Copyright (c) 2026 Lauren Tan).

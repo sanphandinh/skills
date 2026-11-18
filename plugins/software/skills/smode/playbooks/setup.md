@@ -1,19 +1,22 @@
 # Setup
 
-Prepare this project and this machine for smode: the project's agent docs, and the role → model configuration of each harness you use here. Running it again is safe: every step looks before it writes, and the role configuration is rewritten whole.
+Prepare this project for smode: its agent docs, and `docs/agents/roles.md`, the model each role runs on in this project (ADR-0004). The file is committed with the project, so it holds every candidate the team may use; a harness skips the candidates it cannot run. Running it again is safe: every step looks before it writes. With `override` in the task (`setup override`), it changes only the roles the user picks.
 
-1. When `docs/agents/issue-tracker.md` is missing, run the `setup-software-context` skill. When `docs/agents/verify.md` is missing, run the `setup-verification` skill. Both are the project's; skip them on a machine-only setup.
-2. Read the harness doc for this session's harness and find out which models it can run, the way that doc says. Never write a model you have not seen offered.
-3. Propose one model per role, from those models, and show the table to the user. A role that already has a value in the configuration (another skill may share the name, as factory v1 shares `reviewer`) keeps it in the proposal, marked as kept:
+1. When `docs/agents/issue-tracker.md` is missing, run the `setup-software-context` skill. When `docs/agents/verify.md` is missing, run the `setup-verification` skill.
+2. Read what is there. When `docs/agents/roles.md` exists, check it with `node <this skill's folder>/scripts/roles.mjs check` and show the user `show`'s table. Without `override`, keep it as it is: report it, go to step 7 for any harness sync it still needs, and stop. When it is missing, look in the old places each harness doc lists under **Migration** and convert what you find to candidates, as that section says.
+3. With `override`, list every role with its current line and ask which ones to change; the default is to keep each one. Propose only for the roles picked; leave the others byte for byte.
+4. Find out which models this harness can run, the way its doc says. Never propose a model you have not seen offered. Propose a route per role, two or three candidates in order on different providers where possible, so a provider out of quota has a fallback:
    - `scout`: the cheapest fast model;
    - `worker`: a reliable coding model;
    - `thinker`: the strongest reasoning model;
-   - `reviewer`: strong reasoning, and **a different model family from `worker`** when the harness offers one; say so when it does not;
+   - `reviewer`: strong reasoning, and **a different model family from `worker`** when one is offered; say so when it is not;
    - `coordinator`: a steady, cheap model.
 
-   On a manager that runs several providers, each role is a route: two or three candidates in order, on different providers where possible, so a provider out of quota has a fallback.
-4. Ask the user to accept the table or change roles. Change only what they name. When the harness doc names a setting that per-call models need, ask about it in the same question.
-5. Write the configuration where the harness doc says, in its format. Read the current file first. Keep every line that is not a smode role, replace the smode roles, and keep a copy of the previous file next to it with a `.bak` suffix; when that name is taken, use `.bak-<YYYYMMDDHHMMSS>` instead, so an existing backup is never overwritten.
-6. Prove it: on a harness that loads the file into new sessions, read it back the way a new session would; on a harness that spawns workers with a per-call model, spawn one `scout` worker on the configured model and compare the model it reports.
+   A role whose value came from an old place (step 2) is proposed as it was, marked as migrated.
+5. Ask the user to accept the table or change roles. Change only what they name.
+6. Write `docs/agents/roles.md` from `roles-template.md` next to this skill's `SKILL.md` (its explanation, then one line per role). Run `roles.mjs check` and fix every error. Show the diff, then commit it on trunk on its own: "Configure smode roles", or "Override smode roles: <roles>" with `override`. A project that runs `factory-v2` drops the `Routes:` line from `docs/agents/factory-v2.md` in the same commit; the factory reads this file now.
+7. Do what the harness doc's **Candidates** section asks for this harness beyond reading the file (Oh My Pi needs its user config to grant the models; Codex reads generated agent files). Ask before you write anything outside the repository.
+8. When step 2 migrated from an old place, ask whether to delete that old file now; delete it only on a yes. A file there that a harness loads into every session (the harness doc says which) keeps steering sessions in every project until it is gone.
+9. Prove it: spawn one `scout` worker with the role's first candidate this harness can run, and compare the model it reports.
 
-**Reply:** the table as written, the file and its backup, the proof from step 6 (measured), and what to run to undo it.
+**Reply:** `roles.mjs show`'s table as committed, the commit, what was written outside the repository and what was deleted, the proof from step 9 (measured), and how to undo it (`git revert` of the commit).

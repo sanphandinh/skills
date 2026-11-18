@@ -2,6 +2,7 @@
 name: setup-software-context
 description: "Configure this repo for the engineering skills: set up its issue tracker, triage label vocabulary, domain doc layout, agent reply language, and optionally a bug issue template. Run once before first use of the other engineering skills."
 disable-model-invocation: true
+argument-hint: "[override]"
 ---
 
 # Setup Software Context
@@ -15,6 +16,10 @@ Scaffold the per-repo configuration that the engineering skills assume:
 - **Bug template**: a fixed-shape bug issue template in the tracker, so every bug reaches an agent with a reproduction check it can run
 
 This is a prompt-driven skill, not a deterministic script. Explore, present what you found, confirm with the user, then write.
+
+## Override
+
+With `override` as the argument, change chosen parts of a project already set up instead of setting it up again (ADR-0004). Explore as step 1 says, then list each section (A to E, and the merge policy when the `factory` skill is installed) with what the files in `docs/agents/` hold for it now, and ask which ones to change; the default is to keep each one. Run steps 2 to 4 for the picked sections only: leave the files and lines of every other section byte for byte, including the `## Agent skills` block's other sub-blocks. Show the diff, then commit the change on its own as "Override software context: <sections>". Without the argument, the skill keeps what it finds, as below.
 
 ## Process
 

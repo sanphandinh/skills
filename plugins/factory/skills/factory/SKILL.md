@@ -2,7 +2,7 @@
 name: factory
 description: "Agent-driven software factory: set up a project, then run a coordinator agent that builds approved specs through an agent manager."
 disable-model-invocation: true
-argument-hint: "setup | run | once"
+argument-hint: "setup | setup override | run | once"
 ---
 
 # Factory
@@ -13,7 +13,7 @@ The factory reaches the agent manager only through the operations in [INTERFACE.
 
 ## Modes
 
-- `setup`: prepare this project for the factory and prove it with a smoke test. Follow [SETUP.md](SETUP.md).
+- `setup`: prepare this project for the factory and prove it with a smoke test. Follow [SETUP.md](SETUP.md). `setup override` changes chosen settings of `docs/agents/factory.md` only (SETUP.md, **Override**).
 - `run`: start the factory and leave it running. Do schedule-wakes for the main checkout, every `Wake timeout`, with the prompt `/skill:factory once`, report that the factory is running and in which session, and end your turn. From then on the scheduled session is the coordinator: each wake it receives is a `once`. Follow [PLAYBOOK.md](PLAYBOOK.md), with [WORK-ORDERS.md](WORK-ORDERS.md) for every worker started and [MEMORY.md](MEMORY.md) for the journal and the lessons. To stop the factory, a person tells the coordinator "stop", which cancels the scheduled wakes.
 - `once`: do exactly one wake of the playbook, report it, and stop. The scheduled wakes of `run` send this; on its own it lets a person watch one wake.
 

@@ -3,7 +3,7 @@ name: planner
 description: "Plans one ticket before any code is written: decisions with reasons, the files to change and to leave alone, interfaces, tests per acceptance criterion, verify commands, the door, and open product questions. Never edits code."
 tools: read, find, grep, glob, bash, lsp
 spawns: scout
-model: ["@planner", "@plan"]
+model: ["@thinker", "@slow"]
 thinking-level: high
 structured: true
 output:

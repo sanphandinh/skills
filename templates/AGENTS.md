@@ -26,8 +26,10 @@ Change skills in the source repo, not in this project.
 - Codex: `software` (enabled in `.codex/config.toml`)
 - Oh My Pi: `software`, `software-omp` (run `omp plugin install <name>@sanphan-skills --scope project`)
 
-Model roles used by the agents (`reviewer`, `writer`, ...) are mapped to models
-in `.omp/config.yml` under `modelRoles`, or in your own agent config.
+Every setting the skills read lives in `docs/agents/`, committed with this
+project. The model each role (`scout`, `worker`, `thinker`, `reviewer`,
+`coordinator`) runs on is `docs/agents/roles.md`, written by smode's `setup`
+playbook; `setup override` changes chosen roles.
 
 <!-- The setup-software-context skill fills in the issue tracker, triage labels,
      domain docs, and response language sections below. -->

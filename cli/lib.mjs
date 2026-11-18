@@ -5,6 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import YAML from "yaml";
+import { parseRoles, ROLES as SMODE_ROLES } from "../plugins/software/skills/smode/scripts/roles.mjs";
 
 const FM_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 const TEXT_EXT = new Set([".md", ".yaml", ".yml", ".json", ".sh", ".py", ".mjs", ".js", ".ts", ".toml", ".txt", ""]);
@@ -12,7 +13,7 @@ const TEXT_EXT = new Set([".md", ".yaml", ".yml", ".json", ".sh", ".py", ".mjs",
 // Frontmatter keys a shared skill may carry: the Agent Skills standard plus the
 // invocation keys that Claude Code and OMP honour and Codex tolerates.
 export const SHARED_SKILL_KEYS = ["name", "description", "disable-model-invocation", "argument-hint", "license", "compatibility", "metadata"];
-const CLAUDE_MODEL_ALIASES = ["opus", "sonnet", "haiku", "inherit"];
+const CLAUDE_MODEL_ALIASES = ["opus", "sonnet", "haiku", "fable", "inherit"];
 const ROLE_KEYS = ["purpose", "omp", "claude", "codex"];
 const OMP_BUILTIN_ROLES = ["default", "smol", "slow", "vision", "plan", "commit", "tiny", "memory", "task", "advisor", "web", "judge"];
 
@@ -152,6 +153,9 @@ const TOOL_NAMES = /\b(Skill tool|Task tool|Agent tool|Bash tool|Read tool|Edit 
 // to one harness or one agent manager (ADR-0003).
 const T3_TOOL_NAMES =
   /\b(delegate_task|task_status|task_cancel|orchestrator_capabilities|schedule_task|list_scheduled_tasks|delete_scheduled_task|run_scheduled_task_now|create_threads|watch_pull_request|unwatch_pull_request|link_pull_requests?|t3_[a-z_]+)\b/;
+// A harness's own configuration paths. Skills read the project's docs/agents/
+// (ADR-0004); only a harness doc or a manager's reference may name these.
+const HARNESS_CONFIG_PATHS = /(~\/\.(?:claude|omp|codex)\b|\.claude\/rules\b)/;
 // Folders of a shared skill whose job is naming one harness's or manager's tools.
 const TOOL_MAPPING_DIRS = ["harness", "references"];
 export const SKILLS_INDEX = "skills-index.md";
@@ -244,6 +248,7 @@ export function validate(root) {
         if (mapsTools) return;
         if (TOOL_NAMES.test(line)) add(where, `names a specific agent tool: ${line.match(TOOL_NAMES)[0]}`);
         if (T3_TOOL_NAMES.test(line)) add(where, `names a T3 tool: ${line.match(T3_TOOL_NAMES)[0]}; tool names belong in harness/ or references/ (ADR-0003)`);
+        if (HARNESS_CONFIG_PATHS.test(line)) add(where, `names a harness's config path: ${line.match(HARNESS_CONFIG_PATHS)[0]}; skills read docs/agents/, harness paths belong in harness/ or references/ (ADR-0004)`);
         for (const m of line.matchAll(/(?:^|[\s`(])[/$]([a-z][a-z0-9-]+)\b(?!\/)/g)) {
           if (names.has(m[1])) add(where, `invokes skill with agent syntax "${m[0].trim()}"; refer to it by name`);
         }
@@ -302,14 +307,28 @@ export function validate(root) {
     }
   }
 
-  // Every role maps on every platform, so a skill naming it works everywhere.
+  // One role system: exactly smode's five roles, each mapped on every platform,
+  // so a skill or agent naming one works everywhere (ADR-0004).
+  const rolesFile = path.join(root, "ROLES.md");
+  if (roles) {
+    for (const name of Object.keys(roles.roles ?? {})) {
+      if (!SMODE_ROLES.includes(name)) add(rolesFile, `role "${name}" is not one of the five roles (${SMODE_ROLES.join(", ")}); fold it into one of them`);
+    }
+    for (const name of SMODE_ROLES) if (!roles.roles?.[name]) add(rolesFile, `role "${name}" is missing`);
+  }
   for (const [name, r] of Object.entries(roles?.roles ?? {})) {
     const missing = ROLE_KEYS.filter((k) => r?.[k] === undefined || r?.[k] === null || r?.[k] === "");
-    if (missing.length) add(path.join(root, "ROLES.md"), `role "${name}" has no ${missing.join(", ")}`);
+    if (missing.length) add(rolesFile, `role "${name}" has no ${missing.join(", ")}`);
   }
 
-  const ompRoles = new Set(OMP_BUILTIN_ROLES);
-  for (const r of Object.values(roles?.roles ?? {})) for (const sel of [r.omp ?? []].flat()) ompRoles.add(String(sel).replace(/^@/, ""));
+  // The template a mode skill copies to a project's docs/agents/roles.md must pass `roles check`.
+  for (const mode of modeSkills(root, catalog)) {
+    const rolesTemplate = path.join(mode.dir, "roles-template.md");
+    if (!fs.existsSync(rolesTemplate)) continue;
+    for (const e of parseRoles(fs.readFileSync(rolesTemplate, "utf8")).errors) add(`${rolesTemplate}:${e.line}`, e.msg);
+  }
+
+  const ompRoles = new Set([...OMP_BUILTIN_ROLES, ...SMODE_ROLES]);
   const agentNames = new Map();
   for (const agent of agents) {
     const text = fs.readFileSync(agent.file, "utf8");
@@ -326,9 +345,13 @@ export function validate(root) {
       if (!fs.existsSync(path.join(root, "plugins", agent.plugin, ".omp-plugin", "plugin.json"))) {
         add(agent.file, "OMP agents need .omp-plugin/plugin.json, or OMP reads them as Claude-dialect and drops `model`");
       }
-      for (const sel of [frontmatter?.model ?? []].flat()) {
-        if (!String(sel).startsWith("@")) add(agent.file, `model "${sel}" is a concrete model; use a role selector (@role) from ROLES.md`);
-        else if (!ompRoles.has(String(sel).slice(1))) add(agent.file, `role "${sel}" is not a built-in OMP role and not listed in ROLES.md`);
+      const selectors = [frontmatter?.model ?? []].flat().map(String);
+      for (const sel of selectors) {
+        if (!sel.startsWith("@")) add(agent.file, `model "${sel}" is a concrete model; use a role selector (@role) from ROLES.md`);
+        else if (!ompRoles.has(sel.slice(1))) add(agent.file, `role "${sel}" is not a built-in OMP role and not one of the roles in ROLES.md`);
+      }
+      if (!selectors.some((sel) => SMODE_ROLES.includes(sel.replace(/^@/, "")))) {
+        add(agent.file, `model names none of the roles in ROLES.md (${SMODE_ROLES.join(", ")}); list one first, then a built-in fallback`);
       }
     }
     if (agent.platform === "claude") {

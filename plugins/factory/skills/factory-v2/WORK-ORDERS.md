@@ -1,6 +1,6 @@
 # Work orders
 
-A work order is everything a worker gets; it starts with nothing else. Fill the common part and the role's part, replace every `<…>`, and pass the whole text to start-worker with the model **Routing** picked. `<route>` is that candidate, written `<provider>/<model>` as its line in `providers.md` spells it, without its options; a worker restarted on another candidate (**Quota**) gets `<route>` filled again. Point to documents by link or path instead of pasting them. `<smode>` is the absolute folder of the `smode` skill on this machine, found as smode's **Running a skill by name** says; check that `<smode>/SKILL.md` exists before the first work order of a wake.
+A work order is everything a worker gets; it starts with nothing else. Fill the common part and the role's part, replace every `<…>`, and pass the whole text to start-worker with the model **Routing** picked. `<route>` is that candidate's id, written as its line in `providers.md` spells it (MEMORY.md), without `effort`; a worker restarted on another candidate (**Quota**) gets `<route>` filled again. Point to documents by link or path instead of pasting them. `<smode>` is the absolute folder of the `smode` skill on this machine, found as smode's **Running a skill by name** says; check that `<smode>/SKILL.md` exists before the first work order of a wake.
 
 ## Common part
 

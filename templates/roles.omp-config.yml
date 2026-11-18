@@ -1,25 +1,25 @@
-# Two blocks of OMP model roles. Pick ids from `omp models`; leave a role out to
-# use its fallback.
+# Oh My Pi model roles, in the USER config (~/.omp/agent/config.yml): OMP grants
+# per-call models only from user-level settings. Pick ids from `omp models`.
 #
-# 1. smode's roles (ADR-0003). Put these in the USER config,
-#    ~/.omp/agent/config.yml: OMP approves a per-call model only when a
-#    user-level role names it, so smode reads the exact model from here and
-#    passes it to the bundled `task`, `scout` or `reviewer` agent. smode's Setup
-#    playbook writes them.
+# The project's docs/agents/roles.md is the source of the models per role
+# (ADR-0004). This file only shows what OMP itself needs:
 #
-# 2. The factory v1 role agents (planner, implementer, verifier, reviewer).
-#    Copy these into the project's .omp/config.yml. Add only custom roles there:
-#    a built-in role (task, slow, default, ...) set in a project changes every
-#    subagent in that project. Fallbacks: planner -> @plan, implementer -> @task,
-#    verifier and reviewer -> @slow.
+# 1. Grants for smode. smode's setup playbook writes one key per candidate of
+#    the project's roles.md, named for the repository so projects never
+#    overwrite each other, and sets task.perCallModel to on. Do not edit them by
+#    hand; rerun setup after roles.md changes.
+#
+# 2. Plain role keys for the platform agents of software-omp (factory v1, and
+#    skills that name an agent). They name @thinker, @worker or @reviewer first
+#    and fall back to a built-in role (@slow, @task) when the key is missing.
+#    These keys serve every project.
 modelRoles:
-  # 1. smode (user config)
-  scout: <provider>/<model>:<level> # fast, cheap reading and searching
-  worker: <provider>/<model>:<level> # reliable code changes and test loops
-  thinker: <provider>/<model>:<level> # plans, diagnosis, design
-  reviewer: <provider>/<model>:<level> # reviews and verification; not the worker's model family
-  coordinator: <provider>/<model>:<level> # steady, cheap; runs many workers
-  # 2. factory v1 (project config)
-  planner: <provider>/<model>:<level>
-  implementer: <provider>/<model>:<level>
-  verifier: <provider>/<model>:<level> # not the implementer's model
+  # 1. smode grants (written by setup)
+  smode-<repo>-worker-1: <provider>/<model>:<level>
+  smode-<repo>-reviewer-1: <provider>/<model>:<level>
+  # 2. platform agents
+  thinker: <provider>/<model>:<level> # planner
+  worker: <provider>/<model>:<level> # implementer
+  reviewer: <provider>/<model>:<level> # verifier, review-standards, review-spec; not the worker's model family
+task:
+  perCallModel: "on"
