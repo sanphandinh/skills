@@ -1,0 +1,26 @@
+# 07: Acceptance
+
+**What to build:** bằng chứng trên harness thật rằng cả ba quyết định chạy được sau khi merge và cài lại plugin:
+
+- Một phiên Claude Code mới trong repo này nhận ba yêu cầu thường, không có `/smode`: một câu hỏi về code, một lỗi nhỏ, và "review PR #<n>". Mỗi yêu cầu vào smode, câu đầu nêu đúng playbook (`quick` hoặc `investigation`, `bug-fix`, `review`), và không skill nào khác của `software` tự kích hoạt trước.
+- Trên T3, `factory setup override` (hoặc `setup`) chuyển settings của repo này, rồi `factory once` hoàn tất một lần thức: journal có một dòng mới, và memory vẫn là `~/.local/share/factory-v2/skills`.
+- Một worker của factory nhận work order nêu playbook và không tự route sang playbook khác.
+- Gỡ `factory`, `software-claude` và `software-omp` khỏi project này theo release notes.
+- Hỏi người dùng có xoá `~/.claude/rules/smode-roles.md` không; chỉ xoá khi họ đồng ý.
+
+**Blocked by:** 06
+
+**Status:** needs-triage
+
+**Door:** two-way
+
+- [ ] Ba yêu cầu trong phiên Claude Code mới đều bắt đầu bằng `Playbook: <name> (<tín hiệu>)` với đúng playbook
+  Verify: chép câu đầu của ba reply vào handoff của ticket
+- [ ] `factory once` trên T3 hoàn tất và journal có dòng mới với thời gian đọc từ đồng hồ
+  Verify: `tail -1 ~/.local/share/factory-v2/skills/journal.md`
+- [ ] File kết quả của worker có `step` và `route` đúng với work order
+  Verify: `cat ~/.local/share/factory-v2/skills/results/<file mới nhất>.json`
+- [ ] Project này không còn plugin `factory`, `software-claude`, `software-omp`
+  Verify: `claude plugin list`; `omp plugin list`
+- [ ] `~/.claude/rules/smode-roles.md` đã xoá, hoặc handoff ghi rằng người dùng chọn giữ
+  Verify: `ls ~/.claude/rules/`

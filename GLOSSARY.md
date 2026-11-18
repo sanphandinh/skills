@@ -21,7 +21,7 @@ One pass of the coordinator: wait for events, reload its instructions and settin
 _Avoid_: tick, loop, poll
 
 **Agent manager**:
-The tool that creates workspaces, runs workers, and reports their events: Orca now, Herdr later.
+The tool that creates workspaces, runs workers, and reports their events: T3 Code today; another manager is one more reference.
 _Avoid_: harness, runner
 
 **Interface**:
@@ -57,11 +57,11 @@ The agent that runs a session and owns its tools: Claude Code, Codex, Oh My Pi, 
 _Avoid_: platform (that is the plugin catalog's word), runtime
 
 **Mode skill**:
-A user-invoked skill that routes a task to one of its playbooks and calls other skills at each step: `smode` (ADR-0003).
+The entry point for every request in its domain: a model-invoked skill that routes a task to one of its entry playbooks and calls other skills at each step, which are user-invoked so they do not compete with it: `smode` (ADR-0003, ADR-0005).
 _Avoid_: meta skill, router, super skill
 
 **Playbook**:
-One short, ordered list of steps for one kind of task inside a mode skill, copied verbatim into the todo list when it runs.
+One short, ordered list of steps for one kind of task inside a mode skill, copied verbatim into the todo list when it runs. An **entry playbook** is one a request is routed to (`bug-fix`, `ticket`, `quick`); a **step playbook** runs only when another playbook or a work order calls it (`plan-ticket`, `verify`).
 _Avoid_: recipe, workflow, script
 
 **Role**:
