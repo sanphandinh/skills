@@ -217,6 +217,11 @@ export function validate(root) {
     }
     if (frontmatter.name !== skill.name) add(skillFile, `name "${frontmatter.name}" does not match folder "${skill.name}"`);
     if (!frontmatter.description || String(frontmatter.description).length < 20) add(skillFile, "description is missing or too short to trigger reliably");
+    // The hint a harness shows after /<skill>. Unquoted, `[override]` parses as a YAML list.
+    const hint = frontmatter["argument-hint"];
+    if (hint !== undefined && (typeof hint !== "string" || !hint.trim() || hint.includes("\n"))) {
+      add(skillFile, 'argument-hint must be one quoted line, such as "[<ticket>]"');
+    }
     const prefix = catalog.plugins[skill.plugin]?.prefix ?? "";
     if (prefix && !skill.name.startsWith(prefix)) add(skillFile, `name must start with plugin prefix "${prefix}"`);
     if (seen.has(skill.name)) add(skillFile, `duplicate skill name, also in plugin ${seen.get(skill.name)}`);
@@ -301,8 +306,12 @@ export function validate(root) {
   };
   for (const mode of modeSkills(root, catalog)) {
     const modeFile = path.join(mode.dir, "SKILL.md");
-    if (parseSkillMd(fs.readFileSync(modeFile, "utf8")).frontmatter?.["disable-model-invocation"] === true) {
+    const modeFm = parseSkillMd(fs.readFileSync(modeFile, "utf8")).frontmatter ?? {};
+    if (modeFm["disable-model-invocation"] === true) {
       add(modeFile, "the mode skill is the entry point; remove disable-model-invocation");
+    }
+    if (typeof modeFm["argument-hint"] !== "string" || !modeFm["argument-hint"].includes("<playbook>")) {
+      add(modeFile, 'a person invoking the mode skill may name the playbook; set argument-hint: "[<playbook>] <task>"');
     }
     const modeCodex = implicitOn(mode.dir);
     if (!modeCodex.allowed) add(modeCodex.file, "the mode skill is the entry point; Codex must be allowed to start it (policy.allow_implicit_invocation: true)");

@@ -34,6 +34,11 @@ in `agents/openai.yaml` (Codex). In `software`, every skill except `smode` is
 user-invoked, so `smode` is the one entry point; it reads the other skills'
 files directly, which runs them even when a harness's skill command would refuse.
 
+Claude Code shows `argument-hint` after the skill's name when a person types
+`/`; OMP reads the field only for prompt templates, and Codex has no hint
+field. On every harness the text after the skill's name is its argument.
+`smode` takes `[<playbook>] <task>`.
+
 ## Install in a project
 
 Each machine registers the marketplace once:

@@ -1,6 +1,7 @@
 ---
 name: retro
 description: "Conduct a retrospective on a coding session."
+argument-hint: "[<session>]"
 disable-model-invocation: true
 ---
 

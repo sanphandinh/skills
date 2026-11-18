@@ -1,7 +1,7 @@
 ---
 name: smode
 description: "Use first, before reading code or answering, for every software engineering request: a question about the code, a bug, a feature, a refactor, a review, a ticket, a spec, a pull request, a handoff, setup or the factory. Routes the request to a playbook and runs the other software skills at the steps that need them."
-argument-hint: "<task>"
+argument-hint: "[<playbook>] <task>"
 ---
 
 # smode
@@ -18,7 +18,7 @@ Read the harness doc for the agent running this session: `harness/claude-code.md
 
 Do these three things before any other work:
 
-1. **Pick the playbook.** When your work order names a playbook, run that one and skip routing. Otherwise route the task with **Playbooks** below, read the file, and make the first line of your first message `Playbook: <name> (<the signal that chose it>)`, so the user can correct the route at once.
+1. **Pick the playbook.** When your work order names a playbook, run that one and skip routing. When a person invoked this skill with arguments (`[<playbook>] <task>`) and the first word is the name of a file in `playbooks/`, run that playbook on the rest and skip routing; the first line is then `Playbook: <name> (named in the arguments)`. Arguments that do not start with a playbook name are the task. With no task in the arguments or the conversation, ask for it. Otherwise route the task with **Playbooks** below, read the file, and make the first line of your first message `Playbook: <name> (<the signal that chose it>)`, so the user can correct the route at once.
 2. **Restate.** Then say, in your own words, the user's goal, the problem it solves, and the smallest change you expect to meet it; for `quick`, one sentence. Do not wait for confirmation. If the evidence rules out the change the user asked for, show the evidence and stop.
 3. **Open the todo list.** Its first items are the playbook's steps, copied verbatim, then any task-specific items. Keep it current as you go. A step you choose not to do stays in the list as `skip: <reason>`. The final reply shows the list with each step's outcome. `quick` keeps no list.
 

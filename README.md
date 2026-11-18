@@ -37,6 +37,7 @@ Run `npm run index` after adding, removing or renaming a skill, when `npm run va
 - **One factory.** `factory-v2` is now the `factory` skill in the `software` plugin. The `factory` plugin, factory version 1 and its Orca reference are gone. In each project that ran the factory, run `factory setup`: it renames `docs/agents/factory-v2.md` to `docs/agents/factory.md` and keeps its memory, or, for version 1 settings, proposes new ones and upgrades the memory folder in place. A watcher scheduled before this release sends the old wake prompt: run `factory run` again to replace it.
 - **No platform agents.** `software-claude` and `software-omp` are gone, with their agents and the OMP TDD rules; `ROLES.md` is gone. Models per role come only from the project's `docs/agents/roles.md`.
 - **smode is the entry point.** It starts on its own; every other software skill is user-invoked.
+- **Arguments.** `smode` takes `[<playbook>] <task>`: a first word that names a playbook (`/smode bug-fix the list prints 0 skills`) runs that playbook without routing. Every user-invoked skill that takes an input shows a hint for it (`code-review`, `implement`, `to-tickets`, `triage`, `diagnosing-bugs` and others); `core` 0.5.1 adds one to `grill-me`.
 
 Remove the old plugins from each project, then update `software`:
 

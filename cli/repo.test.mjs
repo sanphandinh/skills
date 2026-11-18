@@ -259,7 +259,7 @@ const userSkill = (name, body = "Body.\n") => ({
 
 function modeRepo(files = {}) {
   const root = repo({
-    "plugins/core/skills/mode/SKILL.md": skill("mode", "", "It calls the `alpha` skill.\n\n## Playbooks\n\n| Signal | Playbook |\n|---|---|\n| a question | Investigation (`playbooks/investigation.md`) |\n"),
+    "plugins/core/skills/mode/SKILL.md": skill("mode", 'argument-hint: "[<playbook>] <task>"\n', "It calls the `alpha` skill.\n\n## Playbooks\n\n| Signal | Playbook |\n|---|---|\n| a question | Investigation (`playbooks/investigation.md`) |\n"),
     "plugins/core/skills/mode/agents/openai.yaml": "policy:\n  allow_implicit_invocation: true\n",
     "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n",
     "plugins/core/skills/mode/skills-index.md": "",
@@ -367,6 +367,15 @@ test("in a plugin with a mode skill, only the mode skill starts on its own (ADR-
   assert.match(msgs, /gamma\/agents\/openai\.yaml: starts on its own on Codex beside the mode skill "mode"; set policy\.allow_implicit_invocation: false/);
   assert.match(msgs, /mode\/agents\/openai\.yaml: the mode skill is the entry point; Codex must be allowed to start it/);
   assert.match(messages(modeRepo({ "plugins/core/skills/mode/SKILL.md": skill("mode", "disable-model-invocation: true\n", "## Playbooks\n\n(`playbooks/investigation.md`)\n") })), /mode\/SKILL\.md: the mode skill is the entry point; remove disable-model-invocation/);
+});
+
+test("argument-hint is one quoted line, and the mode skill's lets a person name the playbook", () => {
+  assert.equal(messages(repo({ "plugins/core/skills/beta/SKILL.md": skill("beta", 'argument-hint: "[override]"\n') })), "");
+  assert.match(messages(repo({ "plugins/core/skills/beta/SKILL.md": skill("beta", "argument-hint: [override]\n") })), /beta\/SKILL\.md: argument-hint must be one quoted line/);
+  const mode = (hint) => messages(modeRepo({ "plugins/core/skills/mode/SKILL.md": skill("mode", hint, "## Playbooks\n\n(`playbooks/investigation.md`)\n") }));
+  assert.match(mode('argument-hint: "<task>"\n'), /mode\/SKILL\.md: a person invoking the mode skill may name the playbook/);
+  assert.match(mode(""), /mode\/SKILL\.md: a person invoking the mode skill may name the playbook/);
+  assert.doesNotMatch(mode('argument-hint: "[<playbook>] <task>"\n'), /name the playbook/);
 });
 
 test("every playbook is routed from the mode skill's Playbooks section", () => {
