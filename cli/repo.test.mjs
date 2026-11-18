@@ -22,16 +22,6 @@ const CATALOG = `plugins:
     platform: claude
 `;
 
-const role = (name, omp, claude, codex) => `  ${name}:\n    purpose: ${name} work\n    omp: ${omp}\n    claude: ${claude}\n    codex: ${codex}\n`;
-const FIVE_ROLES = [
-  role("scout", '["@scout", "@smol"]', "haiku", "low"),
-  role("worker", '["@worker", "@task"]', "inherit", "medium"),
-  role("thinker", '["@thinker", "@slow"]', "opus", "high"),
-  role("reviewer", '["@reviewer", "@slow"]', "opus", "high"),
-  role("coordinator", '["@coordinator", "@default"]', "sonnet", "medium"),
-];
-const ROLES = `---\nroles:\n${FIVE_ROLES.join("")}---\n`;
-
 function tmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "skills-test-"));
 }
@@ -54,13 +44,11 @@ function repo(files = {}) {
   const root = tmp();
   put(root, {
     "catalog.yaml": CATALOG,
-    "ROLES.md": ROLES,
     "plugins/core/skills/alpha/SKILL.md": skill("alpha", "disable-model-invocation: true\n"),
     "plugins/core/skills/alpha/agents/openai.yaml": "policy:\n  allow_implicit_invocation: false\n",
     "plugins/mkt/skills/mkt-launch/SKILL.md": skill("mkt-launch"),
     "plugins/core-omp/.omp-plugin/plugin.json": "{}",
-    "plugins/core-omp/agents/reviewer.md": agent("reviewer", 'model: ["@reviewer", "@slow"]\n'),
-    "plugins/core-claude/agents/reviewer.md": agent("reviewer", "model: opus\n"),
+    "plugins/core-claude/.claude-plugin/plugin.json": "{}",
     ...files,
   });
   return root;
@@ -68,7 +56,7 @@ function repo(files = {}) {
 
 const messages = (root) => validate(root).issues.map((i) => `${i.file}: ${i.msg}`).join("\n");
 
-test("a clean repo validates, including portable invocation keys and per-platform agents", () => {
+test("a clean repo validates, including portable invocation keys", () => {
   assert.equal(messages(repo()), "");
 });
 
@@ -107,41 +95,24 @@ test("platform skills may use their platform's frontmatter", () => {
   assert.equal(messages(repo({ "plugins/core-claude/skills/deep/SKILL.md": skill("deep", "context: fork\nagent: Explore\nmodel: opus\n") })), "");
 });
 
-test("validate checks OMP agents use roles and carry an OMP manifest", () => {
+test("no plugin carries agents: delegation picks the model from the project's roles (ADR-0005)", () => {
   const msgs = messages(
     repo({
-      "plugins/core-omp/agents/concrete.md": agent("concrete", "model: anthropic/claude-opus-5-5\n"),
-      "plugins/core-omp/agents/unknown-role.md": agent("unknown-role", 'model: "@ghost"\n'),
-      "plugins/core-omp/agents/builtin.md": agent("builtin", 'model: "@smol"\n'),
-    }),
-  );
-  assert.match(msgs, /concrete\.md: model "anthropic\/claude-opus-5-5" is a concrete model/);
-  assert.match(msgs, /unknown-role\.md: role "@ghost" is not a built-in OMP role/);
-  assert.match(msgs, /builtin\.md: model names none of the roles in ROLES\.md/);
-  assert.doesNotMatch(msgs, /builtin\.md: role/);
-
-  const root = repo();
-  fs.rmSync(path.join(root, "plugins/core-omp/.omp-plugin"), { recursive: true });
-  assert.match(messages(root), /OMP agents need \.omp-plugin\/plugin\.json/);
-});
-
-test("validate checks Claude agents use model aliases and agents stay out of shared plugins", () => {
-  const msgs = messages(
-    repo({
-      "plugins/core-claude/agents/pinned.md": agent("pinned", "model: claude-opus-5-5\n"),
+      "plugins/core-omp/agents/reviewer.md": agent("reviewer", 'model: ["@reviewer", "@slow"]\n'),
+      "plugins/core-claude/agents/nested/planner.toml": "",
       "plugins/core/agents/stray.md": agent("stray"),
     }),
   );
-  assert.match(msgs, /pinned\.md: model "claude-opus-5-5" should be one of opus, sonnet, haiku, fable, inherit/);
-  assert.match(msgs, /stray\.md: agents belong in a platform plugin/);
+  assert.match(msgs, /core-omp\/agents\/reviewer\.md: plugins carry no agents \(ADR-0005\)/);
+  assert.match(msgs, /core-claude\/agents\/nested\/planner\.toml: plugins carry no agents/);
+  assert.match(msgs, /core\/agents\/stray\.md: plugins carry no agents/);
+  assert.doesNotMatch(messages(repo()), /agents/);
 });
 
-test("list prints one header per plugin, with its skills and then its agents below it", () => {
+test("list prints one header per plugin, with its skills below it", () => {
   const root = repo({
     "catalog.yaml": `${CATALOG}  empty:\n    platform: shared\n`,
     "plugins/core-claude/skills/deep/SKILL.md": skill("deep"),
-    "plugins/core-claude/agents/planner.md": agent("planner", "model: opus\n"),
-    "plugins/core-omp/agents/nested/helper.toml": "",
   });
   assert.equal(
     renderList(root),
@@ -152,17 +123,12 @@ test("list prints one header per plugin, with its skills and then its agents bel
       "  skill  mkt-launch",
       "core-claude (claude):",
       "  skill  deep",
-      "  agent  planner",
-      "  agent  reviewer",
-      "core-omp (omp):",
-      "  agent  helper",
-      "  agent  reviewer",
       "",
     ].join("\n"),
   );
 });
 
-test("list prints nothing for a catalog with no skills and no agents", () => {
+test("list prints nothing for a catalog with no skills", () => {
   const root = tmp();
   put(root, { "catalog.yaml": "plugins:\n  empty:\n    platform: shared\n" });
   assert.equal(renderList(root), "");
@@ -341,18 +307,6 @@ test("harness and T3 tool names stay in harness/ and references/", () => {
   assert.match(msgs, /investigation\.md:2: names a T3 tool: delegate_task; tool names belong in harness\/ or references\/ \(ADR-0003\)/);
   assert.doesNotMatch(msgs, /harness\/t3\.md/);
   assert.doesNotMatch(msgs, /references\/t3\.md/);
-});
-
-test("every role in ROLES.md maps on every platform", () => {
-  const roles = `---\nroles:\n${FIVE_ROLES.slice(0, 4).join("")}  coordinator:\n    purpose: runs many workers\n    claude: sonnet\n---\n`;
-  assert.match(messages(repo({ "ROLES.md": roles })), /ROLES\.md: role "coordinator" has no omp, codex/);
-});
-
-test("ROLES.md holds exactly the five roles, so a second role system cannot grow back", () => {
-  const roles = `---\nroles:\n${FIVE_ROLES.slice(1).join("")}${role("architect", '["@architect", "@plan"]', "opus", "high")}---\n`;
-  const msgs = messages(repo({ "ROLES.md": roles }));
-  assert.match(msgs, /ROLES\.md: role "architect" is not one of the five roles \(scout, worker, thinker, reviewer, coordinator\)/);
-  assert.match(msgs, /ROLES\.md: role "scout" is missing/);
 });
 
 test("harness config paths stay in harness/ and references/; skills read docs/agents/", () => {

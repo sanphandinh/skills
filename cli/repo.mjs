@@ -10,8 +10,8 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 
 const HELP = `repo <command> [options]
 
-  list                      Skills and agents per plugin.
-  validate                  Check skills, platform agents, and roles against the repo rules.
+  list                      Skills per plugin.
+  validate                  Check skills, plugins and the roles template against the repo rules.
   index                     Regenerate the skills index of every mode skill (skills-index.md).
   upstream status [--no-fetch]
                             Tracked upstream skills that changed, and untracked candidates.
@@ -47,9 +47,9 @@ function main(argv) {
       return;
     }
     case "validate": {
-      const { skills, agents, issues } = validate(REPO_ROOT);
+      const { skills, issues } = validate(REPO_ROOT);
       for (const i of issues) console.log(`${i.file}: ${i.msg}`);
-      console.log(`${skills.length} skills, ${agents.length} agents, ${issues.length} issue(s)`);
+      console.log(`${skills.length} skills, ${issues.length} issue(s)`);
       if (issues.length) process.exitCode = 1;
       return;
     }

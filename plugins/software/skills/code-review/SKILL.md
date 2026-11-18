@@ -73,7 +73,7 @@ Issue both sub-agent calls together, in the foreground, and aggregate the report
 
 If the spec is missing, skip the Spec sub-agent and note this in the final report.
 
-**Which sub-agents to use:** if agents named `review-standards` and `review-spec` are available, give each axis to its namesake; they carry the model and tool limits configured for this platform. Otherwise use general-purpose sub-agents. If sub-agents are not available at all, run the Standards axis yourself, then the Spec axis, with the same briefs, and keep the two reports separate.
+**Which sub-agents to use:** give each axis to its own read-only sub-agent on the `reviewer` role: its model is the role's first candidate in the project's `docs/agents/roles.md` that this session can run, on another model family than the change's author when the route offers one. Without that file, or with no candidate this session can run, use general-purpose sub-agents on the session's model and say so. If sub-agents are not available at all, run the Standards axis yourself, then the Spec axis, with the same briefs, and keep the two reports separate.
 
 ### 5. Aggregate
 

@@ -36,10 +36,7 @@ OMP runs a candidate when `omp models` lists a model for its channel (`via`, els
 - **Selector:** `<OMP provider>/<model id>:<level>`. The OMP provider is the channel's: `antigravity` → `antigravity-cli`; the others keep their name (`anthropic`, `openai`, `google`, `cursor`). Take the exact id `omp models` lists.
 - **Effort:** `effort=<level>` → `:<level>`.
 - **Grants.** OMP accepts a per-call model only when a role in the **user** config names it (spike S1 of `project-config-roles`: any key under `modelRoles` grants, project config never does), and only with `task.perCallModel: on` there. So smode's `setup` playbook (step 7), after asking, adds to `~/.omp/agent/config.yml` one key per runnable candidate, named for this project so it never overwrites another project's: `smode-<repository name>-<role>-<n>: <selector>`. It replaces only this project's `smode-<repository name>-*` keys, leaves every other key alone, and sets `perCallModel: on` under `task:`. Rerun it after `roles.md` changes.
-- **Platform agents** (`software-omp`) name `@thinker`, `@worker`, `@reviewer` first and fall back to OMP's built-in roles. Plain keys of those names in the user config serve every project; setup leaves them as they are unless the user asks.
 
 ## Migration
 
-Before ADR-0004, smode's roles were the plain keys `scout`, `worker`, `thinker`, `reviewer`, `coordinator` under `modelRoles` in the user config. Convert each `<OMP provider>/<model>:<level>` back: `antigravity-cli` and `cursor` become `via` unless they are the model's maker (the maker comes from the model id as `harness/t3.md` says under **Migration**), and `:<level>` becomes `effort=<level>`. Keep the plain keys: OMP's platform agents still use them.
-
-OMP's rules from `software-omp` (the TDD guards) keep running in every worker; smode does not replace them.
+Before ADR-0004, smode's roles were the plain keys `scout`, `worker`, `thinker`, `reviewer`, `coordinator` under `modelRoles` in the user config. Convert each `<OMP provider>/<model>:<level>` back: `antigravity-cli` and `cursor` become `via` unless they are the model's maker (the maker comes from the model id as `harness/t3.md` says under **Migration**), and `:<level>` becomes `effort=<level>`. After the project's file is committed, offer to remove the plain keys; nothing reads them any more (ADR-0005).

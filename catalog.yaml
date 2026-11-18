@@ -5,8 +5,9 @@
 #   .omp-plugin/marketplace.json      Oh My Pi: shared + omp plugins
 #
 # platform: shared  skills every agent loads; frontmatter limited to the portable keys
-#           claude  Claude Code only (agents with opus/sonnet/haiku, hooks, Claude-only skill keys)
-#           omp     Oh My Pi only (agents with @role models, rules, commands, tools, extensions)
+#           claude  Claude Code only (hooks, Claude-only skill keys); none today
+#           omp     Oh My Pi only (rules, commands, tools, extensions); none today
+#           No plugin carries agents (ADR-0005).
 # prefix:   required on every skill name in the plugin, so domain triggers do not collide.
 plugins:
   core:
@@ -16,12 +17,4 @@ plugins:
   software:
     platform: shared
     description: "Software skills: smode (the entry point), spec, tickets, implement with TDD, review, diagnose, project setup, and the agent-driven factory."
-    prefix: ""
-  software-claude:
-    platform: claude
-    description: "Claude Code agents for the software skills (review-standards, review-spec)."
-    prefix: ""
-  software-omp:
-    platform: omp
-    description: "Oh My Pi agents and rules for the software skills: role-based reviewers, TDD guard rules."
     prefix: ""

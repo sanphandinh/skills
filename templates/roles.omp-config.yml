@@ -1,25 +1,13 @@
-# Oh My Pi model roles, in the USER config (~/.omp/agent/config.yml): OMP grants
+# Oh My Pi model grants, in the USER config (~/.omp/agent/config.yml): OMP grants
 # per-call models only from user-level settings. Pick ids from `omp models`.
 #
 # The project's docs/agents/roles.md is the source of the models per role
-# (ADR-0004). This file only shows what OMP itself needs:
-#
-# 1. Grants for smode. smode's setup playbook writes one key per candidate of
-#    the project's roles.md, named for the repository so projects never
-#    overwrite each other, and sets task.perCallModel to on. Do not edit them by
-#    hand; rerun setup after roles.md changes.
-#
-# 2. Plain role keys for the platform agents of software-omp (factory v1, and
-#    skills that name an agent). They name @thinker, @worker or @reviewer first
-#    and fall back to a built-in role (@slow, @task) when the key is missing.
-#    These keys serve every project.
+# (ADR-0004). This file only shows what OMP itself needs: one grant key per
+# candidate of the project's roles.md, named for the repository so projects
+# never overwrite each other, and task.perCallModel on. smode's setup playbook
+# writes them; do not edit them by hand, and rerun setup after roles.md changes.
 modelRoles:
-  # 1. smode grants (written by setup)
   smode-<repo>-worker-1: <provider>/<model>:<level>
   smode-<repo>-reviewer-1: <provider>/<model>:<level>
-  # 2. platform agents
-  thinker: <provider>/<model>:<level> # planner
-  worker: <provider>/<model>:<level> # implementer
-  reviewer: <provider>/<model>:<level> # verifier, review-standards, review-spec; not the worker's model family
 task:
   perCallModel: "on"

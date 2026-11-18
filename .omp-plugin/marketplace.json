@@ -15,12 +15,6 @@
       "source": "./plugins/software",
       "version": "0.10.0",
       "description": "Software factory skills: spec, tickets, TDD implementation, verification, code review, diagnosis, and project setup."
-    },
-    {
-      "name": "software-omp",
-      "source": "./plugins/software-omp",
-      "version": "0.6.0",
-      "description": "Oh My Pi agents and rules for the software skills: planner, implementer, verifier, and role-based reviewers, plus TDD guard rules."
     }
   ]
 }

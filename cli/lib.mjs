@@ -1,11 +1,11 @@
-// Repo tooling: catalog, validation (skills, platform agents, roles), upstream tracking.
+// Repo tooling: catalog, validation (skills, plugins, roles template), upstream tracking.
 // Installing into projects is left to each agent's native plugin system.
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import YAML from "yaml";
-import { parseRoles, ROLES as SMODE_ROLES } from "../plugins/software/skills/smode/scripts/roles.mjs";
+import { parseRoles } from "../plugins/software/skills/smode/scripts/roles.mjs";
 
 const FM_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 const TEXT_EXT = new Set([".md", ".yaml", ".yml", ".json", ".sh", ".py", ".mjs", ".js", ".ts", ".toml", ".txt", ""]);
@@ -13,9 +13,6 @@ const TEXT_EXT = new Set([".md", ".yaml", ".yml", ".json", ".sh", ".py", ".mjs",
 // Frontmatter keys a shared skill may carry: the Agent Skills standard plus the
 // invocation keys that Claude Code and OMP honour and Codex tolerates.
 export const SHARED_SKILL_KEYS = ["name", "description", "disable-model-invocation", "argument-hint", "license", "compatibility", "metadata"];
-const CLAUDE_MODEL_ALIASES = ["opus", "sonnet", "haiku", "fable", "inherit"];
-const ROLE_KEYS = ["purpose", "omp", "claude", "codex"];
-const OMP_BUILTIN_ROLES = ["default", "smol", "slow", "vision", "plan", "commit", "tiny", "memory", "task", "advisor", "web", "judge"];
 
 // ---------- small helpers ----------
 
@@ -123,27 +120,16 @@ export function listAgents(root, catalog = loadCatalog(root)) {
   return agents;
 }
 
-// The text of `repo list`: each plugin's header once, then its skills, then its
-// agents. Plugins with skills come first, then plugins with only agents, both
-// in catalog order.
+// The text of `repo list`: each plugin's header once, then its skills, in
+// catalog order.
 export function renderList(root, catalog = loadCatalog(root)) {
   const skills = listSkills(root, catalog);
-  const agents = listAgents(root, catalog);
   const lines = [];
-  for (const plugin of new Set([...skills, ...agents].map((e) => e.plugin))) {
+  for (const plugin of new Set(skills.map((e) => e.plugin))) {
     lines.push(`${plugin} (${catalog.plugins[plugin].platform}):`);
     for (const s of skills) if (s.plugin === plugin) lines.push(`  skill  ${s.name}`);
-    for (const a of agents) if (a.plugin === plugin) lines.push(`  agent  ${path.basename(a.file).replace(/\.(md|toml)$/, "")}`);
   }
   return lines.map((l) => `${l}\n`).join("");
-}
-
-// ROLES.md frontmatter: { roles: { <logical>: { omp: "@role" | [...], claude: alias, codex: {...} } } }
-export function loadRoles(root) {
-  const file = path.join(root, "ROLES.md");
-  if (!fs.existsSync(file)) return null;
-  const m = fs.readFileSync(file, "utf8").match(FM_RE);
-  return m ? YAML.parse(m[1]) : null;
 }
 
 // ---------- validation ----------
@@ -209,7 +195,6 @@ export function validate(root) {
   const catalog = loadCatalog(root);
   const skills = listSkills(root, catalog);
   const agents = listAgents(root, catalog);
-  const roles = loadRoles(root);
   const names = new Set(skills.map((s) => s.name));
   const issues = [];
   const seen = new Map();
@@ -307,20 +292,6 @@ export function validate(root) {
     }
   }
 
-  // One role system: exactly smode's five roles, each mapped on every platform,
-  // so a skill or agent naming one works everywhere (ADR-0004).
-  const rolesFile = path.join(root, "ROLES.md");
-  if (roles) {
-    for (const name of Object.keys(roles.roles ?? {})) {
-      if (!SMODE_ROLES.includes(name)) add(rolesFile, `role "${name}" is not one of the five roles (${SMODE_ROLES.join(", ")}); fold it into one of them`);
-    }
-    for (const name of SMODE_ROLES) if (!roles.roles?.[name]) add(rolesFile, `role "${name}" is missing`);
-  }
-  for (const [name, r] of Object.entries(roles?.roles ?? {})) {
-    const missing = ROLE_KEYS.filter((k) => r?.[k] === undefined || r?.[k] === null || r?.[k] === "");
-    if (missing.length) add(rolesFile, `role "${name}" has no ${missing.join(", ")}`);
-  }
-
   // The template a mode skill copies to a project's docs/agents/roles.md must pass `roles check`.
   for (const mode of modeSkills(root, catalog)) {
     const rolesTemplate = path.join(mode.dir, "roles-template.md");
@@ -328,36 +299,10 @@ export function validate(root) {
     for (const e of parseRoles(fs.readFileSync(rolesTemplate, "utf8")).errors) add(`${rolesTemplate}:${e.line}`, e.msg);
   }
 
-  const ompRoles = new Set([...OMP_BUILTIN_ROLES, ...SMODE_ROLES]);
-  const agentNames = new Map();
+  // Platform agents only restated playbooks and pinned models that delegation
+  // now picks from the project's docs/agents/roles.md (ADR-0005).
   for (const agent of agents) {
-    const text = fs.readFileSync(agent.file, "utf8");
-    if (agent.platform === "shared") {
-      add(agent.file, "agents belong in a platform plugin (-omp, -claude), not a shared one");
-      continue;
-    }
-    const { frontmatter } = parseSkillMd(text);
-    if (!frontmatter?.name || !frontmatter?.description) add(agent.file, "agent needs name and description");
-    const key = `${agent.platform}:${frontmatter?.name}`;
-    if (agentNames.has(key)) add(agent.file, `duplicate ${agent.platform} agent name, also in ${agentNames.get(key)}`);
-    agentNames.set(key, path.relative(root, agent.file));
-    if (agent.platform === "omp") {
-      if (!fs.existsSync(path.join(root, "plugins", agent.plugin, ".omp-plugin", "plugin.json"))) {
-        add(agent.file, "OMP agents need .omp-plugin/plugin.json, or OMP reads them as Claude-dialect and drops `model`");
-      }
-      const selectors = [frontmatter?.model ?? []].flat().map(String);
-      for (const sel of selectors) {
-        if (!sel.startsWith("@")) add(agent.file, `model "${sel}" is a concrete model; use a role selector (@role) from ROLES.md`);
-        else if (!ompRoles.has(sel.slice(1))) add(agent.file, `role "${sel}" is not a built-in OMP role and not one of the roles in ROLES.md`);
-      }
-      if (!selectors.some((sel) => SMODE_ROLES.includes(sel.replace(/^@/, "")))) {
-        add(agent.file, `model names none of the roles in ROLES.md (${SMODE_ROLES.join(", ")}); list one first, then a built-in fallback`);
-      }
-    }
-    if (agent.platform === "claude") {
-      const model = frontmatter?.model;
-      if (model && !CLAUDE_MODEL_ALIASES.includes(model)) add(agent.file, `model "${model}" should be one of ${CLAUDE_MODEL_ALIASES.join(", ")} so it follows ROLES.md`);
-    }
+    add(agent.file, "plugins carry no agents (ADR-0005): describe the step in a smode playbook; delegation picks the model from docs/agents/roles.md");
   }
   return { skills, agents, issues };
 }
