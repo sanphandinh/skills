@@ -1,6 +1,6 @@
 # Memory
 
-GitHub holds the truth about the work: tickets, pull requests, checks, comments. The agent manager holds the workers in flight. The memory folder holds what neither does: the journal, the lessons, and every worker's result. It lives outside the repository, at the `Memory:` folder of `docs/agents/factory-v2.md` (never version 1's `docs/agents/factory.md`, whose memory belongs to version 1), and you are its only writer.
+GitHub holds the truth about the work: tickets, pull requests, checks, comments. The agent manager holds the workers in flight. The memory folder holds what neither does: the journal, the lessons, and every worker's result. The folder is on this machine, outside the repository; the repository keeps only its path, on the `Memory:` line of `docs/agents/factory-v2.md` (default `~/.local/share/factory-v2/<repository name>`). You are its only writer.
 
 ## Layout
 
