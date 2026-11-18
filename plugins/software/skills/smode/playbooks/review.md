@@ -8,4 +8,4 @@ An independent review of one change at one exact commit, on two separate axes: S
 4. Give each finding a `severity` (`blocking` or `note`) and a `kind` (`design`, `code`, `test` or `scope`). You own the severity.
 5. Check `git status`: still clean.
 
-**Reply:** `pass` when no finding is blocking, else `fail`; the commit you reviewed; the Standards and Spec reports under their own headings; the binding constraints and whether each held. When a work order asks for a result object, give `verdict`, `head_sha` and `findings` (each `severity`, `kind`, `detail`).
+**Reply:** `pass` when no finding is blocking, else `fail`; the commit you reviewed; the Standards and Spec reports under their own headings; the binding constraints and whether each held. When a work order asks for a result object, give the `review` object of smode's `RESULTS.md`.

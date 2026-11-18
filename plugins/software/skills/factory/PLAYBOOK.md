@@ -31,17 +31,17 @@ A step whose worker is still live is waiting, not due: never start a second work
 
 The ticket's **pull request** is the open one that closes it, whoever opened it (`gh pr list --state open --search "<number> in:body" --json number,headRefName,body`, then keep the one whose body says `Closes #<number>`, `Fixes` or `Resolves`). Its branch is the ticket's branch, whatever its name, and the factory carries it on from where it is.
 
-**Plan.** open-workspace on the ticket's branch: the pull request's branch when there is one, else a new branch from trunk. Then start a `plan` worker in it. On `done`, post the result's plan on the ticket as a comment headed `## Factory plan`, with the door and the files to change. A plan with questions goes on **hold** with them, before any code.
+**Plan.** open-workspace on the ticket's branch: the pull request's branch when there is one, else a new branch from trunk. Then start a `plan` worker in it. On `done`, post the result's `plan` on the ticket as a comment headed `## Factory plan`, with the result's `door` and the result's `files_to_change`. A plan whose result's `questions` is not empty goes on **hold** with them, before any code.
 
-**Build.** Start a `build` worker in the ticket's workspace. On `done`, confirm the branch is on the remote at the result's `head_sha` (`git ls-remote origin <branch>`), then open the pull request from the result: `gh pr create --head <branch> --base <trunk> --title "<pr_title>" --body "<pr_body>"`. Link it to the workspace, set the workspace status to in-review.
+**Build.** Start a `build` worker in the ticket's workspace. On `done`, confirm the branch is on the remote at the result's `head_sha` (`git ls-remote origin <branch>`), then open the pull request from the result's `pr_title` and the result's `pr_body`: `gh pr create --head <branch> --base <trunk> --title "<pr_title>" --body "<pr_body>"`. Link it to the workspace, set the workspace status to in-review.
 
-**Check.** For the pull request's head commit, start a `verify` and a `review` worker in the ticket's workspace, together when the limits allow. On each `done`, act only if the result's `head_sha` is still the head: post the evidence or the findings as a pull request comment headed `## Factory verify` or `## Factory review`, then set the verdict status on that commit, linking the comment:
+**Check.** For the pull request's head commit, start a `verify` and a `review` worker in the ticket's workspace, together when the limits allow. On each `done`, act only if the result's `head_sha` is still the head: post the result's `evidence` or the result's `findings` as a pull request comment headed `## Factory verify` or `## Factory review`, then set the verdict status on that commit, linking the comment:
 
 ```bash
 gh api repos/<owner>/<repo>/statuses/<head_sha> -f state=<success|failure|pending> -f context=factory/verify -f description="<one line>" -f target_url=<comment url>
 ```
 
-Each verdict goes on as the worker gave it:
+Each result's `verdict` goes on as the worker gave it:
 
 - `factory/verify`: `PASS` and `PASS+NOTES` are `success`, `FAIL` is `failure`, `UNVERIFIED` is `pending`. An `UNVERIFIED` costs no rework round: start one fresh `verify` worker for the same head, with the criteria still open and the reasons in its work order, plus any lesson from the memory that applies. Still `UNVERIFIED`: **hold** with a brief listing exactly what a person must check by hand on which commit; the person answers by setting `factory/verify` themselves or replying.
 - `factory/review`: `pass` is `success`, `fail` is `failure`. The review worker owns severity: never turn its `pass` into `fail` or its `fail` into `pass`. When a note looks blocking to you, start one fresh `review` worker asking about that note alone, or hold with a brief.
@@ -55,7 +55,7 @@ A result for an older head is stale: drop it.
 - a one-way door or a disallowed blast radius: the person chose it, so merge on the next wake if the rest of the guard passes;
 - a protected path, or a fix or revert pull request for a red trunk: a person merges it — you never merge it; after the merge do **Close**.
 
-**Close.** After the merge: post the build result's handoff on the ticket as a comment starting `## Handoff`, close the ticket if the merge did not, set the workspace status to completed, run the push check, close-workspace, then delete the branch: `git push origin --delete <branch>` when it is still on the remote, and the workspace's local branch in the main checkout when it is still there (`git branch --list <local branch>`, then `git branch -D <local branch>`). When every ticket of a spec is closed, close the spec with a short summary.
+**Close.** After the merge: post the build result's `handoff` on the ticket as a comment starting `## Handoff`, close the ticket if the merge did not, set the workspace status to completed, run the push check, close-workspace, then delete the branch: `git push origin --delete <branch>` when it is still on the remote, and the workspace's local branch in the main checkout when it is still there (`git branch --list <local branch>`, then `git branch -D <local branch>`). When every ticket of a spec is closed, close the spec with a short summary.
 
 ## Routing
 
@@ -64,7 +64,7 @@ Every worker runs on one model, picked when it starts. Workers are named by step
 1. passed the provider check of the setup smoke test (`providers.md`);
 2. inspect reports as able to take work now;
 3. is not blocked in `quota.md`, or its block has expired;
-4. for the `reviewer` role, is of another model family than the model that built the head it checks (from that build's result).
+4. for the `reviewer` role, is of another model family than the model that built the head it checks (the build result's `route`).
 
 Pass it to start-worker, fill it into the work order as `<route>` so the result carries it (WORK-ORDERS.md), and record it in the journal line. With every candidate of a route filtered out, start nothing for that step: the journal says which route waits, and until when when a quota block is the reason. Never run a step on a model outside its route.
 

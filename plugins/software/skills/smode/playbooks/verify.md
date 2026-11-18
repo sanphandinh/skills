@@ -16,4 +16,4 @@ Prove a change works on the real product, the way a user would see it, at one ex
 
 Always stop and report instead of acting on anything irreversible: force-pushing a shared branch, deploying, deleting data, messaging customers.
 
-**Reply:** the verdict (`FAIL` when any criterion failed; else `UNVERIFIED` when any could not be observed; else `PASS`, or `PASS+NOTES` with notes), the commit you checked, and per criterion its status, what you ran, and what you saw. When a work order asks for a result object, give `verdict`, `head_sha`, `criteria` (each `criterion`, `status`, `reason`), `evidence` and `findings` (each `severity` `blocking` or `note`, `kind` `design`, `code`, `test` or `scope`, and `detail`).
+**Reply:** the verdict (`FAIL` when any criterion failed; else `UNVERIFIED` when any could not be observed; else `PASS`, or `PASS+NOTES` with notes), the commit you checked, and per criterion its status, what you ran, and what you saw. When a work order asks for a result object, give the `verify` object of smode's `RESULTS.md`.

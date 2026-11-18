@@ -18,4 +18,4 @@ Build exactly one ticket, on the branch you are given or a new one from trunk, f
 
 Steps 2, 5, 8 and 9 are never skipped, except that step 7 ends a worker's part early when its work order says so. Never review your own change, force-push a shared branch, deploy, or delete data.
 
-**Reply:** what now works against each acceptance criterion, the self-check results, deviations, the verify and review verdicts with their head commit, and the pull request link. When a work order asks for a result object, give `head_sha`, `pr_title`, `pr_body`, `handoff` and `deviations`.
+**Reply:** what now works against each acceptance criterion, the self-check results, deviations, the verify and review verdicts with their head commit, and the pull request link. When a work order asks for a result object, give the `build` object of smode's `RESULTS.md`.

@@ -328,3 +328,21 @@ test("the roles template a project copies must pass the roles check", () => {
   assert.match(msgs, /mode\/roles-template\.md:3: "architect" is not a role/);
   assert.match(msgs, /mode\/roles-template\.md:4: worker: "sonnet" is not <provider>\/<model>/);
 });
+
+test("a skill reads only result keys that the mode skill's RESULTS.md defines", () => {
+  const results = "# Result objects\n\n## Common keys\n\n- `step`: the step.\n\n## build\n\n- `head_sha`: the commit.\n- `criteria`: per criterion:\n  - `status`: pass or fail.\n";
+  const ok = modeRepo({
+    "plugins/core/skills/mode/RESULTS.md": results,
+    "plugins/core/skills/beta/SKILL.md": skill("beta"),
+    "plugins/core/skills/beta/PLAYBOOK.md": "Check the result's `step`, then the build result's `head_sha` and each criterion's result's `status`.\n",
+  });
+  assert.equal(messages(ok), "");
+  const msgs = messages(
+    modeRepo({
+      "plugins/core/skills/mode/RESULTS.md": results,
+      "plugins/core/skills/beta/SKILL.md": skill("beta"),
+      "plugins/core/skills/beta/PLAYBOOK.md": "Merge at the result's `headSha`.\n",
+    }),
+  );
+  assert.match(msgs, /beta\/PLAYBOOK\.md:1: reads the result key "headSha", which RESULTS\.md does not define/);
+});

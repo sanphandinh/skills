@@ -292,6 +292,27 @@ export function validate(root) {
     }
   }
 
+  // Result objects are defined once, in a mode skill's RESULTS.md (ADR-0005): a
+  // skill that reads "the result's `<key>`" may read only keys defined there.
+  const resultKeys = new Set();
+  for (const mode of modeSkills(root, catalog)) {
+    const file = path.join(mode.dir, "RESULTS.md");
+    if (fs.existsSync(file)) for (const m of fs.readFileSync(file, "utf8").matchAll(/^\s*- `([a-z][a-z0-9_]*)`:/gm)) resultKeys.add(m[1]);
+  }
+  if (resultKeys.size) {
+    for (const skill of skills.filter((s) => s.platform === "shared")) {
+      for (const file of walk(skill.dir).filter((f) => f.endsWith(".md") && f !== "RESULTS.md")) {
+        fs.readFileSync(path.join(skill.dir, file), "utf8")
+          .split("\n")
+          .forEach((line, i) => {
+            for (const m of line.matchAll(/\bresult's `([A-Za-z][A-Za-z0-9_]*)`/g)) {
+              if (!resultKeys.has(m[1])) add(`${path.join(skill.dir, file)}:${i + 1}`, `reads the result key "${m[1]}", which RESULTS.md does not define`);
+            }
+          });
+      }
+    }
+  }
+
   // The template a mode skill copies to a project's docs/agents/roles.md must pass `roles check`.
   for (const mode of modeSkills(root, catalog)) {
     const rolesTemplate = path.join(mode.dir, "roles-template.md");
