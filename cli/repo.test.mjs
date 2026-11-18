@@ -341,11 +341,12 @@ test("harness config paths stay in harness/ and references/; skills read docs/ag
   assert.doesNotMatch(msgs, /harness\/cursor\.md/);
 });
 
-test("the roles template a project copies must pass the roles check", () => {
-  assert.equal(messages(modeRepo({ "plugins/core/skills/mode/roles-template.md": "# Roles\n\nworker: anthropic/claude-sonnet-5-5 effort=medium\n" })), "");
-  const msgs = messages(modeRepo({ "plugins/core/skills/mode/roles-template.md": "# Roles\n\narchitect: anthropic/claude-opus-5-5\nworker: sonnet\n" }));
-  assert.match(msgs, /mode\/roles-template\.md:3: "architect" is not a role/);
-  assert.match(msgs, /mode\/roles-template\.md:4: worker: "sonnet" is not <provider>\/<model>/);
+test("the roles template the factory copies to a project must pass the roles check", () => {
+  const withTemplate = (text) => modeRepo({ ...userSkill("factory"), "plugins/core/skills/factory/roles-template.md": text });
+  assert.equal(messages(withTemplate("# Roles\n\nworker: anthropic/claude-sonnet-5-5 effort=medium\n")), "");
+  const msgs = messages(withTemplate("# Roles\n\narchitect: anthropic/claude-opus-5-5\nworker: sonnet\n"));
+  assert.match(msgs, /factory\/roles-template\.md:3: "architect" is not a role/);
+  assert.match(msgs, /factory\/roles-template\.md:4: worker: "sonnet" is not <provider>\/<model>/);
 });
 
 test("a skill reads only result keys that the mode skill's RESULTS.md defines", () => {

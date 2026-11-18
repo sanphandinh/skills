@@ -11,7 +11,7 @@ Do this first, in `setup` and in `setup override`, before reading any setting:
 
 ## Override
 
-`setup override` changes settings of a project already set up, instead of setting it up again. Read `docs/agents/factory.md`, list every setting with its value, and ask which ones to change; the default is to keep each one. Propose a new value only for the settings picked, the way section 3 proposes it (reading CI for the checks, asking for scarce resources), and leave every other line byte for byte. A leftover `Routes:` line (from before `docs/agents/roles.md`) is dropped. Show the diff, then commit it on trunk on its own as "Override factory config: <settings>" and push. The coordinator rereads the file on its next wake. When `Manager:` or `Memory:` changed, run sections 4 and 5 again; otherwise stop here. Routes are not settings of this file: change them with smode's `setup override`.
+`setup override` changes settings of a project already set up, instead of setting it up again. Read `docs/agents/factory.md`, list every setting with its value, and ask which ones to change; the default is to keep each one. Propose a new value only for the settings picked, the way section 3 proposes it (reading CI for the checks, asking for scarce resources), and leave every other line byte for byte. A leftover `Routes:` line (from before `docs/agents/roles.md`) is dropped. Show the diff, then commit it on trunk on its own as "Override factory config: <settings>" and push. The coordinator rereads the file on its next wake. When `Manager:` or `Memory:` changed, run sections 4 and 5 again; otherwise stop here. The same override also lists the roles of `docs/agents/roles.md`: change only the roles picked, proposed as section 2 says, leave the other lines byte for byte, check the file, and commit it on its own as "Override factory roles: <roles>".
 
 ## 1. Check the documents the factory reads
 
@@ -21,11 +21,26 @@ Do this first, in `setup` and in `setup override`, before reading any setting:
 
 Stop at the first missing file in the first and third bullets and tell the user which skill writes it. A missing `response-language.md` does not stop setup.
 
-Then check smode: the `smode` skill is reachable on this machine (smode's **Running a skill by name**), and the project's `docs/agents/roles.md` has a route for `thinker`, `worker` and `reviewer` (`roles.mjs check` in smode's `scripts/` passes). Without one, run smode's `setup` playbook first.
+Then check smode: the `smode` skill is reachable on this machine (smode's **Running a skill by name**). Its playbooks are what every worker runs.
 
 ## 2. Pick the agent manager
 
 Each file in `references/` is one supported manager. Recommend the one whose own check answers (each reference's **Before the first wake** says how) and confirm it with the user.
+
+Then the roles. Only the factory reads `docs/agents/roles.md`: the model each step's worker runs on.
+
+- **The file exists:** check it with `node <this skill's folder>/scripts/roles.mjs check`, and show the user `show`'s table, with `--channels` from the reference's **Candidates**. Keep it as it is.
+- **It is missing:** look for old roles the way the reference's **Migration** says, and convert what you find. Otherwise propose a route per role from the models the manager offers (the reference says how), two or three candidates in order on different providers where possible, so a provider out of quota has a fallback:
+  - `scout`: the cheapest fast model (the watcher);
+  - `worker`: a reliable coding model (`build`);
+  - `thinker`: the strongest reasoning model (`plan`);
+  - `reviewer`: strong reasoning, **another model family than `worker`** (`verify`, `review`); say so when none is offered;
+  - `coordinator`: a steady, cheap model.
+
+  Ask the user to accept the table or change roles, then write the file from [roles-template.md](roles-template.md) (its explanation, then one line per role), run `roles.mjs check` until it passes, show the diff, and commit it on trunk on its own as "Configure factory roles" and push.
+- When an old file was converted, ask whether to delete it now; delete it only on a yes.
+
+The routes must cover `thinker`, `worker` and `reviewer` before section 5's provider checks.
 
 ## 3. Write `docs/agents/factory.md`
 

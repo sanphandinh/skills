@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), "roles.mjs");
 
 function project(files = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), "smode-roles-"));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "factory-roles-"));
   for (const [rel, content] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
     fs.writeFileSync(path.join(root, rel), content);
@@ -24,7 +24,7 @@ function run(root, ...args) {
 
 const ROLES = `# Roles
 
-Read by the \`smode\` skill. Each line is \`<role>: <candidate>, <candidate>\`.
+Read by the \`factory\` skill. Each line is \`<role>: <candidate>, <candidate>\`.
 
 \`\`\`
 worker: example/not-a-role-line
@@ -79,7 +79,7 @@ test("check warns when every reviewer is the worker's model family, whatever the
 test("without a roles file, check passes and show says workers run on the session's model", () => {
   const root = project();
   assert.deepEqual(run(root, "check"), { code: 0, out: "No docs/agents/roles.md: every worker runs on the session's model.\n", err: "" });
-  assert.match(run(root, "show").out, /^No docs\/agents\/roles\.md: every worker runs on the session's model\. Run smode's setup playbook/);
+  assert.match(run(root, "show").out, /^No docs\/agents\/roles\.md: the factory has no routes\. Run factory setup/);
 });
 
 test("show lists roles in order, marks a missing role, and says which candidates this harness runs", () => {
@@ -95,7 +95,7 @@ test("show lists roles in order, marks a missing role, and says which candidates
 });
 
 test("show reads provider checks, quota blocks and last use from the factory's memory", () => {
-  const memory = fs.mkdtempSync(path.join(os.tmpdir(), "smode-memory-"));
+  const memory = fs.mkdtempSync(path.join(os.tmpdir(), "factory-memory-"));
   const files = {
     "providers.md": [
       "# Providers",
@@ -132,7 +132,7 @@ test("show reads provider checks, quota blocks and last use from the factory's m
 });
 
 test("show still finds the memory of a project whose settings are not converted from factory-v2 yet", () => {
-  const memory = fs.mkdtempSync(path.join(os.tmpdir(), "smode-memory-"));
+  const memory = fs.mkdtempSync(path.join(os.tmpdir(), "factory-memory-"));
   fs.writeFileSync(path.join(memory, "providers.md"), "anthropic/claude-haiku-5-5 | asks: yes | files: tool | result: PASS 2026-11-15\n");
   const root = project({ "docs/agents/roles.md": ROLES, "docs/agents/factory-v2.md": `# Factory v2\n\nFactory: v2\nMemory: ${memory}\n` });
   const out = run(root, "show").out;

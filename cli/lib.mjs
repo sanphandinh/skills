@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import YAML from "yaml";
-import { parseRoles } from "../plugins/software/skills/smode/scripts/roles.mjs";
+import { parseRoles } from "../plugins/software/skills/factory/scripts/roles.mjs";
 
 const FM_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 const TEXT_EXT = new Set([".md", ".yaml", ".yml", ".json", ".sh", ".py", ".mjs", ".js", ".ts", ".toml", ".txt", ""]);
@@ -350,9 +350,9 @@ export function validate(root) {
     }
   }
 
-  // The template a mode skill copies to a project's docs/agents/roles.md must pass `roles check`.
-  for (const mode of modeSkills(root, catalog)) {
-    const rolesTemplate = path.join(mode.dir, "roles-template.md");
+  // A roles template a skill copies to a project's docs/agents/roles.md must pass `roles check`.
+  for (const skill of skills.filter((s) => s.platform === "shared")) {
+    const rolesTemplate = path.join(skill.dir, "roles-template.md");
     if (!fs.existsSync(rolesTemplate)) continue;
     for (const e of parseRoles(fs.readFileSync(rolesTemplate, "utf8")).errors) add(`${rolesTemplate}:${e.line}`, e.msg);
   }

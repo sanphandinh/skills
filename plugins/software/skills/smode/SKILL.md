@@ -108,7 +108,7 @@ Route by the signal in the request, not by how big it sounds. When two rows matc
 
 | Signal in the request | Playbook |
 |---|---|
-| `setup` or `setup override` of smode or its roles | Setup (`playbooks/setup.md`): prepare this project for smode and write its `docs/agents/roles.md` |
+| `setup` or `setup override` of smode | Setup (`playbooks/setup.md`): prepare this project's agent docs for smode |
 | The factory: `factory` with a mode (`setup`, `run`, `once`), or "stop", "pause", "resume" to it | Factory (`playbooks/factory.md`): run the agent-driven factory |
 | A pull request or a branch to review | Review (`playbooks/review.md`): an independent review of a change, at one commit |
 | A change to prove on the real product, at a commit | Verify (`playbooks/verify.md`): prove a change works the way a user would see it |

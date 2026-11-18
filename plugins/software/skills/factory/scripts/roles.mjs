@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// smode's role configuration: docs/agents/roles.md in the project.
+// The factory's role configuration: docs/agents/roles.md in the project.
 //
 //   node roles.mjs check [--root <project>]
 //   node roles.mjs show  [--root <project>] [--channels <a,b>] [--now <ISO time>]
@@ -7,8 +7,8 @@
 // `check` reports format errors and exits 1 when there are any.
 // `show` prints every role's candidates in order with what the factory's memory
 // says about each (provider check, quota block, last use) when the project runs
-// the factory. `--channels` lists the channels this session's harness runs (its
-// harness doc says which); without it the "here" column is `?`.
+// the factory. `--channels` lists the channels the agent manager runs (its
+// reference in the factory skill says which); without it the "here" column is `?`.
 // No dependencies: it runs from wherever the skill is installed (a plugin, a skills folder), which has no node_modules.
 import fs from "node:fs";
 import os from "node:os";
@@ -165,7 +165,7 @@ const minute = (d) => d.toISOString().slice(0, 16) + "Z";
 
 export function renderShow(root, { channels, now = new Date() } = {}) {
   const loaded = loadRoles(root);
-  if (!loaded) return `No ${ROLES_FILE}: every worker runs on the session's model. Run smode's setup playbook to write it.\n`;
+  if (!loaded) return `No ${ROLES_FILE}: the factory has no routes. Run factory setup to write it.\n`;
   const memoryDir = factoryMemory(root);
   const memory = readMemory(memoryDir);
   const rows = [["role", "#", "candidate", "effort", "here", "provider check", "quota", "last used"]];
