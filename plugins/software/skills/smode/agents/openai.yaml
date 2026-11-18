@@ -1,5 +1,0 @@
-interface:
-  display_name: "smode"
-  short_description: "Entry point for software work: route the request to a playbook and run the skills it needs"
-policy:
-  allow_implicit_invocation: true

@@ -1,12 +1,12 @@
 # Plugin catalog read by cli/repo.mjs (list, validate, upstream).
-# Installing is done by each agent's own plugin system from the marketplace files:
-#   .claude-plugin/marketplace.json   Claude Code: shared + claude plugins
-#   .agents/plugins/marketplace.json  Codex: shared plugins
-#   .omp-plugin/marketplace.json      Oh My Pi: shared + omp plugins
+# Installing is done by each agent's own plugin system (ADR-0006):
+#   .claude-plugin/marketplace.json   Claude Code
+#   .cursor-plugin/marketplace.json   Cursor
+#   plugins/<p>/.antigravity-plugin/  Antigravity (agy plugin install)
+#   OpenCode reads the skills folders (npx skills add ... -a opencode)
 #
 # platform: shared  skills every agent loads; frontmatter limited to the portable keys
 #           claude  Claude Code only (hooks, Claude-only skill keys); none today
-#           omp     Oh My Pi only (rules, commands, tools, extensions); none today
 #           No plugin carries agents (ADR-0005).
 # prefix:   required on every skill name in the plugin, so domain triggers do not collide.
 plugins:

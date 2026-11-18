@@ -16,8 +16,6 @@ const CATALOG = `plugins:
   mkt:
     platform: shared
     prefix: "mkt-"
-  core-omp:
-    platform: omp
   core-claude:
     platform: claude
 `;
@@ -45,9 +43,7 @@ function repo(files = {}) {
   put(root, {
     "catalog.yaml": CATALOG,
     "plugins/core/skills/alpha/SKILL.md": skill("alpha", "disable-model-invocation: true\n"),
-    "plugins/core/skills/alpha/agents/openai.yaml": "policy:\n  allow_implicit_invocation: false\n",
     "plugins/mkt/skills/mkt-launch/SKILL.md": skill("mkt-launch"),
-    "plugins/core-omp/.omp-plugin/plugin.json": "{}",
     "plugins/core-claude/.claude-plugin/plugin.json": "{}",
     ...files,
   });
@@ -79,16 +75,9 @@ test("a URL path that starts with a skill name is not a skill invocation", () =>
   assert.equal(messages(repo({ "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Mount it under `/alpha/<name>`.\n") })), "");
 });
 
-test("every manifest of a plugin, and the OMP catalog entry for it, carry the same version", () => {
-  const manifests = (v) => ({
-    "plugins/core/.claude-plugin/plugin.json": JSON.stringify({ name: "core", version: v.claude }),
-    "plugins/core/.codex-plugin/plugin.json": JSON.stringify({ name: "core", version: v.codex }),
-    ".omp-plugin/marketplace.json": JSON.stringify({ name: "x", plugins: [{ name: "core", source: "./plugins/core", version: v.catalog }] }),
-  });
-  assert.equal(messages(repo(manifests({ claude: "0.4.0", codex: "0.4.0", catalog: "0.4.0" }))), "");
-  const msgs = messages(repo(manifests({ claude: "0.4.0", codex: "0.3.0", catalog: "0.3.0" })));
-  assert.match(msgs, /plugins\/core\/\.codex-plugin\/plugin\.json: version 0\.3\.0 differs from 0\.4\.0 in plugins\/core\/\.claude-plugin\/plugin\.json/);
-  assert.match(msgs, /\.omp-plugin\/marketplace\.json: core is listed at 0\.3\.0 but its manifest says 0\.4\.0; OMP compares this version to decide upgrades/);
+test("Codex metadata is not kept: Codex is not a supported harness (ADR-0006)", () => {
+  const msgs = messages(repo({ "plugins/core/skills/alpha/agents/openai.yaml": "policy:\n  allow_implicit_invocation: false\n" }));
+  assert.match(msgs, /alpha\/agents\/openai\.yaml: Codex metadata; Codex is not a supported harness/);
 });
 
 test("platform skills may use their platform's frontmatter", () => {
@@ -98,12 +87,12 @@ test("platform skills may use their platform's frontmatter", () => {
 test("no plugin carries agents: delegation picks the model from the project's roles (ADR-0005)", () => {
   const msgs = messages(
     repo({
-      "plugins/core-omp/agents/reviewer.md": agent("reviewer", 'model: ["@reviewer", "@slow"]\n'),
+      "plugins/core-claude/agents/reviewer.md": agent("reviewer", "model: opus\n"),
       "plugins/core-claude/agents/nested/planner.toml": "",
       "plugins/core/agents/stray.md": agent("stray"),
     }),
   );
-  assert.match(msgs, /core-omp\/agents\/reviewer\.md: plugins carry no agents \(ADR-0005\)/);
+  assert.match(msgs, /core-claude\/agents\/reviewer\.md: plugins carry no agents \(ADR-0005\)/);
   assert.match(msgs, /core-claude\/agents\/nested\/planner\.toml: plugins carry no agents/);
   assert.match(msgs, /core\/agents\/stray\.md: plugins carry no agents/);
   assert.doesNotMatch(messages(repo()), /agents/);
@@ -181,7 +170,7 @@ test("upstream add keeps the native layout and only renames and rewrites", () =>
   const { dir } = upstreamPair();
   const expected = UPSTREAM_SKILL.replace("name: foo", "name: foo-local").replace("run `/bar`", "run the `bar` skill");
   assert.equal(fs.readFileSync(path.join(dir, "SKILL.md"), "utf8"), expected, "frontmatter stays byte-identical apart from the name");
-  assert.ok(fs.existsSync(path.join(dir, "agents/openai.yaml")));
+  assert.ok(!fs.existsSync(path.join(dir, "agents/openai.yaml")), "Codex metadata is dropped (ADR-0006)");
 });
 
 test("upstream add rewrites only slash names of real skills", () => {
@@ -254,13 +243,11 @@ test("upstream copies with loose YAML frontmatter still import", () => {
 // A skill that starts only when named: the frontmatter key and the Codex policy.
 const userSkill = (name, body = "Body.\n") => ({
   [`plugins/core/skills/${name}/SKILL.md`]: skill(name, "disable-model-invocation: true\n", body),
-  [`plugins/core/skills/${name}/agents/openai.yaml`]: "policy:\n  allow_implicit_invocation: false\n",
 });
 
 function modeRepo(files = {}) {
   const root = repo({
     "plugins/core/skills/mode/SKILL.md": skill("mode", 'argument-hint: "[<playbook>] <task>"\n', "It calls the `alpha` skill.\n\n## Playbooks\n\n| Signal | Playbook |\n|---|---|\n| a question | Investigation (`playbooks/investigation.md`) |\n"),
-    "plugins/core/skills/mode/agents/openai.yaml": "policy:\n  allow_implicit_invocation: true\n",
     "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n",
     "plugins/core/skills/mode/skills-index.md": "",
     ...files,
@@ -319,11 +306,11 @@ test("a skill does not cite this repository's ADRs; an example ADR of the projec
     repo({
       "docs/adr/0004-roles.md": "# Roles\n",
       "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Read the roles file (ADR-0004).\n\n> _Contradicts ADR-0007, but worth reopening_\n"),
-      "plugins/core/skills/beta/harness/omp.md": "Before ADR-0004, roles were keys.\n",
+      "plugins/core/skills/beta/harness/opencode.md": "Before ADR-0004, roles were keys.\n",
     }),
   );
   assert.match(msgs, /beta\/SKILL\.md:\d+: cites this repository's ADR-0004/);
-  assert.match(msgs, /beta\/harness\/omp\.md:1: cites this repository's ADR-0004/);
+  assert.match(msgs, /beta\/harness\/opencode\.md:1: cites this repository's ADR-0004/);
   assert.doesNotMatch(msgs, /ADR-0007/);
 });
 
@@ -345,13 +332,13 @@ test("harness config paths stay in harness/ and references/; skills read docs/ag
   const msgs = messages(
     modeRepo({
       "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n2. Read the roles in ~/.claude/rules/smode-roles.md.\n",
-      "plugins/core/skills/mode/harness/omp.md": "Sync the roles into `~/.omp/agent/config.yml`.\n",
-      ...userSkill("beta", "Write `~/.codex/agents/worker.toml`.\n"),
+      "plugins/core/skills/mode/harness/cursor.md": "Agents live in `~/.cursor/agents/`.\n",
+      ...userSkill("beta", "Write `~/.config/opencode/agents/worker.md`.\n"),
     }),
   );
   assert.match(msgs, /investigation\.md:2: names a harness's config path: ~\/\.claude; skills read docs\/agents\//);
-  assert.match(msgs, /beta\/SKILL\.md:\d+: names a harness's config path: ~\/\.codex/);
-  assert.doesNotMatch(msgs, /harness\/omp\.md/);
+  assert.match(msgs, /beta\/SKILL\.md:\d+: names a harness's config path: ~\/\.config\/opencode/);
+  assert.doesNotMatch(msgs, /harness\/cursor\.md/);
 });
 
 test("the roles template a project copies must pass the roles check", () => {
@@ -385,12 +372,10 @@ test("in a plugin with a mode skill, only the mode skill starts on its own (ADR-
     modeRepo({
       "plugins/core/skills/beta/SKILL.md": skill("beta"),
       "plugins/core/skills/gamma/SKILL.md": skill("gamma", "disable-model-invocation: true\n"),
-      "plugins/core/skills/mode/agents/openai.yaml": "policy:\n  allow_implicit_invocation: false\n",
     }),
   );
   assert.match(msgs, /beta\/SKILL\.md: starts on its own beside the mode skill "mode"; set disable-model-invocation: true/);
-  assert.match(msgs, /gamma\/agents\/openai\.yaml: starts on its own on Codex beside the mode skill "mode"; set policy\.allow_implicit_invocation: false/);
-  assert.match(msgs, /mode\/agents\/openai\.yaml: the mode skill is the entry point; Codex must be allowed to start it/);
+  assert.doesNotMatch(msgs, /gamma/);
   assert.match(messages(modeRepo({ "plugins/core/skills/mode/SKILL.md": skill("mode", "disable-model-invocation: true\n", "## Playbooks\n\n(`playbooks/investigation.md`)\n") })), /mode\/SKILL\.md: the mode skill is the entry point; remove disable-model-invocation/);
 });
 

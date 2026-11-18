@@ -11,7 +11,7 @@ const FM_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 const TEXT_EXT = new Set([".md", ".yaml", ".yml", ".json", ".sh", ".py", ".mjs", ".js", ".ts", ".toml", ".txt", ""]);
 
 // Frontmatter keys a shared skill may carry: the Agent Skills standard plus the
-// invocation keys that Claude Code and OMP honour and Codex tolerates.
+// invocation keys that Claude Code, OpenCode, Antigravity and Cursor honour.
 export const SHARED_SKILL_KEYS = ["name", "description", "disable-model-invocation", "argument-hint", "license", "compatibility", "metadata"];
 
 // ---------- small helpers ----------
@@ -141,7 +141,7 @@ const T3_TOOL_NAMES =
   /\b(delegate_task|task_status|task_cancel|orchestrator_capabilities|schedule_task|list_scheduled_tasks|delete_scheduled_task|run_scheduled_task_now|create_threads|watch_pull_request|unwatch_pull_request|link_pull_requests?|t3_[a-z_]+)\b/;
 // A harness's own configuration paths. Skills read the project's docs/agents/
 // (ADR-0004); only a harness doc or a manager's reference may name these.
-const HARNESS_CONFIG_PATHS = /(~\/\.(?:claude|omp|codex)\b|\.claude\/rules\b)/;
+const HARNESS_CONFIG_PATHS = /(~\/\.(?:claude|cursor|gemini)\b|~\/\.config\/opencode\b|\.claude\/rules\b)/;
 // Paths that hold only for one way of installing skills: a plugin folder, a
 // marketplace name, or a checkout's layout. A skill may be installed by a
 // plugin, copied into a skills folder (`npx skills add`), or run from a
@@ -223,7 +223,7 @@ export function validate(root) {
     }
     if (skill.platform === "shared") {
       const extra = Object.keys(frontmatter).filter((k) => !SHARED_SKILL_KEYS.includes(k));
-      if (extra.length) add(skillFile, `platform-specific frontmatter in a shared skill (move the skill to a -claude or -omp plugin): ${extra.join(", ")}`);
+      if (extra.length) add(skillFile, `platform-specific frontmatter in a shared skill (move the skill to a -claude plugin): ${extra.join(", ")}`);
     }
     if (frontmatter.name !== skill.name) add(skillFile, `name "${frontmatter.name}" does not match folder "${skill.name}"`);
     if (!frontmatter.description || String(frontmatter.description).length < 20) add(skillFile, "description is missing or too short to trigger reliably");
@@ -236,7 +236,8 @@ export function validate(root) {
     if (prefix && !skill.name.startsWith(prefix)) add(skillFile, `name must start with plugin prefix "${prefix}"`);
     if (seen.has(skill.name)) add(skillFile, `duplicate skill name, also in plugin ${seen.get(skill.name)}`);
     seen.set(skill.name, skill.plugin);
-    if (fs.existsSync(path.join(skill.dir, "overlays"))) add(path.join(skill.dir, "overlays"), "overlays/ is not read by any agent; use frontmatter and agents/openai.yaml");
+    if (fs.existsSync(path.join(skill.dir, "overlays"))) add(path.join(skill.dir, "overlays"), "overlays/ is not read by any agent; use frontmatter");
+    if (fs.existsSync(path.join(skill.dir, "agents", "openai.yaml"))) add(path.join(skill.dir, "agents", "openai.yaml"), "Codex metadata; Codex is not a supported harness (ADR-0006): delete it");
 
     if (skill.platform !== "shared") continue;
     for (const file of walk(skill.dir).filter((f) => f.endsWith(".md"))) {
@@ -286,9 +287,8 @@ export function validate(root) {
     }
   }
 
-  // One version per plugin: every manifest agrees, and so does the OMP
-  // catalog, which is what OMP compares when it decides to upgrade.
-  const MANIFESTS = [".claude-plugin", ".codex-plugin", ".omp-plugin"].map((d) => path.join(d, "plugin.json"));
+  // One version per plugin: every manifest agrees.
+  const MANIFESTS = [".claude-plugin"].map((d) => path.join(d, "plugin.json"));
   const versionOf = new Map();
   for (const plugin of fs.existsSync(path.join(root, "plugins")) ? fs.readdirSync(path.join(root, "plugins")) : []) {
     for (const rel of MANIFESTS) {
@@ -301,23 +301,8 @@ export function validate(root) {
       else if (first.version !== version) add(file, `version ${version} differs from ${first.version} in ${path.relative(root, first.file)}`);
     }
   }
-  const ompCatalog = path.join(root, ".omp-plugin", "marketplace.json");
-  if (fs.existsSync(ompCatalog)) {
-    for (const entry of JSON.parse(fs.readFileSync(ompCatalog, "utf8")).plugins ?? []) {
-      const manifest = versionOf.get(path.basename(String(entry.source ?? entry.name)));
-      if (entry.version && manifest && entry.version !== manifest.version) {
-        add(ompCatalog, `${entry.name} is listed at ${entry.version} but its manifest says ${manifest.version}; OMP compares this version to decide upgrades`);
-      }
-    }
-  }
-
   // A mode skill is the entry point of its plugin (ADR-0005): it starts on its
   // own, and every other skill of the plugin starts only when named.
-  const implicitOn = (dir) => {
-    const file = path.join(dir, "agents", "openai.yaml");
-    const policy = fs.existsSync(file) ? readYaml(file, {})?.policy : undefined;
-    return { file, allowed: policy?.allow_implicit_invocation !== false };
-  };
   for (const mode of modeSkills(root, catalog)) {
     const modeFile = path.join(mode.dir, "SKILL.md");
     const modeFm = parseSkillMd(fs.readFileSync(modeFile, "utf8")).frontmatter ?? {};
@@ -327,15 +312,11 @@ export function validate(root) {
     if (typeof modeFm["argument-hint"] !== "string" || !modeFm["argument-hint"].includes("<playbook>")) {
       add(modeFile, 'a person invoking the mode skill may name the playbook; set argument-hint: "[<playbook>] <task>"');
     }
-    const modeCodex = implicitOn(mode.dir);
-    if (!modeCodex.allowed) add(modeCodex.file, "the mode skill is the entry point; Codex must be allowed to start it (policy.allow_implicit_invocation: true)");
     for (const other of skills.filter((s) => s.plugin === mode.plugin && s.name !== mode.name)) {
       const file = path.join(other.dir, "SKILL.md");
       if (parseSkillMd(fs.readFileSync(file, "utf8")).frontmatter?.["disable-model-invocation"] !== true) {
         add(file, `starts on its own beside the mode skill "${mode.name}"; set disable-model-invocation: true`);
       }
-      const codex = implicitOn(other.dir);
-      if (codex.allowed) add(codex.file, `starts on its own on Codex beside the mode skill "${mode.name}"; set policy.allow_implicit_invocation: false`);
     }
     // Every playbook is reachable: a row of the Playbooks section links it.
     const text = fs.readFileSync(modeFile, "utf8");
@@ -445,6 +426,9 @@ export function exportUpstreamSkill(root, cfg, commit, upstreamPath, localName) 
   const tar = execFileSync("git", ["archive", commit, upstreamPath], { cwd: root, maxBuffer: 1 << 28 });
   execFileSync("tar", ["-x", "-C", tmp], { input: tar });
   const dir = path.join(tmp, upstreamPath);
+  // Codex metadata is not kept: Codex is not a supported harness (ADR-0006).
+  fs.rmSync(path.join(dir, "agents", "openai.yaml"), { force: true });
+  if (fs.existsSync(path.join(dir, "agents")) && !fs.readdirSync(path.join(dir, "agents")).length) fs.rmdirSync(path.join(dir, "agents"));
   const skills = knownSkills(root, commit);
   for (const rel of walk(dir).filter(isText)) {
     const f = path.join(dir, rel);

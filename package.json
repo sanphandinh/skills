@@ -2,7 +2,7 @@
   "name": "sanphan-skills",
   "private": true,
   "type": "module",
-  "description": "Personal multi-domain agent skills, shipped as Claude Code, Codex, and Oh My Pi plugins.",
+  "description": "Personal multi-domain agent skills, for Claude Code, OpenCode, Antigravity, and Cursor.",
   "scripts": {
     "validate": "node cli/repo.mjs validate",
     "index": "node cli/repo.mjs index",
