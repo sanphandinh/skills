@@ -1,136 +1,116 @@
 # Platforms
 
-This repo is one marketplace with three catalogs. Each agent installs plugins
-with its own plugin commands; nothing is copied into projects by a script.
-There are two plugins, both shared: `core` and `software`.
+This repo ships two shared plugins, `core` and `software`, to four harnesses:
+Claude Code, OpenCode, Antigravity and Cursor (ADR-0006). Each installs them
+with what its maker ships; nothing is copied into projects by a script of ours.
 
-| | Claude Code | Codex | Oh My Pi |
-|---|---|---|---|
-| Catalog it reads | `.claude-plugin/marketplace.json` | `.agents/plugins/marketplace.json` | `.omp-plugin/marketplace.json` (preferred over the Claude one) |
-| Plugin manifest | `.claude-plugin/plugin.json` | `.codex-plugin/plugin.json` | `.omp-plugin/plugin.json`, else `.claude-plugin/plugin.json` |
-| Model per worker | chosen at delegation (`harness/claude-code.md`) | the session's model (no model per worker) | per-call model, granted by user-level keys (`harness/omp.md`) |
-| Extra components | hooks, Claude-only skill keys (`model`, `effort`, `context: fork`, `agent`) | `agents/openai.yaml` per skill | `rules/`, `commands/`, `tools/`, `hooks/`, `package.json#omp` extensions |
-| Project scope | `.claude/settings.json` `enabledPlugins` (commit it) | `.codex/config.toml` `[plugins."x@sanphan-skills"] enabled = true` (commit it) | `.omp/plugins/installed_plugins.json` (machine paths: do not commit) |
+| | Claude Code | Cursor | Antigravity | OpenCode |
+|---|---|---|---|---|
+| Installs from | `.claude-plugin/marketplace.json` | `.cursor-plugin/marketplace.json` | `plugins/<p>/.antigravity-plugin/plugin.json` | the skills folders (`.agents/skills/`) |
+| Plugin manifest | `.claude-plugin/plugin.json` | `.cursor-plugin/plugin.json` | `.antigravity-plugin/plugin.json` | none: OpenCode plugins are JS modules and carry no skills |
+| smode harness doc | `harness/claude-code.md` | `harness/cursor.md` | `harness/antigravity.md` | `harness/opencode.md` |
+| Checked | plugin install and `npx skills` (yes) | through T3; plugin install not yet | through T3; plugin install not yet | `npx skills` writes `.agents/skills/`; a session not yet |
 
-No plugin carries agents (ADR-0005): a skill delegates by role, and the model
-comes from the project's `docs/agents/roles.md` when the work is delegated.
+No plugin carries agents (ADR-0005). smode works alone: it starts no worker
+and picks no model; a skill that uses sub-agents by design runs them on the
+harness's default sub-agent and the session's model. Choosing a model per step
+is the factory's job (`docs/agents/roles.md`, ADR-0006).
 
 ## Plugin layout
 
 ```
-plugins/<domain>/            shared: skills every agent loads
+plugins/<domain>/            shared: skills every harness loads
   .claude-plugin/plugin.json
-  .codex-plugin/plugin.json
+  .cursor-plugin/plugin.json
+  .antigravity-plugin/plugin.json
   skills/<skill>/SKILL.md            name, description, disable-model-invocation, argument-hint
-  skills/<skill>/agents/openai.yaml  Codex UI metadata and implicit-invocation policy
 plugins/<domain>-claude/     Claude Code only (hooks); none today
-plugins/<domain>-omp/        Oh My Pi only (rules, commands); none today
-  .omp-plugin/plugin.json            required for an OMP plugin
 ```
 
-A user-invoked skill sets `disable-model-invocation: true` in `SKILL.md`
-(Claude Code and OMP honour it) and `policy.allow_implicit_invocation: false`
-in `agents/openai.yaml` (Codex). In `software`, every skill except `smode` is
+All three manifests of a plugin carry the same version; the validator checks it.
+
+A user-invoked skill sets `disable-model-invocation: true` in `SKILL.md`; all
+four harnesses honour it. In `software`, every skill except `smode` is
 user-invoked, so `smode` is the one entry point; it reads the other skills'
 files directly, which runs them even when a harness's skill command would refuse.
 
 Claude Code shows `argument-hint` after the skill's name when a person types
-`/`; OMP reads the field only for prompt templates, and Codex has no hint
-field. On every harness the text after the skill's name is its argument.
-`smode` takes `[<playbook>] <task>`.
+`/`; on every harness the text after the skill's name is its argument. `smode`
+takes `[<playbook>] <task>`.
 
 ## Install in a project
 
-Each machine registers the marketplace once:
+### Claude Code
 
 ```bash
 claude plugin marketplace add sanphandinh/skills
-codex plugin marketplace add sanphandinh/skills
-omp plugin marketplace add sanphandinh/skills
-```
-
-Then, in the project:
-
-```bash
 claude plugin install core@sanphan-skills --scope project
 claude plugin install software@sanphan-skills --scope project
-omp plugin install core@sanphan-skills --scope project
-omp plugin install software@sanphan-skills --scope project
 ```
 
-For Codex, commit `.codex/config.toml`:
+Commit `.claude/settings.json`; teammates run the install commands once.
 
-```toml
-[plugins."core@sanphan-skills"]
-enabled = true
-
-[plugins."software@sanphan-skills"]
-enabled = true
-```
-
-Commit `.claude/settings.json` and `.codex/config.toml`; add `.omp/plugins/` to
-`.gitignore`. Teammates run the same install commands once. Then run smode's
-`setup` playbook ("smode setup") to write `docs/agents/roles.md`.
-
-### Without plugins
-
-Skills also run when a tool copies them into an agent's skills folder:
+### Cursor (not yet installed by hand)
 
 ```bash
-npx skills add sanphandinh/skills --skill '*' -a claude-code -a codex
+cursor-agent plugin marketplace add sanphandinh/skills
 ```
 
-This puts every skill side by side in `.claude/skills/` and `.agents/skills/`
-(OMP reads both), without the plugin prefix and without per-plugin versions;
-`npx skills update` updates them. Install all of them, or at least `smode` with
-every skill it runs: smode finds a skill by name (its **Running a skill by
-name**), next to its own folder first, so the result is the same as with
-plugins. Verified on Claude Code with a project install.
+Then install `core` and `software` from `/plugin` in `cursor-agent` (or
+Customize in the app), choosing project scope. Cursor has no non-interactive
+install command yet.
 
-## Harnesses and managers
-
-The roles live in the project, in `docs/agents/roles.md` (ADR-0004), on every
-harness; each smode harness doc maps a role's candidates to its tools and skips
-the ones it cannot run.
-
-| Harness (runs a session) | smode harness doc | Runs candidates via | Also needs | Checked |
-|---|---|---|---|---|
-| Claude Code | `harness/claude-code.md` | `anthropic` | nothing | yes |
-| Oh My Pi | `harness/omp.md` | every channel `omp models` lists | grant keys `smode-<repo>-<role>-<n>` in `~/.omp/agent/config.yml`, `task.perCallModel: on` | yes |
-| Codex | `harness/codex.md` | none: every worker runs on the session's model | nothing | no Codex session run yet |
-| a provider inside T3 Code | `harness/t3.md`, on top of the provider's own doc | every provider T3 offers | nothing | yes (Claude, Cursor, Antigravity) |
-
-smode's `setup` playbook writes `docs/agents/roles.md` (and what the table's
-last column asks), and `setup override` changes chosen roles. To see where each
-role runs now:
+### Antigravity (not yet installed by hand)
 
 ```bash
-node <smode>/scripts/roles.mjs show --channels anthropic,cursor,antigravity
+git clone https://github.com/sanphandinh/skills ~/src/sanphan-skills
+agy plugin install ~/src/sanphan-skills/plugins/core
+agy plugin install ~/src/sanphan-skills/plugins/software
 ```
 
-The factory runs on one agent manager today: T3 Code (`references/t3.md` of the
-`factory` skill). Another manager is one more reference plus a passing setup
-smoke test.
+`agy plugin validate --strict <folder>` checks a manifest.
+
+### OpenCode, and any harness without plugins
+
+```bash
+npx skills add sanphandinh/skills --skill '*' -a opencode
+```
+
+`-a opencode`, `-a cursor` and `-a antigravity` all write `.agents/skills/`
+(measured), which the three harnesses read; `-a claude-code` writes
+`.claude/skills/`. Every skill lands side by side, without the plugin prefix
+and without per-plugin versions; `npx skills update` updates them. Install all
+of them, or at least `smode` with every skill it runs: smode finds a skill by
+name (its **Running a skill by name**), next to its own folder first.
+
+Then, on any harness, run smode's `setup` playbook ("smode setup"): it writes
+the project's agent docs and its `### Entry point` rule.
 
 ## Running the factory
 
+The factory is the only part that delegates. It runs on one agent manager
+today, T3 Code (`references/t3.md` of the `factory` skill); another manager is
+one more reference plus a passing setup smoke test.
+
 Each project needs, from `setup-software-context` and `setup-verification`:
 `docs/agents/issue-tracker.md` with its `## Factory` section,
-`triage-labels.md`, `merge-policy.md`, `response-language.md`, and `verify.md`;
-and `docs/agents/roles.md` with a route for `thinker`, `worker` and `reviewer`
-(smode's `setup` playbook). Each machine needs T3 Code with the providers those
-routes name, and `gh` signed in. Then, in a T3 thread on the project root, in
-full-access mode:
+`triage-labels.md`, `merge-policy.md`, `response-language.md`, and `verify.md`.
+Each machine needs T3 Code with the providers the routes name, and `gh` signed
+in. Then, in a T3 thread on the project root, in full-access mode:
 
 ```text
-factory setup   write docs/agents/factory.md, check each provider, smoke-test T3
+factory setup   write docs/agents/factory.md and docs/agents/roles.md, check each provider, smoke-test T3
 factory once    one wake
 factory run     start the watcher and keep building
 ```
 
-`setup` also converts older settings: a `docs/agents/factory-v2.md` is renamed
-and keeps its memory, and version 1 settings (Orca) get a proposed new file and
-an in-place upgrade of their memory folder.
+`docs/agents/roles.md` maps the five roles (`scout`, `worker`, `thinker`,
+`reviewer`, `coordinator`) to candidates in order; `factory setup override`
+changes chosen roles, and `node <factory>/scripts/roles.mjs show --channels
+anthropic,cursor,antigravity` shows where each role runs now. `setup` also
+converts older settings: a `docs/agents/factory-v2.md` is renamed and keeps its
+memory, version 1 settings (Orca) get a proposed new file, and old roles in
+`~/.claude/rules/smode-roles.md` become the project's `roles.md`.
 
 The coordinator is that thread for life. A watcher thread on T3's scheduler, on
 the `scout` route, runs `wake-check.sh` every `Wake timeout` and wakes the
