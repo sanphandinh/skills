@@ -7,9 +7,9 @@ argument-hint: "setup | setup override | run | once"
 
 # Factory
 
-The factory builds approved specs from the issue tracker, with a person in the loop only for real decisions. A **coordinator** agent decides, delegates and records; **workers**, fresh agent sessions each in a workspace the agent manager created, read and write code. Every worker step runs a playbook of the `smode` skill, on the model its role routes to, skipping providers that are out of quota (ADR-0002, ADR-0003, ADR-0005).
+The factory builds approved specs from the issue tracker, with a person in the loop only for real decisions. A **coordinator** agent decides, delegates and records; **workers**, fresh agent sessions each in a workspace the agent manager created, read and write code. Every worker step runs a playbook of the `smode` skill, on the model its role routes to, skipping providers that are out of quota.
 
-The factory reaches the agent manager only through the operations in [INTERFACE.md](INTERFACE.md). How each operation runs on one manager is in that manager's reference under `references/`; read only the reference `docs/agents/factory.md` names on its `Manager:` line. Its settings live in `docs/agents/factory.md`, and the model each role runs on in the project's `docs/agents/roles.md` (ADR-0004).
+The factory reaches the agent manager only through the operations in [INTERFACE.md](INTERFACE.md). How each operation runs on one manager is in that manager's reference under `references/`; read only the reference `docs/agents/factory.md` names on its `Manager:` line. Its settings live in `docs/agents/factory.md`, and the model each role runs on in the project's `docs/agents/roles.md`.
 
 ## Modes
 

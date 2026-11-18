@@ -59,7 +59,7 @@ A result for an older head is stale: drop it.
 
 ## Routing
 
-Every worker runs on one model, picked when it starts. Workers are named by step, and each step takes a smode role: `plan` runs on `thinker`, `build` on `worker`, `verify` and `review` on `reviewer`. Each role has a **route** in the project's `docs/agents/roles.md` (ADR-0004), reread on every wake: its candidates in order. Take the first candidate the manager can run (its reference says how a candidate maps to it) that:
+Every worker runs on one model, picked when it starts. Workers are named by step, and each step takes a smode role: `plan` runs on `thinker`, `build` on `worker`, `verify` and `review` on `reviewer`. Each role has a **route** in the project's `docs/agents/roles.md`, reread on every wake: its candidates in order. Take the first candidate the manager can run (its reference says how a candidate maps to it) that:
 
 1. passed the provider check of the setup smoke test (`providers.md`);
 2. inspect reports as able to take work now;

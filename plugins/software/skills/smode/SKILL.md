@@ -6,7 +6,7 @@ argument-hint: "[<playbook>] <task>"
 
 # smode
 
-smode is how engineering work runs here, and every request starts in it (ADR-0005). It routes the task to one **playbook**, copies the playbook's steps into a todo list, and runs the skills of `core` and `software` at the steps that need them, however they were installed. The other skills of `software` do not start on their own: they run when a playbook or a trigger below names them, or when a person invokes one by hand.
+smode is how engineering work runs here, and every request starts in it. It routes the task to one **playbook**, copies the playbook's steps into a todo list, and runs the skills of `core` and `software` at the steps that need them, however they were installed. The other skills of `software` do not start on their own: they run when a playbook or a trigger below names them, or when a person invokes one by hand.
 
 Files next to this one: `playbooks/<name>.md` (one per kind of task), `RESULTS.md` (the result object of each step a worker returns), `harness/<harness>.md` (how this session's tools do each action and run a role's candidates), `skills-index.md` (every skill smode may run, with the plugin that ships it), and `scripts/roles.mjs` (checks and shows the project's roles). Keep this file's absolute path: every work order you write includes it.
 
@@ -70,7 +70,7 @@ No is an acceptable answer. When asked whether to do something, give your real j
 
 **Every work order says** which playbook to run and gives the absolute path of this file, so the worker can run it on any harness.
 
-**Model per role.** Pick the role the work needs, then its model from the project's `docs/agents/roles.md`, the only role configuration (ADR-0004): read it before the first delegation of the task, never from a harness's own settings. Each line is the role's **route**, candidates in order (`<provider>/<model>`, `effort=…`, `via=<channel>`); take the first one this harness can run, that is available and not out of quota, mapped to the harness's tools as its doc's **Candidates** section says. A role without a line, or a project without the file, runs the worker on the session's model: say so in the reply and suggest the `setup` playbook. `scripts/roles.mjs` next to this file checks the file (`check`) and prints each role's candidates (`show`).
+**Model per role.** Pick the role the work needs, then its model from the project's `docs/agents/roles.md`, the only role configuration: read it before the first delegation of the task, never from a harness's own settings. Each line is the role's **route**, candidates in order (`<provider>/<model>`, `effort=…`, `via=<channel>`); take the first one this harness can run, that is available and not out of quota, mapped to the harness's tools as its doc's **Candidates** section says. A role without a line, or a project without the file, runs the worker on the session's model: say so in the reply and suggest the `setup` playbook. `scripts/roles.mjs` next to this file checks the file (`check`) and prints each role's candidates (`show`).
 
 | Role | Needs |
 |---|---|

@@ -29,11 +29,12 @@ Part of `core` and `software` is derived from mattpocock/skills; see `UPSTREAM.m
 2. A skill in a plugin that has a mode skill is user-invoked: `disable-model-invocation: true` in `SKILL.md` and `policy.allow_implicit_invocation: false` in `agents/openai.yaml`. Only the mode skill starts on its own. The validator enforces both.
 3. Never name an agent's tools. Describe the action: "search the code", "run the tests", "ask the user". The only exceptions are a mode skill's `harness/` docs and a factory's `references/`, whose job is mapping those actions to one harness's or one agent manager's tools (ADR-0003); the validator keeps tool names out of everything else.
 4. Refer to other skills by name ("use the `tdd` skill"), never with `/skill` or `$skill`.
-5. Delegate by role: "give each axis to a sub-agent on the `reviewer` role", with a fallback to the session's model and to doing the work sequentially. The skill must still work run by one agent.
-6. A result another step reads is defined once, in smode's `RESULTS.md`; read it as "the result's `<key>`", which the validator checks.
-7. A new playbook gets a row in smode's **Playbooks** section; the validator fails on a playbook no row routes to.
-8. Put logic that must be exact in `scripts/`, with tests next to it.
-9. Skills in non-core domains carry the plugin prefix from `catalog.yaml` (`mkt-`, `seo-`).
+5. A skill runs in the project that installed it, so it carries no context of this repository: no citation of its ADRs, specs or tickets (state the rule itself), no path of its layout, and "this project" means the user's. The validator rejects this repository's ADR numbers and install-layout paths.
+6. Delegate by role: "give each axis to a sub-agent on the `reviewer` role", with a fallback to the session's model and to doing the work sequentially. The skill must still work run by one agent.
+7. A result another step reads is defined once, in smode's `RESULTS.md`; read it as "the result's `<key>`", which the validator checks.
+8. A new playbook gets a row in smode's **Playbooks** section; the validator fails on a playbook no row routes to.
+9. Put logic that must be exact in `scripts/`, with tests next to it.
+10. Skills in non-core domains carry the plugin prefix from `catalog.yaml` (`mkt-`, `seo-`).
 
 After any change:
 

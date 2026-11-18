@@ -9,7 +9,7 @@ argument-hint: "[override]"
 
 Write `docs/agents/verify.md`: the doc a verifier follows to prove a change works the way a user would see it. A verifier reads it cold, mid-task, in a fresh checkout of a pull request it did not write, so every step must be literal and runnable. Without this doc no verdict ever ran the product, and the `factory` skill refuses to auto-merge.
 
-With `override` as the argument and `docs/agents/verify.md` present, change chosen parts of it instead of writing it again (ADR-0004): list its sections (Launch, Doctor, Drive, Evidence, Cleanup, Untracked needs, Feature map, and any scarce-resource steps) with a one-line summary of each, and ask which ones to change; the default is to keep each one. Run steps 1 to 3 for the picked sections only, leave the rest byte for byte, show the diff, and commit it on its own as "Override verification doc: <sections>". Step 3 proves only what changed.
+With `override` as the argument and `docs/agents/verify.md` present, change chosen parts of it instead of writing it again: list its sections (Launch, Doctor, Drive, Evidence, Cleanup, Untracked needs, Feature map, and any scarce-resource steps) with a one-line summary of each, and ask which ones to change; the default is to keep each one. Run steps 1 to 3 for the picked sections only, leave the rest byte for byte, show the diff, and commit it on its own as "Override verification doc: <sections>". Step 3 proves only what changed.
 
 ## 1. Interview the repo, not the user
 

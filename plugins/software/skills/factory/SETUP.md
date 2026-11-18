@@ -11,7 +11,7 @@ Do this first, in `setup` and in `setup override`, before reading any setting:
 
 ## Override
 
-`setup override` changes settings of a project already set up, instead of setting it up again. Read `docs/agents/factory.md`, list every setting with its value, and ask which ones to change; the default is to keep each one. Propose a new value only for the settings picked, the way section 3 proposes it (reading CI for the checks, asking for scarce resources), and leave every other line byte for byte. A leftover `Routes:` line (before ADR-0004) is dropped. Show the diff, then commit it on trunk on its own as "Override factory config: <settings>" and push. The coordinator rereads the file on its next wake. When `Manager:` or `Memory:` changed, run sections 4 and 5 again; otherwise stop here. Routes are not settings of this file: change them with smode's `setup override`.
+`setup override` changes settings of a project already set up, instead of setting it up again. Read `docs/agents/factory.md`, list every setting with its value, and ask which ones to change; the default is to keep each one. Propose a new value only for the settings picked, the way section 3 proposes it (reading CI for the checks, asking for scarce resources), and leave every other line byte for byte. A leftover `Routes:` line (from before `docs/agents/roles.md`) is dropped. Show the diff, then commit it on trunk on its own as "Override factory config: <settings>" and push. The coordinator rereads the file on its next wake. When `Manager:` or `Memory:` changed, run sections 4 and 5 again; otherwise stop here. Routes are not settings of this file: change them with smode's `setup override`.
 
 ## 1. Check the documents the factory reads
 

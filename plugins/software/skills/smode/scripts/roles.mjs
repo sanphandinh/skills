@@ -105,8 +105,8 @@ function expandHome(p) {
   return p.replace(/^~(?=$|\/)/, os.homedir());
 }
 
-// The settings are `docs/agents/factory.md`; `factory-v2.md` is the name they had
-// before ADR-0005, kept until the project's factory setup converts it.
+// The settings are `docs/agents/factory.md`; `factory-v2.md` is their older name,
+// read until the project's factory setup converts it.
 export function factoryMemory(root) {
   const settings = ["factory.md", "factory-v2.md"].map((f) => path.join(root, "docs", "agents", f)).find((f) => fs.existsSync(f));
   if (!settings) return null;

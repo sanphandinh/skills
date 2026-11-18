@@ -209,6 +209,11 @@ export function validate(root) {
     if (!fs.existsSync(path.join(root, "plugins", plugin))) add(path.join(root, "catalog.yaml"), `plugin "${plugin}" has no folder under plugins/`);
   }
 
+  // This repository's own ADRs. An installed skill runs in another project, whose
+  // ADR-0004 (if any) is a different decision, so a skill states its rule instead.
+  const adrDir = path.join(root, "docs", "adr");
+  const ownAdrs = new Set(fs.existsSync(adrDir) ? fs.readdirSync(adrDir).map((f) => f.match(/^(\d{4})-/)?.[1]).filter(Boolean) : []);
+
   for (const skill of skills) {
     const skillFile = path.join(skill.dir, "SKILL.md");
     const { frontmatter, body } = parseSkillMd(fs.readFileSync(skillFile, "utf8"));
@@ -240,6 +245,9 @@ export function validate(root) {
       text.split("\n").forEach((line, i) => {
         const where = `${path.join(skill.dir, file)}:${i + 1}`;
         if (/^(<{7}|>{7})( |$)/.test(line)) add(where, "unresolved merge conflict marker");
+        for (const m of line.matchAll(/\bADR-(\d{4})\b/g)) {
+          if (ownAdrs.has(m[1])) add(where, `cites this repository's ADR-${m[1]}; the skill runs in another project, whose ADRs are its own: state the rule itself`);
+        }
         if (INSTALL_LAYOUT.test(line)) add(where, `assumes one install layout: ${line.match(INSTALL_LAYOUT)[0]}; find a skill by name, as smode's "Running a skill by name" does`);
         if (mapsTools) return;
         if (TOOL_NAMES.test(line)) add(where, `names a specific agent tool: ${line.match(TOOL_NAMES)[0]}`);

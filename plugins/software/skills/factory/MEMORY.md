@@ -15,7 +15,7 @@ Every `<time>` is read from the clock when you write it (`date -u +%FT%RZ`), in 
 
 The folder is a git repository (`git init` on setup). Commit once per wake, with the message `wake <time>`.
 
-A `<candidate>` is the candidate's id as `docs/agents/roles.md` writes it, without `effort`: `<provider>/<model>`, then ` via=<channel>` when it has one (`google/gemini-4-hydrogen via=antigravity`). It never uses a manager's own ids, so smode's `roles.mjs show` can match these files to the routes. Lines written before ADR-0004 with a manager's ids are converted the way smode's harness doc for that manager says under **Migration**.
+A `<candidate>` is the candidate's id as `docs/agents/roles.md` writes it, without `effort`: `<provider>/<model>`, then ` via=<channel>` when it has one (`google/gemini-4-hydrogen via=antigravity`). It never uses a manager's own ids, so smode's `roles.mjs show` can match these files to the routes. Lines written before roles moved to `docs/agents/roles.md`, with a manager's ids, are converted the way smode's harness doc for that manager says under **Migration**.
 
 ## Lessons
 

@@ -19,7 +19,7 @@ This is a prompt-driven skill, not a deterministic script. Explore, present what
 
 ## Override
 
-With `override` as the argument, change chosen parts of a project already set up instead of setting it up again (ADR-0004). Explore as step 1 says, then list each section (A to E, and the merge policy when the `factory` skill is installed) with what the files in `docs/agents/` hold for it now, and ask which ones to change; the default is to keep each one. Run steps 2 to 4 for the picked sections only: leave the files and lines of every other section byte for byte, including the `## Agent skills` block's other sub-blocks. Show the diff, then commit the change on its own as "Override software context: <sections>". Without the argument, the skill keeps what it finds, as below.
+With `override` as the argument, change chosen parts of a project already set up instead of setting it up again. Explore as step 1 says, then list each section (A to E, and the merge policy when the `factory` skill is installed) with what the files in `docs/agents/` hold for it now, and ask which ones to change; the default is to keep each one. Run steps 2 to 4 for the picked sections only: leave the files and lines of every other section byte for byte, including the `## Agent skills` block's other sub-blocks. Show the diff, then commit the change on its own as "Override software context: <sections>". Without the argument, the skill keeps what it finds, as below.
 
 ## Process
 
@@ -135,7 +135,7 @@ Start every software request (a question about the code, a bug, a feature, a ref
 Before writing prose for a person (chat, issue, spec, ticket, brief, PR body), read `docs/agents/response-language.md`. **Reply language:** [copy the `Reply language:` value from that file verbatim, e.g. `match-user`].
 ```
 
-Always include the `### Entry point` sub-block, worded as above: it makes `smode` the default for every session, since a skill's description alone does not make an agent start it (ADR-0005). Include the `### Triage labels` sub-block, and write `docs/agents/triage-labels.md`, only when `triage` is installed and Section B ran. When it isn't, both are omitted.
+Always include the `### Entry point` sub-block, worded as above: it makes `smode` the default for every session, since a skill's description alone does not make an agent start it. Include the `### Triage labels` sub-block, and write `docs/agents/triage-labels.md`, only when `triage` is installed and Section B ran. When it isn't, both are omitted.
 
 When Section B ran on GitHub or GitLab, create each configured label the tracker lacks (`gh label create` / `glab label create`).
 

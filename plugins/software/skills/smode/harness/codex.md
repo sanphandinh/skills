@@ -33,4 +33,4 @@ Read this once per session when the agent is Codex (the CLI, the app, or the Cod
 
 ## Migration
 
-Before ADR-0004, the agents were `~/.codex/agents/<role>.toml` in the user's Codex home. Each becomes `openai/<model> effort=<model_reasoning_effort>`. After the project's file and its generated agents are committed, offer to delete the old ones.
+Before `docs/agents/roles.md`, the agents were `~/.codex/agents/<role>.toml` in the user's Codex home. Each becomes `openai/<model> effort=<model_reasoning_effort>`. After the project's file and its generated agents are committed, offer to delete the old ones.

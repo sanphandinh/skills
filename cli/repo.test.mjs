@@ -314,6 +314,19 @@ test("skills assume no install layout: plugin folders, a marketplace name, a che
   assert.equal(messages(repo({ "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Read `alpha/SKILL.md` next to this skill's folder.\n") })), "");
 });
 
+test("a skill does not cite this repository's ADRs; an example ADR of the project is fine", () => {
+  const msgs = messages(
+    repo({
+      "docs/adr/0004-roles.md": "# Roles\n",
+      "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Read the roles file (ADR-0004).\n\n> _Contradicts ADR-0007, but worth reopening_\n"),
+      "plugins/core/skills/beta/harness/omp.md": "Before ADR-0004, roles were keys.\n",
+    }),
+  );
+  assert.match(msgs, /beta\/SKILL\.md:\d+: cites this repository's ADR-0004/);
+  assert.match(msgs, /beta\/harness\/omp\.md:1: cites this repository's ADR-0004/);
+  assert.doesNotMatch(msgs, /ADR-0007/);
+});
+
 test("harness and T3 tool names stay in harness/ and references/", () => {
   const msgs = messages(
     modeRepo({

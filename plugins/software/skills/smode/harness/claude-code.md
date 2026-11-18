@@ -40,4 +40,4 @@ Claude Code runs the candidates whose channel is `anthropic` (`via` absent, prov
 
 ## Migration
 
-Before ADR-0004 the roles lived in `~/.claude/rules/smode-roles.md`, which Claude Code loads into every new session of every project. Its plain lines `<role>: <alias> <effort>` become `anthropic/<model id the alias runs> effort=<effort>`; its `route <role>: …` lines are T3 candidates, converted as `harness/t3.md` says under **Migration**. After the project's file is committed, offer to delete the old one (smode's `setup` playbook, step 8); until then it keeps steering sessions everywhere.
+Before `docs/agents/roles.md`, the roles lived in `~/.claude/rules/smode-roles.md`, which Claude Code loads into every new session of every project. Its plain lines `<role>: <alias> <effort>` become `anthropic/<model id the alias runs> effort=<effort>`; its `route <role>: …` lines are T3 candidates, converted as `harness/t3.md` says under **Migration**. After the project's file is committed, offer to delete the old one (smode's `setup` playbook, step 8); until then it keeps steering sessions everywhere.

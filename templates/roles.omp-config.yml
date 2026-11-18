@@ -1,8 +1,8 @@
 # Oh My Pi model grants, in the USER config (~/.omp/agent/config.yml): OMP grants
 # per-call models only from user-level settings. Pick ids from `omp models`.
 #
-# The project's docs/agents/roles.md is the source of the models per role
-# (ADR-0004). This file only shows what OMP itself needs: one grant key per
+# The project's docs/agents/roles.md is the source of the models per role.
+# This file only shows what OMP itself needs: one grant key per
 # candidate of the project's roles.md, named for the repository so projects
 # never overwrite each other, and task.perCallModel on. smode's setup playbook
 # writes them; do not edit them by hand, and rerun setup after roles.md changes.

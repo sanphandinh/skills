@@ -1,6 +1,6 @@
 # Setup
 
-Prepare this project for smode: its agent docs, and `docs/agents/roles.md`, the model each role runs on in this project (ADR-0004). The file is committed with the project, so it holds every candidate the team may use; a harness skips the candidates it cannot run. Running it again is safe: every step looks before it writes. With `override` in the task (`setup override`), it changes only the roles the user picks.
+Prepare this project for smode: its agent docs, and `docs/agents/roles.md`, the model each role runs on in this project. The file is committed with the project, so it holds every candidate the team may use; a harness skips the candidates it cannot run. Running it again is safe: every step looks before it writes. With `override` in the task (`setup override`), it changes only the roles the user picks.
 
 1. When `docs/agents/issue-tracker.md` is missing, run the `setup-software-context` skill. When `docs/agents/verify.md` is missing, run the `setup-verification` skill.
 2. Read what is there. When `docs/agents/roles.md` exists, check it with `node <this skill's folder>/scripts/roles.mjs check` and show the user `show`'s table. Without `override`, keep it as it is: report it, go to step 7 for any harness sync it still needs, and stop. When it is missing, look in the old places each harness doc lists under **Migration** and convert what you find to candidates, as that section says.
