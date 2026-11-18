@@ -80,6 +80,21 @@ test("Codex metadata is not kept: Codex is not a supported harness (ADR-0006)", 
   assert.match(msgs, /alpha\/agents\/openai\.yaml: Codex metadata; Codex is not a supported harness/);
 });
 
+test("a shared plugin ships Claude Code, Cursor and Antigravity manifests at one version, listed by both marketplaces", () => {
+  const manifests = (v, dirs = [".claude-plugin", ".cursor-plugin", ".antigravity-plugin"]) => ({
+    ...Object.fromEntries(dirs.map((d) => [`plugins/core/${d}/plugin.json`, JSON.stringify({ name: "core", version: v[d] ?? v.all })])),
+    ".claude-plugin/marketplace.json": JSON.stringify({ name: "x", plugins: [{ name: "core", source: "./plugins/core" }] }),
+    ".cursor-plugin/marketplace.json": JSON.stringify({ name: "x", plugins: [{ name: "core", source: "./plugins/core" }] }),
+  });
+  assert.equal(messages(repo(manifests({ all: "0.4.0" }))), "");
+  const lagging = messages(repo(manifests({ all: "0.4.0", ".antigravity-plugin": "0.3.0" })));
+  assert.match(lagging, /plugins\/core\/\.antigravity-plugin\/plugin\.json: version 0\.3\.0 differs from 0\.4\.0/);
+  const missing = messages(repo(manifests({ all: "0.4.0" }, [".claude-plugin", ".cursor-plugin"])));
+  assert.match(missing, /plugins\/core\/\.antigravity-plugin\/plugin\.json: missing: a shared plugin ships a manifest for Claude Code, Cursor and Antigravity/);
+  const unlisted = messages(repo({ ...manifests({ all: "0.4.0" }), ".cursor-plugin/marketplace.json": JSON.stringify({ name: "x", plugins: [] }) }));
+  assert.match(unlisted, /\.cursor-plugin\/marketplace\.json: lists nothing; the shared plugins are core/);
+});
+
 test("platform skills may use their platform's frontmatter", () => {
   assert.equal(messages(repo({ "plugins/core-claude/skills/deep/SKILL.md": skill("deep", "context: fork\nagent: Explore\nmodel: opus\n") })), "");
 });

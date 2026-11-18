@@ -292,19 +292,34 @@ export function validate(root) {
     }
   }
 
-  // One version per plugin: every manifest agrees.
-  const MANIFESTS = [".claude-plugin"].map((d) => path.join(d, "plugin.json"));
+  // One manifest per harness that installs plugins (ADR-0006), all at one version.
+  const MANIFEST_DIRS = [".claude-plugin", ".cursor-plugin", ".antigravity-plugin"];
+  const MANIFESTS = MANIFEST_DIRS.map((d) => path.join(d, "plugin.json"));
   const versionOf = new Map();
   for (const plugin of fs.existsSync(path.join(root, "plugins")) ? fs.readdirSync(path.join(root, "plugins")) : []) {
-    for (const rel of MANIFESTS) {
+    const present = MANIFESTS.filter((rel) => fs.existsSync(path.join(root, "plugins", plugin, rel)));
+    if (catalog.plugins[plugin]?.platform === "shared" && present.length) {
+      for (const rel of MANIFESTS.filter((r) => !present.includes(r))) add(path.join(root, "plugins", plugin, rel), `missing: a shared plugin ships a manifest for Claude Code, Cursor and Antigravity (ADR-0006)`);
+    }
+    for (const rel of present) {
       const file = path.join(root, "plugins", plugin, rel);
-      if (!fs.existsSync(file)) continue;
       const version = JSON.parse(fs.readFileSync(file, "utf8")).version;
       if (!version) continue;
       const first = versionOf.get(plugin);
       if (!first) versionOf.set(plugin, { version, file });
       else if (first.version !== version) add(file, `version ${version} differs from ${first.version} in ${path.relative(root, first.file)}`);
     }
+  }
+  // Each marketplace lists exactly the shared plugins that ship a manifest.
+  const listed = [...versionOf.keys()].filter((p) => catalog.plugins[p]?.platform === "shared").sort();
+  for (const dir of [".claude-plugin", ".cursor-plugin"]) {
+    const file = path.join(root, dir, "marketplace.json");
+    if (!fs.existsSync(file)) {
+      if (listed.length) add(file, "missing: the marketplace lists the shared plugins");
+      continue;
+    }
+    const names = (JSON.parse(fs.readFileSync(file, "utf8")).plugins ?? []).map((e) => e.name).sort();
+    if (names.join(",") !== listed.join(",")) add(file, `lists ${names.join(", ") || "nothing"}; the shared plugins are ${listed.join(", ")}`);
   }
   // A mode skill is the entry point of its plugin (ADR-0005): it starts on its
   // own, and every other skill of the plugin starts only when named.

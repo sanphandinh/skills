@@ -1,0 +1,13 @@
+{
+  "name": "core",
+  "description": "Cross-domain process skills: grilling, research, handoff, writing for agents, and product opportunity audits.",
+  "version": "0.5.1",
+  "author": {
+    "name": "San Phan"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/sanphandinh/skills",
+  "keywords": [
+    "skills"
+  ]
+}
