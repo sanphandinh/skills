@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: closed
 
 # Bốn harness native, smode không delegate, delegation chỉ ở factory
 
