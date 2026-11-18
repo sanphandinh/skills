@@ -8,7 +8,7 @@ We keep **one factory**, named `factory`, inside the `software` plugin next to `
 
 - **Keep factory v1 frozen.** Rejected: nothing uses Orca any more, and a frozen copy still costs a second place to fix.
 - **Keep the agents as a fallback for harnesses without model choice at delegation.** Rejected: every supported harness either takes a model per call (Claude Code, T3, OMP with grants) or reads generated agents from the project (Codex, ADR-0004), and the copies had drifted.
-- **Leave triggers as they are and add "start in smode" to each project's `AGENTS.md`.** Rejected as the main mechanism: the other skills' descriptions would still compete with smode, and the directive depends on each project remembering it.
+- **Leave triggers as they are and add "start in smode" to each project's `AGENTS.md`.** Rejected as the only mechanism: the other skills' descriptions would still compete with smode. Kept alongside model invocation, written by `setup-software-context` so no project has to remember it (see Consequences).
 - **Keep the factory in its own plugin.** Rejected: smode and the factory call each other, and two plugins at different versions made the installed path of one impossible to derive from the other (#16).
 
 ## Consequences
@@ -17,6 +17,7 @@ We keep **one factory**, named `factory`, inside the `software` plugin next to `
 - Factory setup converts a project's `docs/agents/factory-v2.md`, or a version 1 `docs/agents/factory.md`, and upgrades a version 1 memory folder in place (its layout is a subset of the current one).
 - Workers are named by step (`plan`, `build`, `verify`, `review`), so the worker `review` is no longer confused with the role `reviewer`.
 - Result objects are defined once, in smode's `RESULTS.md`; the validator checks that the factory reads only keys defined there.
-- The validator holds smode as the only model-invoked skill of `software`, and every playbook to exactly one of smode's two playbook tables.
+- The validator holds smode as the only model-invoked skill of `software`, and every playbook to a row of smode's Playbooks section.
+- A skill's description alone did not make Claude Code start smode (three fresh sessions answered or reviewed directly), so each project's `AGENTS.md` also carries an `### Entry point` rule, written by `setup-software-context`, that starts every software request in smode. The directive is the default; model invocation keeps smode reachable where the rule is missing.
 - TDD enforcement through harness rules or hooks is gone with `software-omp`; how to bring it back is an open decision.
 - Projects that installed `factory`, `software-claude` or `software-omp` uninstall them (README release notes).

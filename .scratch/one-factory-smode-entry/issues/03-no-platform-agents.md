@@ -9,17 +9,26 @@
 
 **Blocked by:** 02 (cùng sửa `catalog.yaml` và các marketplace)
 
-**Status:** needs-triage
+**Status:** closed
 
 **Door:** two-way
 
-- [ ] `plugins/software-claude`, `plugins/software-omp`, `ROLES.md` và `templates/roles.claude-settings.json` không còn
+- [x] `plugins/software-claude`, `plugins/software-omp`, `ROLES.md` và `templates/roles.claude-settings.json` không còn
   Verify: `ls plugins`; `test ! -e ROLES.md && echo gone`
-- [ ] Không còn chữ `software-claude`, `software-omp`, `review-standards`, `review-spec` hay `ROLES.md` ngoài `docs/adr/`, `.scratch/` và release notes
+- [x] Không còn chữ `software-claude`, `software-omp`, `review-standards`, `review-spec` hay `ROLES.md` ngoài `docs/adr/`, `.scratch/` và release notes
   Verify: `git grep -n "software-claude\|software-omp\|review-standards\|review-spec\|ROLES\.md" -- ':!docs/adr' ':!.scratch'`
-- [ ] `code-review` giao mỗi trục cho một worker role `reviewer`, có hai fallback, và `UPSTREAM.md` có rewrite tương ứng
+- [x] `code-review` giao mỗi trục cho một worker role `reviewer`, có hai fallback, và `UPSTREAM.md` có rewrite tương ứng
   Verify: đọc mục chọn sub-agent của `code-review/SKILL.md`; `grep -n -A4 "code-review" UPSTREAM.md`
-- [ ] Validator báo lỗi khi một plugin shared có `agents/`, và không còn đọc `ROLES.md`
+- [x] Validator báo lỗi khi một plugin shared có `agents/`, và không còn đọc `ROLES.md`
   Verify: test mới trong `cli/repo.test.mjs` (xanh và đỏ); `grep -n "ROLES.md\|OMP_BUILTIN_ROLES" cli/lib.mjs` trống
-- [ ] `npm run validate` và `npm test` pass
+- [x] `npm run validate` và `npm test` pass
   Verify: chạy hai lệnh từ thư mục gốc của repo
+
+## Handoff
+
+**Delivered:** `software-claude`, `software-omp` (cả hai rule TDD), `ROLES.md` và `templates/roles.claude-settings.json` đã xoá; `code-review` giao mỗi trục cho sub-agent role `reviewer`; validator bỏ phần kiểm agent và `ROLES.md`, thêm luật không plugin nào có `agents/`; template OMP chỉ còn grant; `harness/omp.md` bỏ phần platform agent.
+**Interfaces introduced:** luật validator "plugins carry no agents (ADR-0005)"; `repo list` chỉ in skill.
+**Deviations from spec:** luật áp cho mọi plugin chứ không chỉ plugin shared (khớp ADR-0005). Đoạn `code-review` là sửa tay thay vì rule trong `rewrites`: `UPSTREAM.md` nói sửa tay một lần được three-way merge giữ lại, và câu cũ vốn đã là sửa tay.
+**Decisions:** giữ khái niệm `platform` trong catalog cho plugin chỉ chứa hook hay rule sau này.
+**Gotchas:** không còn enforcement TDD bằng rule trên OMP.
+**For the next ticket:** 06: tài liệu còn nhắc các plugin đã xoá.

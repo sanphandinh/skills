@@ -11,19 +11,28 @@
 
 **Blocked by:** 02 (skill `factory` phải ở trong `software` trước)
 
-**Status:** needs-triage
+**Status:** closed
 
 **Door:** two-way
 
-- [ ] `smode/SKILL.md` không có `disable-model-invocation`; `smode/agents/openai.yaml` cho phép gọi ngầm
+- [x] `smode/SKILL.md` không có `disable-model-invocation`; `smode/agents/openai.yaml` cho phép gọi ngầm
   Verify: `grep -n "disable-model-invocation" plugins/software/skills/smode/SKILL.md` trống; `cat plugins/software/skills/smode/agents/openai.yaml`
-- [ ] Mọi skill khác của `software` là user-invoked trên Claude Code và Codex
+- [x] Mọi skill khác của `software` là user-invoked trên Claude Code và Codex
   Verify: `for d in plugins/software/skills/*/; do n=$(basename $d); [ $n = smode ] || grep -L "disable-model-invocation: true" $d/SKILL.md; done` trống; tương tự với `allow_implicit_invocation: false` trong `agents/openai.yaml`
-- [ ] `SKILL.md` có bảng Entry playbooks với luật phân xử, bảng Step playbooks, dòng `Playbook: <name> (<tín hiệu>)`, và luật bỏ qua route khi work order nêu playbook
+- [x] `SKILL.md` có bảng Entry playbooks với luật phân xử, bảng Step playbooks, dòng `Playbook: <name> (<tín hiệu>)`, và luật bỏ qua route khi work order nêu playbook
   Verify: đọc `plugins/software/skills/smode/SKILL.md`
-- [ ] `playbooks/quick.md` có giới hạn, luật nâng cấp và phần Reply
+- [x] `playbooks/quick.md` có giới hạn, luật nâng cấp và phần Reply
   Verify: đọc file
-- [ ] Validator báo lỗi với một playbook mồ côi, một dòng bảng không có file, và một skill `software` khác `smode` cho model tự gọi
+- [x] Validator báo lỗi với một playbook mồ côi, một dòng bảng không có file, và một skill `software` khác `smode` cho model tự gọi
   Verify: ba cặp test mới (xanh và đỏ) trong `cli/repo.test.mjs`
-- [ ] `npm run index`, `npm run validate` và `npm test` pass
+- [x] `npm run index`, `npm run validate` và `npm test` pass
   Verify: chạy ba lệnh từ thư mục gốc của repo
+
+## Handoff
+
+**Delivered:** `smode` tự kích hoạt (frontmatter và Codex policy); mọi skill khác của `software` là user-invoked; `SKILL.md` có luật phân xử, bảng Entry playbooks (17 dòng), bảng Step playbooks, dòng `Playbook: <name> (<tín hiệu>)` và luật bỏ route khi work order nêu playbook; playbook `quick` mới; validator kiểm entry point của plugin và mọi playbook có dòng trong mục Playbooks.
+**Interfaces introduced:** `playbooks/quick.md`; hai luật validator.
+**Deviations from spec:** `plan-ticket` và `verify` cũng có dòng trong bảng entry (người dùng hỏi thẳng đúng bước đó), nên luật validator là "mọi playbook có ít nhất một dòng" thay vì "đúng một bảng".
+**Decisions:** các file playbook giữ nguyên chỗ để đường dẫn trong work order không đổi.
+**Gotchas:** chỉ đổi kích hoạt thì chưa đủ (ticket 07).
+**For the next ticket:** 06: mô tả smode trong tài liệu.

@@ -1,4 +1,4 @@
-Status: needs-triage
+Status: ready-for-agent
 
 # Một factory, smode là entry point, không còn platform agent
 

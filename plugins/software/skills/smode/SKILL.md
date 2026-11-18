@@ -1,6 +1,6 @@
 ---
 name: smode
-description: "The entry point for every software engineering request in this repository: questions about the code, bugs, features, refactors, reviews, tickets, specs, pull requests, handoffs, setup and the factory. Routes the request to a playbook and runs the other software skills at the steps that need them."
+description: "Use first, before reading code or answering, for every software engineering request: a question about the code, a bug, a feature, a refactor, a review, a ticket, a spec, a pull request, a handoff, setup or the factory. Routes the request to a playbook and runs the other software skills at the steps that need them."
 argument-hint: "<task>"
 ---
 

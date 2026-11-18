@@ -114,6 +114,10 @@ The block:
 ```markdown
 ## Agent skills
 
+### Entry point
+
+Start every software request (a question about the code, a bug, a feature, a refactor, a review, a ticket, a spec, a handoff, setup, the factory) by running the `smode` skill before anything else; it routes the request to a playbook and names it in its first line.
+
 ### Issue tracker
 
 [one-line summary of where issues are tracked]. See `docs/agents/issue-tracker.md`.
@@ -131,7 +135,7 @@ The block:
 Before writing prose for a person (chat, issue, spec, ticket, brief, PR body), read `docs/agents/response-language.md`. **Reply language:** [copy the `Reply language:` value from that file verbatim, e.g. `match-user`].
 ```
 
-Include the `### Triage labels` sub-block, and write `docs/agents/triage-labels.md`, only when `triage` is installed and Section B ran. When it isn't, both are omitted.
+Always include the `### Entry point` sub-block, worded as above: it makes `smode` the default for every session, since a skill's description alone does not make an agent start it (ADR-0005). Include the `### Triage labels` sub-block, and write `docs/agents/triage-labels.md`, only when `triage` is installed and Section B ran. When it isn't, both are omitted.
 
 When Section B ran on GitHub or GitLab, create each configured label the tracker lacks (`gh label create` / `glab label create`).
 

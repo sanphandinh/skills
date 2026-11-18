@@ -10,7 +10,7 @@
 
 **Blocked by:** 06
 
-**Status:** needs-triage
+**Status:** ready-for-human
 
 **Door:** two-way
 
@@ -24,3 +24,12 @@
   Verify: `claude plugin list`; `omp plugin list`
 - [ ] `~/.claude/rules/smode-roles.md` đã xoá, hoặc handoff ghi rằng người dùng chọn giữ
   Verify: `ls ~/.claude/rules/`
+
+## Comments
+
+### Tiến độ 2026-11-18
+
+- **Routing của smode (một phần pass).** Ba phiên `claude -p --model sonnet --plugin-dir <worktree>/plugins`, chỉ cho đọc. Lần đầu, chỉ với description tự kích hoạt: cả ba **không** vào smode (q1 trả lời thẳng, q2 tự đọc code, q3 gọi `code-review` có sẵn của Claude Code). Sau khi thêm luật `### Entry point` vào `AGENTS.md` (và `setup-software-context`) cùng description "Use first…": cả ba gọi `software:smode`. q1: `Playbook: quick (a question a few reads answer)`; q2: `Playbook: bug-fix (a reported symptom in npm run list)`; q3 mở `playbooks/review.md` nhưng câu đầu không có dòng `Playbook:`. Không tách được thay đổi nào trong hai thay đổi là nguyên nhân.
+- **`factory once` trên T3:** chưa chạy được: worker bắt đầu từ checkout của coordinator ở gốc project, nên cần branch này merge vào `main` trước.
+- **Gỡ plugin cũ:** Claude Code không cài plugin `sanphan-skills` nào. OMP còn `software-omp` 0.5.0, `factory` 0.2.1, `software` 0.8.1, `core` 0.4.0 ở user scope: chờ người dùng đồng ý gỡ và nâng cấp sau khi release.
+- **`~/.claude/rules/smode-roles.md`:** còn (cùng hai bản `.bak`): chờ người dùng đồng ý xoá.

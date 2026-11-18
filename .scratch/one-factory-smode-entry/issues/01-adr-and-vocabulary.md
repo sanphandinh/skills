@@ -4,13 +4,22 @@
 
 **Blocked by:** None (can start immediately). Cần branch `feat/project-config-roles` (ADR-0004) đã merge vào `main`.
 
-**Status:** needs-triage
+**Status:** closed
 
 **Door:** two-way
 
-- [ ] `docs/adr/0005-*.md` có đủ ba quyết định, mục Considered options và mục Consequences, và nêu rõ các phần bị thay thế của ADR-0002, ADR-0003, ADR-0004
+- [x] `docs/adr/0005-*.md` có đủ ba quyết định, mục Considered options và mục Consequences, và nêu rõ các phần bị thay thế của ADR-0002, ADR-0003, ADR-0004
   Verify: đọc file; `grep -n "0002\|0003\|0004" docs/adr/0005-*.md`
-- [ ] `GLOSSARY.md` định nghĩa entry playbook và step playbook dưới **Playbook**, và **Mode skill** nói nó tự kích hoạt
+- [x] `GLOSSARY.md` định nghĩa entry playbook và step playbook dưới **Playbook**, và **Mode skill** nói nó tự kích hoạt
   Verify: `grep -n -A3 "^\*\*Playbook\*\*\|^\*\*Mode skill\*\*" GLOSSARY.md`
-- [ ] `npm run validate` và `npm test` pass
+- [x] `npm run validate` và `npm test` pass
   Verify: chạy hai lệnh từ thư mục gốc của repo
+
+## Handoff
+
+**Delivered:** ADR-0005 ghi ba quyết định (một factory, không platform agent, smode tự kích hoạt), các phương án đã cân nhắc và hệ quả; `GLOSSARY.md` định nghĩa entry playbook và step playbook, Mode skill là entry point, Agent manager là T3.
+**Interfaces introduced:** ADR-0005.
+**Deviations from spec:** ADR được bổ sung ở ticket 07: description một mình không đủ để Claude Code tự vào smode, nên có thêm luật `### Entry point` trong `AGENTS.md` của project.
+**Decisions:** ADR viết tiếng Anh như các ADR trước.
+**Gotchas:** branch `feat/project-config-roles` (ADR-0004) chưa merge vào `main`; branch này xây trên nó.
+**For the next ticket:** 02: ADR nêu đường chuyển đổi settings v2 và v1.

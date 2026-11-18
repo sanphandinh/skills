@@ -26,8 +26,10 @@ Change skills in the source repo, not in this project.
 - Codex: `core`, `software` (enabled in `.codex/config.toml`)
 - Oh My Pi: `core`, `software` (run `omp plugin install <name>@sanphan-skills --scope project`)
 
-Every software request starts in the `smode` skill, which routes it to a
-playbook; the other software skills run when smode or a person names them.
+Start every software request by running the `smode` skill before anything
+else; it routes the request to a playbook. The other software skills run when
+smode or a person names them. (The setup-software-context skill writes the same
+rule as `### Entry point` below.)
 
 Every setting the skills read lives in `docs/agents/`, committed with this
 project. The model each role (`scout`, `worker`, `thinker`, `reviewer`,

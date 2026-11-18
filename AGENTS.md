@@ -64,6 +64,10 @@ Skills listed in `UPSTREAM.md` came from mattpocock/skills. Edit them freely; `n
 
 ## Agent skills
 
+### Entry point
+
+Start every software request (a question about the code, a bug, a feature, a refactor, a review, a ticket, a spec, a handoff, setup, the factory) by running the `smode` skill before anything else; it routes the request to a playbook and names it in its first line.
+
 ### Issue tracker
 
 Issues and specs live as local markdown files under `.scratch/<feature-slug>/`, committed with the repo. See `docs/agents/issue-tracker.md`.
