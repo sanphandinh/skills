@@ -12,7 +12,16 @@ Files next to this one: `playbooks/<name>.md` (one per kind of task), `RESULTS.m
 
 ## First, the harness
 
-Read the harness doc for the agent running this session: `harness/claude-code.md`, `harness/opencode.md`, `harness/antigravity.md` or `harness/cursor.md`. Inside T3 Code, read the doc of the provider the session runs on. Where this file says "ask the user", "open a todo list", "start a sub-agent" or "schedule", the harness doc says how. A feature your harness lacks is skipped with one line in the reply, `Skipped in <harness>: <step>. <reason>.`, and the work goes on.
+Detect the current harness, the harness supported: claude-code, opencode, antigravity and cursor.
+
+Read the harness doc for the agent running this session: 
+
+- `harness/claude-code.md`, 
+- `harness/opencode.md`, 
+- `harness/antigravity.md` 
+- `harness/cursor.md`
+
+Inside T3 Code, read the doc of the provider the session runs on. Where this file says "ask the user", "open a todo list", "start a sub-agent" or "schedule", the harness doc says how. A feature your harness lacks is skipped with one line in the reply, `Skipped in <harness>: <step>. <reason>.`, and the work goes on.
 
 ## Opening the task
 
