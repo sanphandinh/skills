@@ -1,5 +1,0 @@
-interface:
-  display_name: "Factory v2"
-  short_description: "Run the agent-driven software factory on smode playbooks, routed by role and quota"
-policy:
-  allow_implicit_invocation: false

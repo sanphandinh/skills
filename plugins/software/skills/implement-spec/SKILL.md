@@ -1,6 +1,7 @@
 ---
 name: implement-spec
 description: "Implement the result of the `to-spec` and `to-tickets` skills in code."
+argument-hint: "<spec>"
 disable-model-invocation: true
 ---
 

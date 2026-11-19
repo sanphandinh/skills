@@ -1,0 +1,18 @@
+# Skill configuration lives in the project, with one role system and an override mode
+
+ADR-0003 chose models at delegation from a per-machine role configuration, and each harness kept it in its own place and format: Claude Code in `~/.claude/rules/smode-roles.md`, Oh My Pi in `modelRoles` of its user config, Codex in `~/.codex/agents/`. That made `smode`, a mode skill meant to be harness-neutral, depend on the harness for where its roles live and how they are spelled. The Claude Code file was a workaround: Claude Code loads `~/.claude/rules/` into every session of every project, smode or not. Roles could not differ per project, did not travel with a clone, and there were two role systems: `ROLES.md` (eleven roles for platform agents) and smode's five. Setup skills, run again, kept what they found, so changing one setting meant editing files by hand.
+
+We move every configuration a skill reads into the project's **`docs/agents/`**, committed with the code, where the tracker, triage, domain, language, merge, verification and factory settings already were. The models per role are **`docs/agents/roles.md`**: one line per role, its route, candidates in order, each `<provider>/<model>` with neutral options (`effort`, and `via` for a channel that runs another maker's model). No harness's ids appear in it; each harness doc of `smode` says which candidates it runs and how they map to its tools, and skips the rest. A role without a line, or a project without the file, runs on the session's model. There is **one role system**: smode's five roles (`scout`, `worker`, `thinker`, `reviewer`, `coordinator`); `architect` folded into `thinker`, `judge` into `scout`, and the platform agents name the role of their step. Every setup skill that writes skill configuration gains **`override`**: it lists the current settings, asks which to change (keep by default), rewrites only those, shows the diff and commits. State that is not configuration (the factory's journal, quota, results, wiki) stays outside the repository.
+
+## Considered options
+
+- **A machine-level fallback or a gitignored `*.local` override layer.** Rejected: two sources again, and a configuration that does not travel with the project. A teammate without a provider is served by the harness skipping that candidate.
+- **Keep per-harness files and generate them from one source.** Kept only where a harness cannot read the project: Oh My Pi grants per-call models only from user config (spike S1 of `project-config-roles`), so setup adds one key per candidate, namespaced by repository (`smode-<repo>-<role>-<n>`), never overwriting another project's; Codex reads generated `.codex/agents/<role>.toml` in the project.
+
+## Consequences
+
+- Supersedes ADR-0003's per-machine role configuration and its `Routes:` setting in `docs/agents/factory-v2.md`; factory-v2 reads `docs/agents/roles.md` on every wake, and its memory names candidates the way that file does.
+- Factory v1 stays frozen except for `setup override` in its `SETUP.md`, and its OMP agents now name `@thinker`, `@worker` and `@reviewer` with the same built-in fallbacks.
+- smode's `setup` playbook migrates the old per-harness files into `docs/agents/roles.md` and deletes an old file only on the user's yes.
+- `smode/scripts/roles.mjs` checks the file and shows each candidate with its provider check, quota block and last use from the factory's memory.
+- The validator holds `ROLES.md` to the five roles, requires every OMP agent to name one, checks the roles template, and keeps harness configuration paths (`~/.claude`, `~/.omp`, `~/.codex`, `.claude/rules`) in `harness/` and `references/` only.

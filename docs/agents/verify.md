@@ -74,7 +74,6 @@ A passing proof shows **exit code 0** and the observable results listed in the f
 | ---- | ------------ | ---------- |
 | `node_modules/` (`npm install`) | Every journey | Run Launch; do not skip checks. |
 | Network + `upstream` git remote | `upstream status` **without** `--no-fetch` | Use `--no-fetch` (documented below) or report that the network journey could not run. |
-| Oh My Pi (`omp`) on PATH | Optional consumer smoke (not part of default proof) | Report "OMP not installed"; default factory proof does not require it. |
 
 ## Feature map
 

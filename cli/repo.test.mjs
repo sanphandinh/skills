@@ -16,20 +16,8 @@ const CATALOG = `plugins:
   mkt:
     platform: shared
     prefix: "mkt-"
-  core-omp:
-    platform: omp
   core-claude:
     platform: claude
-`;
-
-const ROLES = `---
-roles:
-  reviewer:
-    purpose: code review
-    omp: ["@reviewer", "@slow"]
-    claude: opus
-    codex: high
----
 `;
 
 function tmp() {
@@ -54,13 +42,9 @@ function repo(files = {}) {
   const root = tmp();
   put(root, {
     "catalog.yaml": CATALOG,
-    "ROLES.md": ROLES,
     "plugins/core/skills/alpha/SKILL.md": skill("alpha", "disable-model-invocation: true\n"),
-    "plugins/core/skills/alpha/agents/openai.yaml": "policy:\n  allow_implicit_invocation: false\n",
     "plugins/mkt/skills/mkt-launch/SKILL.md": skill("mkt-launch"),
-    "plugins/core-omp/.omp-plugin/plugin.json": "{}",
-    "plugins/core-omp/agents/reviewer.md": agent("reviewer", 'model: ["@reviewer", "@slow"]\n'),
-    "plugins/core-claude/agents/reviewer.md": agent("reviewer", "model: opus\n"),
+    "plugins/core-claude/.claude-plugin/plugin.json": "{}",
     ...files,
   });
   return root;
@@ -68,7 +52,7 @@ function repo(files = {}) {
 
 const messages = (root) => validate(root).issues.map((i) => `${i.file}: ${i.msg}`).join("\n");
 
-test("a clean repo validates, including portable invocation keys and per-platform agents", () => {
+test("a clean repo validates, including portable invocation keys", () => {
   assert.equal(messages(repo()), "");
 });
 
@@ -91,56 +75,48 @@ test("a URL path that starts with a skill name is not a skill invocation", () =>
   assert.equal(messages(repo({ "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Mount it under `/alpha/<name>`.\n") })), "");
 });
 
-test("every manifest of a plugin, and the OMP catalog entry for it, carry the same version", () => {
-  const manifests = (v) => ({
-    "plugins/core/.claude-plugin/plugin.json": JSON.stringify({ name: "core", version: v.claude }),
-    "plugins/core/.codex-plugin/plugin.json": JSON.stringify({ name: "core", version: v.codex }),
-    ".omp-plugin/marketplace.json": JSON.stringify({ name: "x", plugins: [{ name: "core", source: "./plugins/core", version: v.catalog }] }),
+test("Codex metadata is not kept: Codex is not a supported harness (ADR-0006)", () => {
+  const msgs = messages(repo({ "plugins/core/skills/alpha/agents/openai.yaml": "policy:\n  allow_implicit_invocation: false\n" }));
+  assert.match(msgs, /alpha\/agents\/openai\.yaml: Codex metadata; Codex is not a supported harness/);
+});
+
+test("a shared plugin ships Claude Code, Cursor and Antigravity manifests at one version, listed by both marketplaces", () => {
+  const manifests = (v, dirs = [".claude-plugin", ".cursor-plugin", ".antigravity-plugin"]) => ({
+    ...Object.fromEntries(dirs.map((d) => [`plugins/core/${d}/plugin.json`, JSON.stringify({ name: "core", version: v[d] ?? v.all })])),
+    ".claude-plugin/marketplace.json": JSON.stringify({ name: "x", plugins: [{ name: "core", source: "./plugins/core" }] }),
+    ".cursor-plugin/marketplace.json": JSON.stringify({ name: "x", plugins: [{ name: "core", source: "./plugins/core" }] }),
   });
-  assert.equal(messages(repo(manifests({ claude: "0.4.0", codex: "0.4.0", catalog: "0.4.0" }))), "");
-  const msgs = messages(repo(manifests({ claude: "0.4.0", codex: "0.3.0", catalog: "0.3.0" })));
-  assert.match(msgs, /plugins\/core\/\.codex-plugin\/plugin\.json: version 0\.3\.0 differs from 0\.4\.0 in plugins\/core\/\.claude-plugin\/plugin\.json/);
-  assert.match(msgs, /\.omp-plugin\/marketplace\.json: core is listed at 0\.3\.0 but its manifest says 0\.4\.0; OMP compares this version to decide upgrades/);
+  assert.equal(messages(repo(manifests({ all: "0.4.0" }))), "");
+  const lagging = messages(repo(manifests({ all: "0.4.0", ".antigravity-plugin": "0.3.0" })));
+  assert.match(lagging, /plugins\/core\/\.antigravity-plugin\/plugin\.json: version 0\.3\.0 differs from 0\.4\.0/);
+  const missing = messages(repo(manifests({ all: "0.4.0" }, [".claude-plugin", ".cursor-plugin"])));
+  assert.match(missing, /plugins\/core\/\.antigravity-plugin\/plugin\.json: missing: a shared plugin ships a manifest for Claude Code, Cursor and Antigravity/);
+  const unlisted = messages(repo({ ...manifests({ all: "0.4.0" }), ".cursor-plugin/marketplace.json": JSON.stringify({ name: "x", plugins: [] }) }));
+  assert.match(unlisted, /\.cursor-plugin\/marketplace\.json: lists nothing; the shared plugins are core/);
 });
 
 test("platform skills may use their platform's frontmatter", () => {
   assert.equal(messages(repo({ "plugins/core-claude/skills/deep/SKILL.md": skill("deep", "context: fork\nagent: Explore\nmodel: opus\n") })), "");
 });
 
-test("validate checks OMP agents use roles and carry an OMP manifest", () => {
+test("no plugin carries agents: delegation picks the model from the project's roles (ADR-0005)", () => {
   const msgs = messages(
     repo({
-      "plugins/core-omp/agents/concrete.md": agent("concrete", "model: anthropic/claude-opus-5-5\n"),
-      "plugins/core-omp/agents/unknown-role.md": agent("unknown-role", 'model: "@ghost"\n'),
-      "plugins/core-omp/agents/builtin.md": agent("builtin", 'model: "@smol"\n'),
-    }),
-  );
-  assert.match(msgs, /concrete\.md: model "anthropic\/claude-opus-5-5" is a concrete model/);
-  assert.match(msgs, /unknown-role\.md: role "@ghost" is not a built-in OMP role/);
-  assert.doesNotMatch(msgs, /builtin\.md/);
-
-  const root = repo();
-  fs.rmSync(path.join(root, "plugins/core-omp/.omp-plugin"), { recursive: true });
-  assert.match(messages(root), /OMP agents need \.omp-plugin\/plugin\.json/);
-});
-
-test("validate checks Claude agents use model aliases and agents stay out of shared plugins", () => {
-  const msgs = messages(
-    repo({
-      "plugins/core-claude/agents/pinned.md": agent("pinned", "model: claude-opus-5-5\n"),
+      "plugins/core-claude/agents/reviewer.md": agent("reviewer", "model: opus\n"),
+      "plugins/core-claude/agents/nested/planner.toml": "",
       "plugins/core/agents/stray.md": agent("stray"),
     }),
   );
-  assert.match(msgs, /pinned\.md: model "claude-opus-5-5" should be one of opus, sonnet, haiku, inherit/);
-  assert.match(msgs, /stray\.md: agents belong in a platform plugin/);
+  assert.match(msgs, /core-claude\/agents\/reviewer\.md: plugins carry no agents \(ADR-0005\)/);
+  assert.match(msgs, /core-claude\/agents\/nested\/planner\.toml: plugins carry no agents/);
+  assert.match(msgs, /core\/agents\/stray\.md: plugins carry no agents/);
+  assert.doesNotMatch(messages(repo()), /agents/);
 });
 
-test("list prints one header per plugin, with its skills and then its agents below it", () => {
+test("list prints one header per plugin, with its skills below it", () => {
   const root = repo({
     "catalog.yaml": `${CATALOG}  empty:\n    platform: shared\n`,
     "plugins/core-claude/skills/deep/SKILL.md": skill("deep"),
-    "plugins/core-claude/agents/planner.md": agent("planner", "model: opus\n"),
-    "plugins/core-omp/agents/nested/helper.toml": "",
   });
   assert.equal(
     renderList(root),
@@ -151,17 +127,12 @@ test("list prints one header per plugin, with its skills and then its agents bel
       "  skill  mkt-launch",
       "core-claude (claude):",
       "  skill  deep",
-      "  agent  planner",
-      "  agent  reviewer",
-      "core-omp (omp):",
-      "  agent  helper",
-      "  agent  reviewer",
       "",
     ].join("\n"),
   );
 });
 
-test("list prints nothing for a catalog with no skills and no agents", () => {
+test("list prints nothing for a catalog with no skills", () => {
   const root = tmp();
   put(root, { "catalog.yaml": "plugins:\n  empty:\n    platform: shared\n" });
   assert.equal(renderList(root), "");
@@ -214,7 +185,7 @@ test("upstream add keeps the native layout and only renames and rewrites", () =>
   const { dir } = upstreamPair();
   const expected = UPSTREAM_SKILL.replace("name: foo", "name: foo-local").replace("run `/bar`", "run the `bar` skill");
   assert.equal(fs.readFileSync(path.join(dir, "SKILL.md"), "utf8"), expected, "frontmatter stays byte-identical apart from the name");
-  assert.ok(fs.existsSync(path.join(dir, "agents/openai.yaml")));
+  assert.ok(!fs.existsSync(path.join(dir, "agents/openai.yaml")), "Codex metadata is dropped (ADR-0006)");
 });
 
 test("upstream add rewrites only slash names of real skills", () => {
@@ -284,9 +255,14 @@ test("upstream copies with loose YAML frontmatter still import", () => {
 });
 
 // A mode skill: a shared skill that carries a skills index and playbooks.
+// A skill that starts only when named: the frontmatter key and the Codex policy.
+const userSkill = (name, body = "Body.\n") => ({
+  [`plugins/core/skills/${name}/SKILL.md`]: skill(name, "disable-model-invocation: true\n", body),
+});
+
 function modeRepo(files = {}) {
   const root = repo({
-    "plugins/core/skills/mode/SKILL.md": skill("mode", "disable-model-invocation: true\n", "Run the `investigation` playbook (playbooks/investigation.md); it calls the `alpha` skill.\n"),
+    "plugins/core/skills/mode/SKILL.md": skill("mode", 'argument-hint: "[<playbook>] <task>"\n', "It calls the `alpha` skill.\n\n## Playbooks\n\n| Signal | Playbook |\n|---|---|\n| a question | Investigation (`playbooks/investigation.md`) |\n"),
     "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n",
     "plugins/core/skills/mode/skills-index.md": "",
     ...files,
@@ -328,21 +304,129 @@ test("a mode skill may name only skills and playbooks that exist", () => {
   assert.match(msgs, /bug-fix\.md:2: links playbooks\/missing\.md, which does not exist/);
 });
 
+test("skills assume no install layout: plugin folders, a marketplace name, a checkout's depth", () => {
+  const msgs = messages(
+    repo({
+      "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Read plugins/core/skills/alpha/SKILL.md, three folders up.\n"),
+      "plugins/core/skills/beta/harness/claude-code.md": "Read `core@sanphan-skills` from the install record.\n",
+    }),
+  );
+  assert.match(msgs, /beta\/SKILL\.md:\d+: assumes one install layout: plugins\/core\/skills\//);
+  assert.match(msgs, /beta\/harness\/claude-code\.md:1: assumes one install layout: @sanphan-skills/);
+  assert.equal(messages(repo({ "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Read `alpha/SKILL.md` next to this skill's folder.\n") })), "");
+});
+
+test("a skill does not cite this repository's ADRs; an example ADR of the project is fine", () => {
+  const msgs = messages(
+    repo({
+      "docs/adr/0004-roles.md": "# Roles\n",
+      "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Read the roles file (ADR-0004).\n\n> _Contradicts ADR-0007, but worth reopening_\n"),
+      "plugins/core/skills/beta/harness/opencode.md": "Before ADR-0004, roles were keys.\n",
+    }),
+  );
+  assert.match(msgs, /beta\/SKILL\.md:\d+: cites this repository's ADR-0004/);
+  assert.match(msgs, /beta\/harness\/opencode\.md:1: cites this repository's ADR-0004/);
+  assert.doesNotMatch(msgs, /ADR-0007/);
+});
+
 test("harness and T3 tool names stay in harness/ and references/", () => {
   const msgs = messages(
     modeRepo({
       "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n2. Spawn a worker with delegate_task.\n",
-      "plugins/core/skills/mode/harness/t3.md": "| spawn a worker | `delegate_task` with `isolation: \"worktree\"` |\n| ask a person | AskUserQuestion, or `$alpha` |\n",
-      "plugins/core/skills/beta/SKILL.md": skill("beta", "", "Read references/t3.md.\n"),
+      "plugins/core/skills/mode/harness/claude-code.md": "| start a sub-agent | `Agent` with `isolation: \"worktree\"` |\n| ask a person | AskUserQuestion, or `$alpha` |\n",
+      ...userSkill("beta", "Read references/t3.md.\n"),
       "plugins/core/skills/beta/references/t3.md": "Each step is a fresh `delegate_task`; wakes use `schedule_task`.\n",
     }),
   );
   assert.match(msgs, /investigation\.md:2: names a T3 tool: delegate_task; tool names belong in harness\/ or references\/ \(ADR-0003\)/);
-  assert.doesNotMatch(msgs, /harness\/t3\.md/);
+  assert.doesNotMatch(msgs, /harness\/claude-code\.md:\d+:/);
   assert.doesNotMatch(msgs, /references\/t3\.md/);
 });
 
-test("every role in ROLES.md maps on every platform", () => {
-  const roles = `---\nroles:\n  reviewer:\n    purpose: code review\n    omp: ["@reviewer", "@slow"]\n    claude: opus\n    codex: high\n  coordinator:\n    purpose: runs many workers\n    claude: sonnet\n---\n`;
-  assert.match(messages(repo({ "ROLES.md": roles })), /ROLES\.md: role "coordinator" has no omp, codex/);
+test("harness config paths stay in harness/ and references/; skills read docs/agents/", () => {
+  const msgs = messages(
+    modeRepo({
+      "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n2. Read the roles in ~/.claude/rules/smode-roles.md.\n",
+      "plugins/core/skills/mode/harness/cursor.md": "Agents live in `~/.cursor/agents/`.\n",
+      ...userSkill("beta", "Write `~/.config/opencode/agents/worker.md`.\n"),
+    }),
+  );
+  assert.match(msgs, /investigation\.md:2: names a harness's config path: ~\/\.claude; skills read docs\/agents\//);
+  assert.match(msgs, /beta\/SKILL\.md:\d+: names a harness's config path: ~\/\.config\/opencode/);
+  assert.doesNotMatch(msgs, /harness\/cursor\.md/);
+});
+
+test("the roles template the factory copies to a project must pass the roles check", () => {
+  const withTemplate = (text) => modeRepo({ ...userSkill("factory"), "plugins/core/skills/factory/roles-template.md": text });
+  assert.equal(messages(withTemplate("# Roles\n\nworker: anthropic/claude-sonnet-5-5 effort=medium\n")), "");
+  const msgs = messages(withTemplate("# Roles\n\narchitect: anthropic/claude-opus-5-5\nworker: sonnet\n"));
+  assert.match(msgs, /factory\/roles-template\.md:3: "architect" is not a role/);
+  assert.match(msgs, /factory\/roles-template\.md:4: worker: "sonnet" is not <provider>\/<model>/);
+});
+
+test("a skill reads only result keys that the mode skill's RESULTS.md defines", () => {
+  const results = "# Result objects\n\n## Common keys\n\n- `step`: the step.\n\n## build\n\n- `head_sha`: the commit.\n- `criteria`: per criterion:\n  - `status`: pass or fail.\n";
+  const ok = modeRepo({
+    "plugins/core/skills/mode/RESULTS.md": results,
+    ...userSkill("beta"),
+    "plugins/core/skills/beta/PLAYBOOK.md": "Check the result's `step`, then the build result's `head_sha` and each criterion's result's `status`.\n",
+  });
+  assert.equal(messages(ok), "");
+  const msgs = messages(
+    modeRepo({
+      "plugins/core/skills/mode/RESULTS.md": results,
+      ...userSkill("beta"),
+      "plugins/core/skills/beta/PLAYBOOK.md": "Merge at the result's `headSha`.\n",
+    }),
+  );
+  assert.match(msgs, /beta\/PLAYBOOK\.md:1: reads the result key "headSha", which RESULTS\.md does not define/);
+});
+
+test("in a plugin with a mode skill, only the mode skill starts on its own (ADR-0005)", () => {
+  assert.equal(messages(modeRepo(userSkill("beta"))), "");
+  const msgs = messages(
+    modeRepo({
+      "plugins/core/skills/beta/SKILL.md": skill("beta"),
+      "plugins/core/skills/gamma/SKILL.md": skill("gamma", "disable-model-invocation: true\n"),
+    }),
+  );
+  assert.match(msgs, /beta\/SKILL\.md: starts on its own beside the mode skill "mode"; set disable-model-invocation: true/);
+  assert.doesNotMatch(msgs, /gamma/);
+  assert.match(messages(modeRepo({ "plugins/core/skills/mode/SKILL.md": skill("mode", "disable-model-invocation: true\n", "## Playbooks\n\n(`playbooks/investigation.md`)\n") })), /mode\/SKILL\.md: the mode skill is the entry point; remove disable-model-invocation/);
+});
+
+test("argument-hint is one quoted line, and the mode skill's lets a person name the playbook", () => {
+  assert.equal(messages(repo({ "plugins/core/skills/beta/SKILL.md": skill("beta", 'argument-hint: "[override]"\n') })), "");
+  assert.match(messages(repo({ "plugins/core/skills/beta/SKILL.md": skill("beta", "argument-hint: [override]\n") })), /beta\/SKILL\.md: argument-hint must be one quoted line/);
+  const mode = (hint) => messages(modeRepo({ "plugins/core/skills/mode/SKILL.md": skill("mode", hint, "## Playbooks\n\n(`playbooks/investigation.md`)\n") }));
+  assert.match(mode('argument-hint: "<task>"\n'), /mode\/SKILL\.md: a person invoking the mode skill may name the playbook/);
+  assert.match(mode(""), /mode\/SKILL\.md: a person invoking the mode skill may name the playbook/);
+  assert.doesNotMatch(mode('argument-hint: "[<playbook>] <task>"\n'), /name the playbook/);
+});
+
+test("the mode skill works alone: no roles, no fresh workers (ADR-0006)", () => {
+  const msgs = messages(
+    modeRepo({
+      "plugins/core/skills/mode/playbooks/investigation.md": "1. Use the `alpha` skill.\n2. Spawn `scout` workers.\n3. Read docs/agents/roles.md.\n4. Verify in a fresh worker.\n",
+    }),
+  );
+  assert.match(msgs, /investigation\.md:2: delegates by role \("`scout`"\)/);
+  assert.match(msgs, /investigation\.md:3: delegates by role \("docs\/agents\/roles\.md"\)/);
+  assert.match(msgs, /investigation\.md:4: delegates by role \("fresh worker"\)/);
+  assert.doesNotMatch(messages(modeRepo({ "plugins/core/skills/mode/harness/claude-code.md": "The `reviewer` sub-agent type.\n" })), /delegates by role/);
+});
+
+test("a mode skill's harness/ has one doc per supported harness and no other (ADR-0006)", () => {
+  const docs = Object.fromEntries(["claude-code", "opencode", "antigravity", "cursor"].map((h) => [`plugins/core/skills/mode/harness/${h}.md`, `# ${h}\n`]));
+  assert.equal(messages(modeRepo(docs)), "");
+  const { ["plugins/core/skills/mode/harness/cursor.md"]: _, ...threeDocs } = docs;
+  const msgs = messages(modeRepo({ ...threeDocs, "plugins/core/skills/mode/harness/omp.md": "# omp\n" }));
+  assert.match(msgs, /mode\/harness\/cursor\.md: missing: every supported harness has a harness doc/);
+  assert.match(msgs, /mode\/harness\/omp\.md: not a supported harness/);
+});
+
+test("every playbook is routed from the mode skill's Playbooks section", () => {
+  const msgs = messages(modeRepo({ "plugins/core/skills/mode/playbooks/orphan.md": "1. Do it.\n" }));
+  assert.match(msgs, /mode\/playbooks\/orphan\.md: no row of the Playbooks section in SKILL\.md routes to this playbook/);
+  assert.doesNotMatch(msgs, /investigation\.md: no row/);
 });

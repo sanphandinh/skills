@@ -8,8 +8,7 @@ Each line is `<skill>: <plugin>`. The skill's file is `plugins/<plugin>/skills/<
 - codebase-design: software
 - diagnosing-bugs: software
 - domain-modeling: software
-- factory: factory
-- factory-v2: factory
+- factory: software
 - grill-me: core
 - grill-with-docs: software
 - grilling: core

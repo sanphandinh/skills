@@ -1,0 +1,12 @@
+{
+  "$schema": "https://antigravity.google/schemas/v1/plugin.json",
+  "name": "software",
+  "displayName": "Software",
+  "description": "Software engineering skills behind one entry point, smode: specs, tickets, TDD, verification, code review, diagnosis, project setup, and a factory.",
+  "version": "0.12.0",
+  "author": {
+    "name": "San Phan"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/sanphandinh/skills"
+}

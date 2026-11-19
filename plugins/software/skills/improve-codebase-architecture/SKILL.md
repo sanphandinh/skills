@@ -1,6 +1,7 @@
 ---
 name: improve-codebase-architecture
 description: Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick.
+argument-hint: "[<module, subsystem or pain point>]"
 disable-model-invocation: true
 ---
 

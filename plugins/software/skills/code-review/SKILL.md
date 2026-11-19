@@ -1,6 +1,8 @@
 ---
 name: code-review
 description: "Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes: Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\"."
+argument-hint: "[<fixed point: commit, branch, tag or PR>]"
+disable-model-invocation: true
 ---
 
 Two-axis review of the diff between `HEAD` and a fixed point the user supplies:
@@ -73,7 +75,7 @@ Issue both sub-agent calls together, in the foreground, and aggregate the report
 
 If the spec is missing, skip the Spec sub-agent and note this in the final report.
 
-**Which sub-agents to use:** if agents named `review-standards` and `review-spec` are available, give each axis to its namesake; they carry the model and tool limits configured for this platform. Otherwise use general-purpose sub-agents. If sub-agents are not available at all, run the Standards axis yourself, then the Spec axis, with the same briefs, and keep the two reports separate.
+**Which sub-agents to use:** give each axis to its own read-only sub-agent, the harness's default kind, on the session's model; pass no model. If sub-agents are not available at all, run the Standards axis yourself, then the Spec axis, with the same briefs, and keep the two reports separate.
 
 ### 5. Aggregate
 

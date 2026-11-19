@@ -21,7 +21,7 @@ One pass of the coordinator: wait for events, reload its instructions and settin
 _Avoid_: tick, loop, poll
 
 **Agent manager**:
-The tool that creates workspaces, runs workers, and reports their events: Orca now, Herdr later.
+The tool that creates workspaces, runs workers, and reports their events: T3 Code today; another manager is one more reference.
 _Avoid_: harness, runner
 
 **Interface**:
@@ -53,21 +53,25 @@ The rule that nothing merges while trunk is red.
 _Avoid_: freeze, merge block
 
 **Harness**:
-The agent that runs a session and owns its tools: Claude Code, Codex, Oh My Pi, or a provider session inside T3 Code. A mode skill maps its actions to one harness's tools in a harness doc. Distinct from the agent manager, which creates workspaces and runs workers.
+The agent that runs a session and owns its tools: Claude Code, OpenCode, Antigravity or Cursor, alone or as a provider session inside T3 Code (ADR-0006). A mode skill maps its actions to one harness's tools in a harness doc. Distinct from the agent manager, which creates workspaces and runs workers.
 _Avoid_: platform (that is the plugin catalog's word), runtime
 
 **Mode skill**:
-A user-invoked skill that routes a task to one of its playbooks and calls other skills at each step: `smode` (ADR-0003).
+The entry point for every request in its domain: a model-invoked skill that routes a task to one of its entry playbooks and calls other skills at each step, which are user-invoked so they do not compete with it: `smode` (ADR-0003, ADR-0005).
 _Avoid_: meta skill, router, super skill
 
 **Playbook**:
-One short, ordered list of steps for one kind of task inside a mode skill, copied verbatim into the todo list when it runs.
+One short, ordered list of steps for one kind of task inside a mode skill, copied verbatim into the todo list when it runs. An **entry playbook** is one a request is routed to (`bug-fix`, `ticket`, `quick`); a **step playbook** runs only when another playbook or a work order calls it (`plan-ticket`, `verify`).
 _Avoid_: recipe, workflow, script
 
 **Role**:
-What a piece of delegated work needs from a model (deep reasoning, cheap and fast, independent from the author), described by traits and mapped to a model per machine and harness. Never a model name.
+What a factory worker needs from a model (deep reasoning, cheap and fast, independent from the author), described by traits and mapped to models in the project's `docs/agents/roles.md` (ADR-0004). One of five: scout, worker, thinker, reviewer, coordinator. Only the factory delegates by role; smode works alone (ADR-0006). Never a model name.
 _Avoid_: tier, agent type
 
 **Route**:
-The ordered list of `provider/model` candidates for one role on a manager that runs several providers; the coordinator takes the first one that is qualified, available and not out of quota.
+The ordered list of candidates for one role, one line of `docs/agents/roles.md`; the factory's coordinator takes the first candidate the harness can run that is qualified, available and not out of quota.
 _Avoid_: fallback chain, model list
+
+**Candidate**:
+One model a route may run: `<provider>/<model>`, the provider being the model's maker, with `effort` and, when another service runs it, `via=<channel>`. Its id (without `effort`) names it in the factory's memory. Never a harness's own id.
+_Avoid_: target, model selector

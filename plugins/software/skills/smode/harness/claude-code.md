@@ -2,17 +2,16 @@
 
 Read this once per session when the agent is Claude Code (the CLI, the desktop app, or the Claude provider inside T3 Code), then map each smode action with the tables below. Never pass a field or value the tool schema rejects; drop it and say so.
 
+**Verified** 2026-11-18 on Claude Code 2.1.326: smode starts on its own with the project's Entry point rule; the `Skill` tool refuses `disable-model-invocation` skills; skills installed by `npx skills add` and by `--plugin-dir` are found as below.
+
 ## Finding skills
 
 | smode step | Claude Code |
 |---|---|
-| 1. Skill already loaded | The `Skill` tool, with the plugin prefix: `software:tdd`, `core:grilling`. It refuses skills marked `disable-model-invocation`; go to the next step for those. |
-| 3. Installed plugin | `~/.claude/plugins/installed_plugins.json`, `plugins["<plugin>@sanphan-skills"]`: a list of installs, each with `scope`, `installPath` (`~/.claude/plugins/cache/sanphan-skills/<plugin>/<version>`) and, for `scope: "project"`, `projectPath`. Take the install whose `projectPath` is this project, else the `user` one. The plugin may be installed but disabled in this project's `.claude/settings.json`; its files are still there to read. Get the path with `python3 -c 'import json,os,sys; d=json.load(open(os.path.expanduser("~/.claude/plugins/installed_plugins.json")))["plugins"].get(sys.argv[1]+"@sanphan-skills",[]); c=os.getcwd(); m=[i for i in d if i.get("projectPath")==c] or [i for i in d if i.get("scope")=="user"]; print(m[0]["installPath"] if m else "")' <plugin>`. |
-| 4. Marketplace clone | `installLocation` of `sanphan-skills` in `~/.claude/plugins/known_marketplaces.json`: a clone of the repository under `~/.claude/plugins/marketplaces/` for a GitHub marketplace, or the source folder itself for a local one. Read `plugins/<plugin>/skills/<skill>/SKILL.md` there, only when step 3 found nothing. |
+| 1. Skill already loaded | The `Skill` tool, under the name the session lists: `software:tdd` from a plugin, `tdd` from a skills folder. It refuses skills marked `disable-model-invocation`; go to the next step for those. |
+| 3. Skill locations | In order: `.claude/skills/<skill>/` from the working directory up to the repository root; `~/.claude/skills/<skill>/`; then the installed plugins in `~/.claude/plugins/installed_plugins.json`, whose `plugins` maps each `<plugin>@<marketplace>` (any marketplace) to installs with `scope`, `installPath` and, for `scope: "project"`, `projectPath`. Installs for this project come before `user` ones. A plugin may be installed but disabled in this project's `.claude/settings.json`; its files are still there to read. Get the path with `python3 -c 'import json,os,sys; s=sys.argv[1]; d=json.load(open(os.path.expanduser("~/.claude/plugins/installed_plugins.json")))["plugins"]; c=os.getcwd(); a=[i for v in d.values() for i in v]; a=[i for i in a if i.get("projectPath")==c]+[i for i in a if i.get("scope")=="user"]; p=[os.path.join(i["installPath"],"skills",s,"SKILL.md") for i in a]; print(next((x for x in p if os.path.exists(x)),""))' <skill>`. |
 
-Each plugin's `<version>` is its own (`software` 0.9.0 beside `core` 0.5.0), so never swap the plugin name in this skill's own path: run the one-liner (a real run that did read `core/0.9.0`, which does not exist, and had to search).
-
-A marketplace added from a local folder runs its plugins straight from that folder, so smode sits in a checkout and step 2 applies (verified); one added from GitHub runs them from `~/.claude/plugins/cache/`, where step 3 applies.
+`npx skills add` with `-a claude-code` copies or links every skill into `.claude/skills/` (or `~/.claude/skills/` with `-g`), side by side, so step 2 finds them (verified). Plugins keep each `<version>` apart (`software` 0.9.0 beside `core` 0.5.0), so never build another plugin's path from this skill's own path: run the one-liner (a real run read `core/0.9.0`, which does not exist, and had to search). A plugin loaded with `--plugin-dir`, or from a marketplace added from a local folder, runs straight from that folder, which is not in the install record; step 4 finds the other plugins' skills there (verified).
 
 Read a skill's `SKILL.md` with the `Read` tool and follow it.
 
@@ -20,19 +19,13 @@ Read a skill's `SKILL.md` with the `Read` tool and follow it.
 
 | smode action | Claude Code |
 |---|---|
-| Spawn a worker | The `Agent` tool, `subagent_type: "general-purpose"`, the work order as `prompt`. Background is the default; wait for the notification instead of polling. |
-| Spawn a read-only worker | `subagent_type: "Explore"` for reading and searching only: it may be refused the shell. A worker that must run commands read-only (the `verify` and `review` playbooks) is `general-purpose`, with "change no file and make no commit" in its work order and a `git status` check afterwards. |
-| Choose the model | `model` takes only `opus`, `sonnet`, `haiku`, `fable`. A role value `opus high` is `model: "opus"` and `effort: "high"`. A non-Claude model cannot run here: omit `model` and say so. |
-| A separate checkout | `isolation: "worktree"`. Name the branch or commit the worker starts from in the work order. |
+| Start a skill's sub-agent | The `Agent` tool, `subagent_type: "general-purpose"`, or `"Explore"` for reading and searching only (it may be refused the shell). Pass no `model` and no `effort`: the sub-agent runs on the session's model. Background is the default; wait for the notification instead of polling. A read-only sub-agent that must run commands is `general-purpose`, told "change no file and make no commit", with a `git status` check afterwards. |
+| A separate checkout for a skill's sub-agent | `isolation: "worktree"`. Name the branch or commit it starts from. |
 | Ask the user | `AskUserQuestion`. In print mode (`-p`) it is absent: ask in plain text and end the turn. |
 | Open a todo list | `TodoWrite` when the session has it; otherwise keep the list in the reply and update it at each step. |
 | Schedule or loop | The `loop` or `schedule` skills of Claude Code when the user asked for them; otherwise skip with the line. |
-| Watch a pull request | No native watch: skip with the line, or use `harness/t3.md` when inside T3. |
+| Watch a pull request | No native watch: skip with the line. |
 
-## Models on offer
+## Migration
 
-The `Agent` tool's `model` values (`opus`, `sonnet`, `haiku`, `fable`) with the effort levels its schema lists. Write a role as `<model> <effort>`.
-
-## Role configuration
-
-`~/.claude/rules/smode-roles.md`, written by the `setup` playbook. Claude Code loads every file in `~/.claude/rules/` into each new session, so the role lines are already in context; if they are not, read the file. The file holds only smode's roles, one line each: `<role>: <model> <effort>`, such as `thinker: opus high`, under a first line `# smode roles (written by the smode setup playbook)`. A missing file or line means the session's model.
+`~/.claude/rules/smode-roles.md` held smode's roles before they became the factory's. Claude Code loads every file in `~/.claude/rules/` into each new session of every project, so it still steers sessions until it is deleted; smode no longer reads it. `factory setup` converts its routes for a project that runs the factory.

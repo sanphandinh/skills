@@ -143,8 +143,8 @@ and updates. Do not edit `skills.*.commit` by hand.
 ## How a tracked skill differs from upstream
 
 Every upstream copy, at import and at each pull, goes through the same small
-pipeline, and the layout stays exactly as upstream ships it (`SKILL.md` with
-its frontmatter, `agents/openai.yaml` for Codex):
+pipeline, and the layout stays as upstream ships it (`SKILL.md` with its
+frontmatter), except that Codex's `agents/openai.yaml` is dropped (ADR-0006):
 
 1. **Rename.** Only the `name:` line of `SKILL.md` changes to the local name;
    the rest of the frontmatter stays byte-identical to upstream.

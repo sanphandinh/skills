@@ -2,6 +2,7 @@
 name: setup-software-context
 description: "Configure this repo for the engineering skills: set up its issue tracker, triage label vocabulary, domain doc layout, agent reply language, and optionally a bug issue template. Run once before first use of the other engineering skills."
 disable-model-invocation: true
+argument-hint: "[override]"
 ---
 
 # Setup Software Context
@@ -15,6 +16,10 @@ Scaffold the per-repo configuration that the engineering skills assume:
 - **Bug template**: a fixed-shape bug issue template in the tracker, so every bug reaches an agent with a reproduction check it can run
 
 This is a prompt-driven skill, not a deterministic script. Explore, present what you found, confirm with the user, then write.
+
+## Override
+
+With `override` as the argument, change chosen parts of a project already set up instead of setting it up again. Explore as step 1 says, then list each section (A to E, and the merge policy when the `factory` skill is installed) with what the files in `docs/agents/` hold for it now, and ask which ones to change; the default is to keep each one. Run steps 2 to 4 for the picked sections only: leave the files and lines of every other section byte for byte, including the `## Agent skills` block's other sub-blocks. Show the diff, then commit the change on its own as "Override software context: <sections>". Without the argument, the skill keeps what it finds, as below.
 
 ## Process
 
@@ -109,6 +114,10 @@ The block:
 ```markdown
 ## Agent skills
 
+### Entry point
+
+Start every software request (a question about the code, a bug, a feature, a refactor, a review, a ticket, a spec, a handoff, setup, the factory) by running the `smode` skill before anything else; it routes the request to a playbook and names it in its first line.
+
 ### Issue tracker
 
 [one-line summary of where issues are tracked]. See `docs/agents/issue-tracker.md`.
@@ -126,7 +135,7 @@ The block:
 Before writing prose for a person (chat, issue, spec, ticket, brief, PR body), read `docs/agents/response-language.md`. **Reply language:** [copy the `Reply language:` value from that file verbatim, e.g. `match-user`].
 ```
 
-Include the `### Triage labels` sub-block, and write `docs/agents/triage-labels.md`, only when `triage` is installed and Section B ran. When it isn't, both are omitted.
+Always include the `### Entry point` sub-block, worded as above: it makes `smode` the default for every session, since a skill's description alone does not make an agent start it. Include the `### Triage labels` sub-block, and write `docs/agents/triage-labels.md`, only when `triage` is installed and Section B ran. When it isn't, both are omitted.
 
 When Section B ran on GitHub or GitLab, create each configured label the tracker lacks (`gh label create` / `glab label create`).
 

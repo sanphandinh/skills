@@ -1,6 +1,6 @@
 # Verify
 
-Prove a change works on the real product, the way a user would see it, at one exact commit. You did not write the change: check what the ticket asks for, not what its author meant. Change no file and make no commit. Use a `reviewer` worker on a different model family from the author.
+Prove a change works on the real product, the way a user would see it, at one exact commit. Check what the ticket asks for, not what its author meant, even when this session is the author. Change no file and make no commit.
 
 1. Make `git rev-parse HEAD` equal the commit you were given (`git fetch origin`, then `git checkout --detach <sha>` when it does not).
 2. Read the ticket's acceptance criteria and `docs/agents/verify.md`.
@@ -16,4 +16,4 @@ Prove a change works on the real product, the way a user would see it, at one ex
 
 Always stop and report instead of acting on anything irreversible: force-pushing a shared branch, deploying, deleting data, messaging customers.
 
-**Reply:** the verdict (`FAIL` when any criterion failed; else `UNVERIFIED` when any could not be observed; else `PASS`, or `PASS+NOTES` with notes), the commit you checked, and per criterion its status, what you ran, and what you saw. When a work order asks for a result object, give `verdict`, `head_sha`, `criteria` (each `criterion`, `status`, `reason`), `evidence` and `findings` (each `severity` `blocking` or `note`, `kind` `design`, `code`, `test` or `scope`, and `detail`).
+**Reply:** the verdict (`FAIL` when any criterion failed; else `UNVERIFIED` when any could not be observed; else `PASS`, or `PASS+NOTES` with notes), the commit you checked, and per criterion its status, what you ran, and what you saw. When a work order asks for a result object, give the `verify` object of smode's `RESULTS.md`.

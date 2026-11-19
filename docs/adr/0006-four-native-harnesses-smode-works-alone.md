@@ -1,0 +1,20 @@
+# Four native harnesses; smode works alone; delegation only in the factory
+
+ADR-0003 and ADR-0004 had smode delegate every step to a worker on a role, its model taken from the project's `docs/agents/roles.md` and mapped to each harness's tools. Measured on 2026-11-18, that only works where a coordinator reaches several providers. Claude Code takes a model per sub-agent call, but only Claude models: the project's `reviewer` route had no candidate it could run, so the rule "another family than the worker" failed on every review. Cursor's `Task` takes a model, but only a slug from the session's catalog (through T3 only `composer-2.5-fast`), and its schema says "Use inherit unless the user explicitly requested another listed model". Antigravity's `invoke_subagent` takes only the tiers `inherit`, `flash_lite`, `flash` and `pro`, says "always use 'inherit' unless the user explicitly requests", and failed on `flash` and `pro` through T3 (`PlatformClient is nil`). OpenCode's `task` has no model parameter at all. Within one session the only thing delegation gave was a clean context, and for that smode carried the roles script, the setup steps for roles, a candidate mapping in every harness doc, and OMP's user-config grants. The harnesses the user works in are now Claude Code, OpenCode, Antigravity and Cursor; OMP and Codex are out.
+
+We support **four harnesses**: Claude Code, OpenCode, Antigravity and Cursor, each through what its maker ships: plugins for Claude Code, Cursor and Antigravity, and the skills folders OpenCode reads (`.agents/skills`, filled by `npx skills add`). OMP and Codex are dropped with their manifests, catalogs, `agents/openai.yaml` files and harness docs. **smode works alone**: it spawns no worker and chooses no model, and its playbooks run `verify` and `review` as separate steps in the same session, reading the diff again against the ticket. A skill that uses sub-agents by design (`implement-spec`, `code-review`, `research`, `wayfinder`, `improve-codebase-architecture`) keeps them, on the harness's default sub-agent and the session's model. **Delegation lives only in the factory**: `docs/agents/roles.md`, its template and `roles.mjs` move to the `factory` skill, `factory setup` writes the file, and T3 is the factory's reference for running workers on any provider.
+
+## Considered options
+
+- **Keep roles in smode and map them per harness.** Rejected: three of the four harnesses tell the agent to inherit the model unless the user asks otherwise, and the fourth runs only one maker's models, so the mapping chose nothing most of the time.
+- **Generate one agent file per role for each harness from `roles.md`.** Rejected for smode: it brings back per-harness agent files (ADR-0005) to change a sub-agent's model inside one session, which no measured case needed. A user may still define their own agents; smode does not rely on them.
+- **Remove every sub-agent, including those of `code-review` and `implement-spec`.** Rejected: those skills are parallel by design, and the harness's default sub-agent on the session's model is native everywhere.
+- **Keep OMP and Codex.** Rejected: the user no longer works in them, and each needed its own manifest, catalog, invocation policy file and harness doc.
+
+## Consequences
+
+- Supersedes smode's model choice per role in ADR-0003 and ADR-0004 (roles stay, for the factory), and ADR-0005's OMP and Codex parts. ADR-0005's other decisions stand: one factory, no platform agents, smode as the entry point.
+- A step playbook (`plan-ticket`, `verify`, `review`) and `RESULTS.md` stay in smode: the factory's workers run them.
+- The validator requires the four harness docs, a Claude Code, Cursor and Antigravity manifest for every shared plugin at the same version, and no role names or `roles.md` in smode.
+- An interactive review now runs in the session that wrote the change. It is a separate step that reads the diff again, but not an independent agent; independence is the factory's.
+- Projects that installed the OMP or Codex plugins remove them (README release notes).

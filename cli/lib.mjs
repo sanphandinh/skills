@@ -1,20 +1,18 @@
-// Repo tooling: catalog, validation (skills, platform agents, roles), upstream tracking.
+// Repo tooling: catalog, validation (skills, plugins, roles template), upstream tracking.
 // Installing into projects is left to each agent's native plugin system.
 import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import YAML from "yaml";
+import { parseRoles } from "../plugins/software/skills/factory/scripts/roles.mjs";
 
 const FM_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 const TEXT_EXT = new Set([".md", ".yaml", ".yml", ".json", ".sh", ".py", ".mjs", ".js", ".ts", ".toml", ".txt", ""]);
 
 // Frontmatter keys a shared skill may carry: the Agent Skills standard plus the
-// invocation keys that Claude Code and OMP honour and Codex tolerates.
+// invocation keys that Claude Code, OpenCode, Antigravity and Cursor honour.
 export const SHARED_SKILL_KEYS = ["name", "description", "disable-model-invocation", "argument-hint", "license", "compatibility", "metadata"];
-const CLAUDE_MODEL_ALIASES = ["opus", "sonnet", "haiku", "inherit"];
-const ROLE_KEYS = ["purpose", "omp", "claude", "codex"];
-const OMP_BUILTIN_ROLES = ["default", "smol", "slow", "vision", "plan", "commit", "tiny", "memory", "task", "advisor", "web", "judge"];
 
 // ---------- small helpers ----------
 
@@ -122,27 +120,16 @@ export function listAgents(root, catalog = loadCatalog(root)) {
   return agents;
 }
 
-// The text of `repo list`: each plugin's header once, then its skills, then its
-// agents. Plugins with skills come first, then plugins with only agents, both
-// in catalog order.
+// The text of `repo list`: each plugin's header once, then its skills, in
+// catalog order.
 export function renderList(root, catalog = loadCatalog(root)) {
   const skills = listSkills(root, catalog);
-  const agents = listAgents(root, catalog);
   const lines = [];
-  for (const plugin of new Set([...skills, ...agents].map((e) => e.plugin))) {
+  for (const plugin of new Set(skills.map((e) => e.plugin))) {
     lines.push(`${plugin} (${catalog.plugins[plugin].platform}):`);
     for (const s of skills) if (s.plugin === plugin) lines.push(`  skill  ${s.name}`);
-    for (const a of agents) if (a.plugin === plugin) lines.push(`  agent  ${path.basename(a.file).replace(/\.(md|toml)$/, "")}`);
   }
   return lines.map((l) => `${l}\n`).join("");
-}
-
-// ROLES.md frontmatter: { roles: { <logical>: { omp: "@role" | [...], claude: alias, codex: {...} } } }
-export function loadRoles(root) {
-  const file = path.join(root, "ROLES.md");
-  if (!fs.existsSync(file)) return null;
-  const m = fs.readFileSync(file, "utf8").match(FM_RE);
-  return m ? YAML.parse(m[1]) : null;
 }
 
 // ---------- validation ----------
@@ -152,6 +139,16 @@ const TOOL_NAMES = /\b(Skill tool|Task tool|Agent tool|Bash tool|Read tool|Edit 
 // to one harness or one agent manager (ADR-0003).
 const T3_TOOL_NAMES =
   /\b(delegate_task|task_status|task_cancel|orchestrator_capabilities|schedule_task|list_scheduled_tasks|delete_scheduled_task|run_scheduled_task_now|create_threads|watch_pull_request|unwatch_pull_request|link_pull_requests?|t3_[a-z_]+)\b/;
+// A harness's own configuration paths. Skills read the project's docs/agents/
+// (ADR-0004); only a harness doc or a manager's reference may name these.
+const HARNESS_CONFIG_PATHS = /(~\/\.(?:claude|cursor|gemini)\b|~\/\.config\/opencode\b|\.claude\/rules\b)/;
+// Paths that hold only for one way of installing skills: a plugin folder, a
+// marketplace name, or a checkout's layout. A skill may be installed by a
+// plugin, copied into a skills folder (`npx skills add`), or run from a
+// checkout, so skills are found by name (smode's "Running a skill by name").
+const INSTALL_LAYOUT = /(@sanphan-skills\b|\bplugins\/[a-z0-9-]+\/skills\/|\b(?:two|three|four) folders up\b)/;
+// The harnesses this repository supports, one doc each in a mode skill's harness/ (ADR-0006).
+export const HARNESS_DOCS = ["claude-code.md", "opencode.md", "antigravity.md", "cursor.md"];
 // Folders of a shared skill whose job is naming one harness's or manager's tools.
 const TOOL_MAPPING_DIRS = ["harness", "references"];
 export const SKILLS_INDEX = "skills-index.md";
@@ -205,7 +202,6 @@ export function validate(root) {
   const catalog = loadCatalog(root);
   const skills = listSkills(root, catalog);
   const agents = listAgents(root, catalog);
-  const roles = loadRoles(root);
   const names = new Set(skills.map((s) => s.name));
   const issues = [];
   const seen = new Map();
@@ -214,6 +210,11 @@ export function validate(root) {
   for (const plugin of Object.keys(catalog.plugins)) {
     if (!fs.existsSync(path.join(root, "plugins", plugin))) add(path.join(root, "catalog.yaml"), `plugin "${plugin}" has no folder under plugins/`);
   }
+
+  // This repository's own ADRs. An installed skill runs in another project, whose
+  // ADR-0004 (if any) is a different decision, so a skill states its rule instead.
+  const adrDir = path.join(root, "docs", "adr");
+  const ownAdrs = new Set(fs.existsSync(adrDir) ? fs.readdirSync(adrDir).map((f) => f.match(/^(\d{4})-/)?.[1]).filter(Boolean) : []);
 
   for (const skill of skills) {
     const skillFile = path.join(skill.dir, "SKILL.md");
@@ -224,15 +225,21 @@ export function validate(root) {
     }
     if (skill.platform === "shared") {
       const extra = Object.keys(frontmatter).filter((k) => !SHARED_SKILL_KEYS.includes(k));
-      if (extra.length) add(skillFile, `platform-specific frontmatter in a shared skill (move the skill to a -claude or -omp plugin): ${extra.join(", ")}`);
+      if (extra.length) add(skillFile, `platform-specific frontmatter in a shared skill (move the skill to a -claude plugin): ${extra.join(", ")}`);
     }
     if (frontmatter.name !== skill.name) add(skillFile, `name "${frontmatter.name}" does not match folder "${skill.name}"`);
     if (!frontmatter.description || String(frontmatter.description).length < 20) add(skillFile, "description is missing or too short to trigger reliably");
+    // The hint a harness shows after /<skill>. Unquoted, `[override]` parses as a YAML list.
+    const hint = frontmatter["argument-hint"];
+    if (hint !== undefined && (typeof hint !== "string" || !hint.trim() || hint.includes("\n"))) {
+      add(skillFile, 'argument-hint must be one quoted line, such as "[<ticket>]"');
+    }
     const prefix = catalog.plugins[skill.plugin]?.prefix ?? "";
     if (prefix && !skill.name.startsWith(prefix)) add(skillFile, `name must start with plugin prefix "${prefix}"`);
     if (seen.has(skill.name)) add(skillFile, `duplicate skill name, also in plugin ${seen.get(skill.name)}`);
     seen.set(skill.name, skill.plugin);
-    if (fs.existsSync(path.join(skill.dir, "overlays"))) add(path.join(skill.dir, "overlays"), "overlays/ is not read by any agent; use frontmatter and agents/openai.yaml");
+    if (fs.existsSync(path.join(skill.dir, "overlays"))) add(path.join(skill.dir, "overlays"), "overlays/ is not read by any agent; use frontmatter");
+    if (fs.existsSync(path.join(skill.dir, "agents", "openai.yaml"))) add(path.join(skill.dir, "agents", "openai.yaml"), "Codex metadata; Codex is not a supported harness (ADR-0006): delete it");
 
     if (skill.platform !== "shared") continue;
     for (const file of walk(skill.dir).filter((f) => f.endsWith(".md"))) {
@@ -241,9 +248,14 @@ export function validate(root) {
       text.split("\n").forEach((line, i) => {
         const where = `${path.join(skill.dir, file)}:${i + 1}`;
         if (/^(<{7}|>{7})( |$)/.test(line)) add(where, "unresolved merge conflict marker");
+        for (const m of line.matchAll(/\bADR-(\d{4})\b/g)) {
+          if (ownAdrs.has(m[1])) add(where, `cites this repository's ADR-${m[1]}; the skill runs in another project, whose ADRs are its own: state the rule itself`);
+        }
+        if (INSTALL_LAYOUT.test(line)) add(where, `assumes one install layout: ${line.match(INSTALL_LAYOUT)[0]}; find a skill by name, as smode's "Running a skill by name" does`);
         if (mapsTools) return;
         if (TOOL_NAMES.test(line)) add(where, `names a specific agent tool: ${line.match(TOOL_NAMES)[0]}`);
         if (T3_TOOL_NAMES.test(line)) add(where, `names a T3 tool: ${line.match(T3_TOOL_NAMES)[0]}; tool names belong in harness/ or references/ (ADR-0003)`);
+        if (HARNESS_CONFIG_PATHS.test(line)) add(where, `names a harness's config path: ${line.match(HARNESS_CONFIG_PATHS)[0]}; skills read docs/agents/, harness paths belong in harness/ or references/ (ADR-0004)`);
         for (const m of line.matchAll(/(?:^|[\s`(])[/$]([a-z][a-z0-9-]+)\b(?!\/)/g)) {
           if (names.has(m[1])) add(where, `invokes skill with agent syntax "${m[0].trim()}"; refer to it by name`);
         }
@@ -273,18 +285,24 @@ export function validate(root) {
           for (const m of line.matchAll(/\bplaybooks\/([a-z][a-z0-9-]*)\.md\b/g)) {
             if (!playbooks.has(m[1])) add(where, `links playbooks/${m[1]}.md, which does not exist`);
           }
+          // The mode skill works alone; delegation by role is the factory's (ADR-0006).
+          const delegation = line.match(/docs\/agents\/roles\.md|\broles\.mjs\b|`(?:scout|thinker|reviewer|coordinator)`|\bfresh worker/);
+          if (delegation) add(where, `delegates by role ("${delegation[0]}"); the mode skill works alone, and only the factory delegates (ADR-0006)`);
         });
     }
   }
 
-  // One version per plugin: every manifest agrees, and so does the OMP
-  // catalog, which is what OMP compares when it decides to upgrade.
-  const MANIFESTS = [".claude-plugin", ".codex-plugin", ".omp-plugin"].map((d) => path.join(d, "plugin.json"));
+  // One manifest per harness that installs plugins (ADR-0006), all at one version.
+  const MANIFEST_DIRS = [".claude-plugin", ".cursor-plugin", ".antigravity-plugin"];
+  const MANIFESTS = MANIFEST_DIRS.map((d) => path.join(d, "plugin.json"));
   const versionOf = new Map();
   for (const plugin of fs.existsSync(path.join(root, "plugins")) ? fs.readdirSync(path.join(root, "plugins")) : []) {
-    for (const rel of MANIFESTS) {
+    const present = MANIFESTS.filter((rel) => fs.existsSync(path.join(root, "plugins", plugin, rel)));
+    if (catalog.plugins[plugin]?.platform === "shared" && present.length) {
+      for (const rel of MANIFESTS.filter((r) => !present.includes(r))) add(path.join(root, "plugins", plugin, rel), `missing: a shared plugin ships a manifest for Claude Code, Cursor and Antigravity (ADR-0006)`);
+    }
+    for (const rel of present) {
       const file = path.join(root, "plugins", plugin, rel);
-      if (!fs.existsSync(file)) continue;
       const version = JSON.parse(fs.readFileSync(file, "utf8")).version;
       if (!version) continue;
       const first = versionOf.get(plugin);
@@ -292,49 +310,84 @@ export function validate(root) {
       else if (first.version !== version) add(file, `version ${version} differs from ${first.version} in ${path.relative(root, first.file)}`);
     }
   }
-  const ompCatalog = path.join(root, ".omp-plugin", "marketplace.json");
-  if (fs.existsSync(ompCatalog)) {
-    for (const entry of JSON.parse(fs.readFileSync(ompCatalog, "utf8")).plugins ?? []) {
-      const manifest = versionOf.get(path.basename(String(entry.source ?? entry.name)));
-      if (entry.version && manifest && entry.version !== manifest.version) {
-        add(ompCatalog, `${entry.name} is listed at ${entry.version} but its manifest says ${manifest.version}; OMP compares this version to decide upgrades`);
-      }
-    }
-  }
-
-  // Every role maps on every platform, so a skill naming it works everywhere.
-  for (const [name, r] of Object.entries(roles?.roles ?? {})) {
-    const missing = ROLE_KEYS.filter((k) => r?.[k] === undefined || r?.[k] === null || r?.[k] === "");
-    if (missing.length) add(path.join(root, "ROLES.md"), `role "${name}" has no ${missing.join(", ")}`);
-  }
-
-  const ompRoles = new Set(OMP_BUILTIN_ROLES);
-  for (const r of Object.values(roles?.roles ?? {})) for (const sel of [r.omp ?? []].flat()) ompRoles.add(String(sel).replace(/^@/, ""));
-  const agentNames = new Map();
-  for (const agent of agents) {
-    const text = fs.readFileSync(agent.file, "utf8");
-    if (agent.platform === "shared") {
-      add(agent.file, "agents belong in a platform plugin (-omp, -claude), not a shared one");
+  // Each marketplace lists exactly the shared plugins that ship a manifest.
+  const listed = [...versionOf.keys()].filter((p) => catalog.plugins[p]?.platform === "shared").sort();
+  for (const dir of [".claude-plugin", ".cursor-plugin"]) {
+    const file = path.join(root, dir, "marketplace.json");
+    if (!fs.existsSync(file)) {
+      if (listed.length) add(file, "missing: the marketplace lists the shared plugins");
       continue;
     }
-    const { frontmatter } = parseSkillMd(text);
-    if (!frontmatter?.name || !frontmatter?.description) add(agent.file, "agent needs name and description");
-    const key = `${agent.platform}:${frontmatter?.name}`;
-    if (agentNames.has(key)) add(agent.file, `duplicate ${agent.platform} agent name, also in ${agentNames.get(key)}`);
-    agentNames.set(key, path.relative(root, agent.file));
-    if (agent.platform === "omp") {
-      if (!fs.existsSync(path.join(root, "plugins", agent.plugin, ".omp-plugin", "plugin.json"))) {
-        add(agent.file, "OMP agents need .omp-plugin/plugin.json, or OMP reads them as Claude-dialect and drops `model`");
-      }
-      for (const sel of [frontmatter?.model ?? []].flat()) {
-        if (!String(sel).startsWith("@")) add(agent.file, `model "${sel}" is a concrete model; use a role selector (@role) from ROLES.md`);
-        else if (!ompRoles.has(String(sel).slice(1))) add(agent.file, `role "${sel}" is not a built-in OMP role and not listed in ROLES.md`);
+    const names = (JSON.parse(fs.readFileSync(file, "utf8")).plugins ?? []).map((e) => e.name).sort();
+    if (names.join(",") !== listed.join(",")) add(file, `lists ${names.join(", ") || "nothing"}; the shared plugins are ${listed.join(", ")}`);
+  }
+  // A mode skill is the entry point of its plugin (ADR-0005): it starts on its
+  // own, and every other skill of the plugin starts only when named.
+  for (const mode of modeSkills(root, catalog)) {
+    const modeFile = path.join(mode.dir, "SKILL.md");
+    const modeFm = parseSkillMd(fs.readFileSync(modeFile, "utf8")).frontmatter ?? {};
+    if (modeFm["disable-model-invocation"] === true) {
+      add(modeFile, "the mode skill is the entry point; remove disable-model-invocation");
+    }
+    if (typeof modeFm["argument-hint"] !== "string" || !modeFm["argument-hint"].includes("<playbook>")) {
+      add(modeFile, 'a person invoking the mode skill may name the playbook; set argument-hint: "[<playbook>] <task>"');
+    }
+    for (const other of skills.filter((s) => s.plugin === mode.plugin && s.name !== mode.name)) {
+      const file = path.join(other.dir, "SKILL.md");
+      if (parseSkillMd(fs.readFileSync(file, "utf8")).frontmatter?.["disable-model-invocation"] !== true) {
+        add(file, `starts on its own beside the mode skill "${mode.name}"; set disable-model-invocation: true`);
       }
     }
-    if (agent.platform === "claude") {
-      const model = frontmatter?.model;
-      if (model && !CLAUDE_MODEL_ALIASES.includes(model)) add(agent.file, `model "${model}" should be one of ${CLAUDE_MODEL_ALIASES.join(", ")} so it follows ROLES.md`);
+    // The supported harnesses (ADR-0006): a mode skill's harness/ holds one doc for each, and no other.
+    const harnessDir = path.join(mode.dir, "harness");
+    if (fs.existsSync(harnessDir)) {
+      const docs = fs.readdirSync(harnessDir).filter((f) => f.endsWith(".md"));
+      for (const want of HARNESS_DOCS) if (!docs.includes(want)) add(path.join(harnessDir, want), "missing: every supported harness has a harness doc (ADR-0006)");
+      for (const doc of docs) if (!HARNESS_DOCS.includes(doc)) add(path.join(harnessDir, doc), `not a supported harness; the harness docs are ${HARNESS_DOCS.join(", ")} (ADR-0006)`);
     }
+    // Every playbook is reachable: a row of the Playbooks section links it.
+    const text = fs.readFileSync(modeFile, "utf8");
+    const at = text.search(/^## Playbooks\b/m);
+    // From "## Playbooks" up to the next level-2 heading; its ### tables are inside.
+    const section = at < 0 ? "" : text.slice(at).split(/\n(?=## (?!#))/)[0];
+    const routed = new Set([...section.matchAll(/\bplaybooks\/([a-z][a-z0-9-]*)\.md\b/g)].map((m) => m[1]));
+    for (const file of walk(path.join(mode.dir, "playbooks")).filter((f) => f.endsWith(".md"))) {
+      if (!routed.has(file.slice(0, -3))) add(path.join(mode.dir, "playbooks", file), "no row of the Playbooks section in SKILL.md routes to this playbook");
+    }
+  }
+
+  // Result objects are defined once, in a mode skill's RESULTS.md (ADR-0005): a
+  // skill that reads "the result's `<key>`" may read only keys defined there.
+  const resultKeys = new Set();
+  for (const mode of modeSkills(root, catalog)) {
+    const file = path.join(mode.dir, "RESULTS.md");
+    if (fs.existsSync(file)) for (const m of fs.readFileSync(file, "utf8").matchAll(/^\s*- `([a-z][a-z0-9_]*)`:/gm)) resultKeys.add(m[1]);
+  }
+  if (resultKeys.size) {
+    for (const skill of skills.filter((s) => s.platform === "shared")) {
+      for (const file of walk(skill.dir).filter((f) => f.endsWith(".md") && f !== "RESULTS.md")) {
+        fs.readFileSync(path.join(skill.dir, file), "utf8")
+          .split("\n")
+          .forEach((line, i) => {
+            for (const m of line.matchAll(/\bresult's `([A-Za-z][A-Za-z0-9_]*)`/g)) {
+              if (!resultKeys.has(m[1])) add(`${path.join(skill.dir, file)}:${i + 1}`, `reads the result key "${m[1]}", which RESULTS.md does not define`);
+            }
+          });
+      }
+    }
+  }
+
+  // A roles template a skill copies to a project's docs/agents/roles.md must pass `roles check`.
+  for (const skill of skills.filter((s) => s.platform === "shared")) {
+    const rolesTemplate = path.join(skill.dir, "roles-template.md");
+    if (!fs.existsSync(rolesTemplate)) continue;
+    for (const e of parseRoles(fs.readFileSync(rolesTemplate, "utf8")).errors) add(`${rolesTemplate}:${e.line}`, e.msg);
+  }
+
+  // Platform agents only restated playbooks and pinned models that delegation
+  // now picks from the project's docs/agents/roles.md (ADR-0005).
+  for (const agent of agents) {
+    add(agent.file, "plugins carry no agents (ADR-0005): describe the step in a smode playbook; delegation picks the model from docs/agents/roles.md");
   }
   return { skills, agents, issues };
 }
@@ -400,6 +453,9 @@ export function exportUpstreamSkill(root, cfg, commit, upstreamPath, localName) 
   const tar = execFileSync("git", ["archive", commit, upstreamPath], { cwd: root, maxBuffer: 1 << 28 });
   execFileSync("tar", ["-x", "-C", tmp], { input: tar });
   const dir = path.join(tmp, upstreamPath);
+  // Codex metadata is not kept: Codex is not a supported harness (ADR-0006).
+  fs.rmSync(path.join(dir, "agents", "openai.yaml"), { force: true });
+  if (fs.existsSync(path.join(dir, "agents")) && !fs.readdirSync(path.join(dir, "agents")).length) fs.rmdirSync(path.join(dir, "agents"));
   const skills = knownSkills(root, commit);
   for (const rel of walk(dir).filter(isText)) {
     const f = path.join(dir, rel);

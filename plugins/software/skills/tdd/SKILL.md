@@ -1,6 +1,8 @@
 ---
 name: tdd
 description: Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests.
+argument-hint: "[<behaviour to build or fix>]"
+disable-model-invocation: true
 ---
 
 # Test-Driven Development
