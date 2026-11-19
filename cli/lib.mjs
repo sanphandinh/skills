@@ -381,7 +381,10 @@ export function validate(root) {
   for (const skill of skills.filter((s) => s.platform === "shared")) {
     const rolesTemplate = path.join(skill.dir, "roles-template.md");
     if (!fs.existsSync(rolesTemplate)) continue;
-    for (const e of parseRoles(fs.readFileSync(rolesTemplate, "utf8")).errors) add(`${rolesTemplate}:${e.line}`, e.msg);
+    const parsed = parseRoles(fs.readFileSync(rolesTemplate, "utf8"));
+    for (const e of parsed.errors) add(`${rolesTemplate}:${e.line}`, e.msg);
+    // Routes are the project's: a template that names models would hand every project the same ones.
+    for (const role of Object.keys(parsed.roles)) add(rolesTemplate, `the roles template carries no routes ("${role}:" names models); factory setup writes each project's routes into its docs/agents/roles.md`);
   }
 
   // Platform agents only restated playbooks and pinned models that delegation

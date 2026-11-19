@@ -356,9 +356,10 @@ test("harness config paths stay in harness/ and references/; skills read docs/ag
   assert.doesNotMatch(msgs, /harness\/cursor\.md/);
 });
 
-test("the roles template the factory copies to a project must pass the roles check", () => {
+test("the roles template the factory copies to a project carries no routes and must pass the roles check", () => {
   const withTemplate = (text) => modeRepo({ ...userSkill("factory"), "plugins/core/skills/factory/roles-template.md": text });
-  assert.equal(messages(withTemplate("# Roles\n\nworker: anthropic/claude-sonnet-5-5 effort=medium\n")), "");
+  assert.equal(messages(withTemplate("# Roles\n\nEach line is `<role>: <candidate>`.\n")), "");
+  assert.match(messages(withTemplate("# Roles\n\nworker: anthropic/claude-sonnet-5-5 effort=medium\n")), /roles template carries no routes \("worker:"/);
   const msgs = messages(withTemplate("# Roles\n\narchitect: anthropic/claude-opus-5-5\nworker: sonnet\n"));
   assert.match(msgs, /factory\/roles-template\.md:3: "architect" is not a role/);
   assert.match(msgs, /factory\/roles-template\.md:4: worker: "sonnet" is not <provider>\/<model>/);

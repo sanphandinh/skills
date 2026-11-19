@@ -78,7 +78,7 @@ test("check warns when every reviewer is the worker's model family, whatever the
 
 test("without a roles file, check passes and show says workers run on the session's model", () => {
   const root = project();
-  assert.deepEqual(run(root, "check"), { code: 0, out: "No docs/agents/roles.md: every worker runs on the session's model.\n", err: "" });
+  assert.deepEqual(run(root, "check"), { code: 0, out: "No docs/agents/roles.md: the factory has no routes, so its steps wait. Run factory setup to write it.\n", err: "" });
   assert.match(run(root, "show").out, /^No docs\/agents\/roles\.md: the factory has no routes\. Run factory setup/);
 });
 

@@ -37,7 +37,7 @@ Then the roles. Only the factory reads `docs/agents/roles.md`: the model each st
   - `reviewer`: strong reasoning, **another model family than `worker`** (`verify`, `review`); say so when none is offered;
   - `coordinator`: a steady, cheap model.
 
-  Ask the user to accept the table or change roles, then write the file from [roles-template.md](roles-template.md) (its explanation, then one line per role), run `roles.mjs check` until it passes, show the diff, and commit it on trunk on its own as "Configure factory roles" and push.
+  Ask the user to accept the table or change roles, then write the file from [roles-template.md](roles-template.md): its explanation, then one line per role as the user accepted it. The template carries no models: every route is this project's, run `roles.mjs check` until it passes, show the diff, and commit it on trunk on its own as "Configure factory roles" and push.
 - When an old file was converted, ask whether to delete it now; delete it only on a yes.
 
 The routes must cover `thinker`, `worker` and `reviewer` before section 5's provider checks.
@@ -46,7 +46,7 @@ The routes must cover `thinker`, `worker` and `reviewer` before section 5's prov
 
 Fill the template and show it to the user before writing:
 
-- **Coordinator**: the model this session runs on, written as a candidate id the way `docs/agents/roles.md` writes it (`anthropic/claude-opus-5-5`); the coordinator stays on it.
+- **Coordinator**: the model this session runs on, written as a candidate id the way `docs/agents/roles.md` writes it (`<provider>/<model>`); the coordinator stays on it.
 - **Trunk**: the branch pull requests merge into.
 - **Required checks**: the CI checks a pull request must pass, by name. Read them from the latest merged pull request (`gh pr checks <number>`) or the job names in the CI configuration, and confirm them with the user; `none` when pull requests get no CI.
 - **Trunk checks**: the CI checks whose failure on trunk stops merging, by name. Read them from trunk's latest commits (`gh api repos/<owner>/<repo>/commits/<sha>/check-runs`); usually the same as the required checks, but some CI runs only on trunk (an archive or deploy build). `none` when trunk gets no CI.

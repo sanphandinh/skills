@@ -204,7 +204,7 @@ export function renderShow(root, { channels, now = new Date() } = {}) {
 
 export function renderCheck(root) {
   const loaded = loadRoles(root);
-  if (!loaded) return { text: `No ${ROLES_FILE}: every worker runs on the session's model.\n`, ok: true };
+  if (!loaded) return { text: `No ${ROLES_FILE}: the factory has no routes, so its steps wait. Run factory setup to write it.\n`, ok: true };
   const lines = [
     ...loaded.errors.map((e) => `${ROLES_FILE}:${e.line}: ${e.msg}`),
     ...loaded.warnings.map((w) => `warning: ${w}`),
