@@ -30,3 +30,16 @@
 
 **Deviations from spec:** OpenCode chưa chạy phiên; Cursor và Antigravity chạy qua T3, đọc skill theo đường dẫn, chưa cài plugin.
 **Gotchas:** cần khoá API OpenCode mới để chạy phiên; cài plugin Cursor và Antigravity bằng tay vẫn chưa thử.
+
+## Chạy lại ngày 2026-11-19
+
+- **OpenCode** 1.19.6 (`opencode run`, `opencode/deepseek-v4.1-flash-free`, skill trong `.agents/skills/`):
+  - "Why does add(2, 3) … Explain only": phiên gọi `skill` `smode`, trả `Playbook: quick (a question one file read settles; no change requested)`, không gọi `task`.
+  - "smode bug-fix …": `Playbook: bug-fix (named in the arguments)`. Phiên đọc `harness/opencode.md`, chạy `diagnosing-bugs` và `tdd` (test đỏ rồi xanh), sau đó `verify` và `review`. `code-review` mở hai `task` `explore` và không truyền model.
+  - Lần chạy đầu không có `--auto` thì treo không ra event nào: `opencode run` chờ quyền sửa file.
+- **Antigravity** `agy` 1.5.11:
+  - `agy plugin validate --strict` qua cho `core` và `software`; ghi chú duy nhất là chưa có logo.
+  - Phiên `agy -p` trên `.agents/skills/`: smode tự vào, đọc `harness/antigravity.md`, trả `Playbook: quick (…)`.
+  - `agy plugin install` cả hai plugin (vào `~/.gemini/config/plugins/`), rồi chạy phiên `bug-fix` trên một project không có `.agents/skills`: smode tự vào từ plugin và tìm thấy các skill khác. `code-review` mở hai `invoke_subagent` `research` với `Model` mặc định `inherit`. Gỡ plugin sau khi đo.
+  - Phát hiện: `agy` CLI nhận field của `invoke_subagent` ở top level, không bọc trong `Subagents`, và có `ask_question` và `schedule`. Đã sửa `harness/antigravity.md`.
+- Cursor: chưa thử cài plugin bằng tay.

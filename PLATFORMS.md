@@ -9,7 +9,7 @@ with what its maker ships; nothing is copied into projects by a script of ours.
 | Installs from | `.claude-plugin/marketplace.json` | `.cursor-plugin/marketplace.json` | `plugins/<p>/.antigravity-plugin/plugin.json` | the skills folders (`.agents/skills/`) |
 | Plugin manifest | `.claude-plugin/plugin.json` | `.cursor-plugin/plugin.json` | `.antigravity-plugin/plugin.json` | none: OpenCode plugins are JS modules and carry no skills |
 | smode harness doc | `harness/claude-code.md` | `harness/cursor.md` | `harness/antigravity.md` | `harness/opencode.md` |
-| Checked | plugin install and `npx skills` (yes) | through T3; plugin install not yet | through T3; plugin install not yet | `npx skills` writes `.agents/skills/`; a session not yet |
+| Checked | plugin install and `npx skills` (yes) | through T3; plugin install not yet | `agy plugin validate --strict`, `agy plugin install` and an `agy -p` session (yes) | `npx skills` and an `opencode run` session (yes) |
 
 No plugin carries agents (ADR-0005). smode works alone: it starts no worker
 and picks no model; a skill that uses sub-agents by design runs them on the
@@ -60,7 +60,7 @@ Then install `core` and `software` from `/plugin` in `cursor-agent` (or
 Customize in the app), choosing project scope. Cursor has no non-interactive
 install command yet.
 
-### Antigravity (not yet installed by hand)
+### Antigravity
 
 ```bash
 git clone https://github.com/sanphandinh/skills ~/src/sanphan-skills
@@ -68,7 +68,9 @@ agy plugin install ~/src/sanphan-skills/plugins/core
 agy plugin install ~/src/sanphan-skills/plugins/software
 ```
 
-`agy plugin validate --strict <folder>` checks a manifest.
+`agy plugin validate --strict <folder>` checks a manifest, and `agy plugin list`
+shows what is installed. Installed plugins live in `~/.gemini/config/plugins/`
+and load in every workspace.
 
 ### OpenCode, and any harness without plugins
 
