@@ -43,3 +43,10 @@
   - `agy plugin install` cả hai plugin (vào `~/.gemini/config/plugins/`), rồi chạy phiên `bug-fix` trên một project không có `.agents/skills`: smode tự vào từ plugin và tìm thấy các skill khác. `code-review` mở hai `invoke_subagent` `research` với `Model` mặc định `inherit`. Gỡ plugin sau khi đo.
   - Phát hiện: `agy` CLI nhận field của `invoke_subagent` ở top level, không bọc trong `Subagents`, và có `ask_question` và `schedule`. Đã sửa `harness/antigravity.md`.
 - Cursor: chưa thử cài plugin bằng tay.
+- **Cursor** `cursor-agent` 2026.11.19 (`-p --plugin-dir` cho `core` và `software`, `composer-2.5`, project không có `.agents/skills`):
+  - Câu hỏi: smode tự vào từ plugin, trả `Playbook: quick (…)`.
+  - `bug-fix`: `Playbook: bug-fix (named in the arguments)`. Phiên đọc `harness/cursor.md`, chạy `diagnosing-bugs` và `tdd`, giữ todo bằng `TodoWrite` (dynamic tool, nạp qua `GetDynamicTools`).
+  - Lần chạy đầu bỏ `verify` và `review` vì "do not commit". Đã sửa smode: không có commit thì check working tree so với base, không bỏ check. Chạy lại thì `verify` PASS và `review` pass trên working tree.
+  - Composer làm `code-review` ngay trong phiên, không mở `Task`, và ghi vào Deviations.
+  - Đo được: `AskQuestion` là tool sẵn có, còn `Task` và `TodoWrite` thuộc namespace `cursor`. Đã ghi vào `harness/cursor.md`.
+  - Chưa thử `cursor-agent plugin marketplace add`, vì marketplace cần branch đã push lên GitHub.

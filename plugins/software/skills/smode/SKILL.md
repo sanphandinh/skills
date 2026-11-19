@@ -68,7 +68,7 @@ No is an acceptable answer. When asked whether to do something, give your real j
 
 **smode spawns no worker and chooses no model.** Every step of a playbook runs in this session, on its model. Running work in other agents, on models chosen per step, is the job of the `factory` skill.
 
-**A check is a separate step.** When a playbook runs the `verify` or `review` playbook, finish the step before it first, then start the check again from the ticket and the diff against its base, not from what you remember of writing the change. Its verdict is the check's, and the author's own checks are never that verdict.
+**A check is a separate step.** When a playbook runs the `verify` or `review` playbook, finish the step before it first, then start the check again from the ticket and the diff against its base, not from what you remember of writing the change. Its verdict is the check's, and the author's own checks are never that verdict. When there is no commit to check (the user said not to commit), check the working tree against its base and say so in the verdict; never skip a check for that.
 
 **Skills that use sub-agents keep them.** `code-review`, `implement-spec`, `research` and others start sub-agents by design: use the harness's default sub-agent (the harness doc says which), on the session's model, and pass no model. When the harness cannot start one, do that part yourself, one after the other.
 
