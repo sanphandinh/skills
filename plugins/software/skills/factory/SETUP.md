@@ -15,13 +15,13 @@ Do this first, in `setup` and in `setup override`, before reading any setting:
 
 ## 1. Check the documents the factory reads
 
-- `docs/agents/issue-tracker.md` with its `## Factory` section and `Tracker:` line, `docs/agents/triage-labels.md`, and `docs/agents/merge-policy.md`: written by the `setup-software-context` skill.
-- `docs/agents/response-language.md`: written by the same skill. When it is missing, do not stop. Wakes use `match-user` with no live user message (the language of the ticket or spec when it has prose, else the latest human comment, else English) and the journal notes the gap. Tell the user they can add the file by re-running `setup-software-context`.
-- `docs/agents/verify.md`: written by the `setup-verification` skill.
+First check smode: the `smode` skill is reachable on this machine (smode's **Running a skill by name**). Its playbooks are what every worker runs, and its `setup` playbook writes the documents below.
 
-Stop at the first missing file in the first and third bullets and tell the user which skill writes it. A missing `response-language.md` does not stop setup.
+- `docs/agents/issue-tracker.md` with its `## Factory` section and `Tracker:` line, `docs/agents/triage-labels.md`, and `docs/agents/merge-policy.md`.
+- `docs/agents/response-language.md`.
+- `docs/agents/verify.md`.
 
-Then check smode: the `smode` skill is reachable on this machine (smode's **Running a skill by name**). Its playbooks are what every worker runs.
+When any of them is missing, or `issue-tracker.md` has no `## Factory` section, run smode's `setup` playbook (`<smode>/playbooks/setup.md`), then check again. Never write these documents here. Stop when a file of the first or third bullet is still missing, and name it. A missing `response-language.md` does not stop setup: wakes use `match-user` with no live user message (the language of the ticket or spec when it has prose, else the latest human comment, else English), the journal notes the gap, and the user can add the file with `smode setup override`.
 
 ## 2. Pick the agent manager
 

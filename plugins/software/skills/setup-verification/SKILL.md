@@ -43,5 +43,3 @@ Follow the doc end to end once, from a fresh worktree of trunk: launch, doctor, 
 ## 4. Report
 
 Tell the user the doc is written and proven, which feature you drove, and which untracked needs it lists. Commit it with the repo.
-
-Adapted from `create-verification-skill` in cursor/plugins `pstack` (MIT, Copyright (c) 2026 Lauren Tan).

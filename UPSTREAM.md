@@ -203,21 +203,3 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
-
-## Other sources
-
-`plugins/software/skills/setup-verification` adapts `create-verification-skill`
-from [cursor/plugins `pstack`](https://github.com/cursor/plugins/tree/main/pstack),
-the `factory` skill borrows pstack's ideas of independent verifiers,
-patch-bound verdicts, and decision trails, and the structure of `smode` (one
-mode skill with a trigger table, an always-pause list, delegation rules, short
-playbooks, per-role models set at delegation, and one doc per harness) is
-adapted from pstack's `poteto-mode`. None of it is tracked by the upstream tool.
-
-```
-MIT License
-
-Copyright (c) 2026 Lauren Tan
-```
-
-The full MIT text is the same as the license above.

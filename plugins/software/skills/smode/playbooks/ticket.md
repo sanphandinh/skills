@@ -11,11 +11,11 @@ Build exactly one ticket, on the branch you are given or a new one from trunk, f
    - list the files the branch changes against its base: each is in the plan's files to change or in the deviations, and none is in its files not to touch;
    - for every acceptance criterion, name the test that proves it, and walk its edges (repeats, order, the second call, cleanup on every exit path).
 6. Write the ticket's handoff from the template in `docs/agents/issue-tracker.md`, naming interfaces by name and behaviour, never by file path.
-7. When your work order says the coordinator verifies, reviews and opens the pull request, stop here and report.
+7. When the caller (such as `implement-spec` or a work order) takes over verification, review, or the pull request, stop at the step it names and report.
 8. Run the `verify` playbook and then the `review` playbook on the head you pushed, each as a separate step that starts again from the ticket and the diff.
 9. Fix the blocking findings, then repeat step 8 on the new head.
 10. Write the pull request body with the `pr` skill, including its Merge Danger section and a "Deviations from the plan" section, and open the pull request. Merging is an always-pause act.
 
-Steps 2, 5, 8 and 9 are never skipped, except that step 7 ends a worker's part early when its work order says so. Never let your self-check stand in for step 8, force-push a shared branch, deploy, or delete data.
+Steps 2, 5, 8 and 9 are never skipped, except that step 7 ends early when the caller takes over later steps. Never let your self-check stand in for step 8, force-push a shared branch, deploy, or delete data.
 
 **Reply:** what now works against each acceptance criterion, the self-check results, deviations, the verify and review verdicts with their head commit, and the pull request link. When a work order asks for a result object, give the `build` object of smode's `RESULTS.md`.

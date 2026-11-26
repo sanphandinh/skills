@@ -2,8 +2,8 @@
 
 Prove a change works on the real product, the way a user would see it, at one exact commit. Check what the ticket asks for, not what its author meant, even when this session is the author. Change no file and make no commit.
 
-1. Make `git rev-parse HEAD` equal the commit you were given (`git fetch origin`, then `git checkout --detach <sha>` when it does not).
-2. Read the ticket's acceptance criteria and `docs/agents/verify.md`.
+1. Make `git rev-parse HEAD` equal the commit you were given (`git fetch origin`, then `git checkout --detach <sha>` when it does not). When there is no commit to check (the user said not to commit), check the working tree against its base instead and say so in the verdict; never skip the check for that.
+2. Read `docs/agents/verify.md` and the ticket's acceptance criteria (when there is no ticket, use the user's stated goal and any reproduction steps as the criteria).
 3. When you hold a scarce resource (a simulator, a device, a browser profile, a port), bring it to a clean state as `docs/agents/verify.md` says. While you hold it, run one command against it at a time and wait for it: never in the background, never in parallel, never several steps chained in one script. After a timeout or an abort, stop whatever the command left running before you retry.
 4. Judge each acceptance criterion on its own by driving the product (CLI, HTTP, browser) and observing the behaviour:
    - `pass`: you ran it and saw it work;

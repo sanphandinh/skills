@@ -117,6 +117,8 @@ Each wake, for every held ticket whose label a person removed: read the comments
 
 **Failed workers**: a failure with no result or from the environment (a crash, a full disk, a network or model error) gets one fresh worker for the same step; a second one, or a failure in the work itself, is a hold.
 
+**A person's commands**: "stop", "pause" and "resume" are what a person means, in any language and any wording, not literal words. When a message may be one of them and you are not sure, ask before you cancel or pause the wakes.
+
 **Pause**: when a person tells you to pause, write `Status: paused since <time>` in the memory index and start nothing: no worker, no merge. Keep handling events of the workers already running. When told to resume, write `Status: running`.
 
 ## Limits

@@ -8,6 +8,7 @@ A read-only question: how does X work, why is Y built this way, are we sure abou
 4. For a fact outside the repository (a library, an API, a standard), run the `research` skill: open its `SKILL.md` as **Running a skill by name** in smode says, and let it decide how to read the sources. Looking the fact up yourself instead is a deviation to report.
 5. When the question is "should we do X or Y" and running something would settle it, run the `prototype` skill instead of guessing.
 6. Check the answer against one concrete case: a test, a command, a call site.
-7. Answer.
+7. Check `git status`: nothing changed but the `research` notes file.
+8. Answer.
 
 **Reply:** the answer first, in one or two sentences. Then the evidence: each claim with its file and line, command output, or link, and its label (measured, inferred, guessed). Then what stays open, if anything.

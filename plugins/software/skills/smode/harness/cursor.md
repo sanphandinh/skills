@@ -6,10 +6,14 @@ Read this once per session when the agent is Cursor (the app, `cursor-agent`, or
 
 ## Finding skills
 
-| smode step | Cursor |
+Find a skill in this order and use the first copy whose folder is named `<skill>` and holds a `SKILL.md` with `name: <skill>`:
+
+| Order | Cursor |
 |---|---|
-| 1. Skill already loaded | A skill in the session's list: the agent reads its `SKILL.md`. A skill with `disable-model-invocation: true` is not listed (measured); go to the next step for it. |
+| 1. Already loaded | A skill in the session's list: read its `SKILL.md`. A skill with `disable-model-invocation: true` is not listed (measured); go to step 2. |
+| 2. Next to this skill | `<skill>/SKILL.md` in the folder that holds this skill's folder (sibling skills in a skills folder or in one plugin). |
 | 3. Skill locations | **Docs.** In order: `.cursor/skills/<skill>/`, `.agents/skills/<skill>/`, `.claude/skills/<skill>/` and `.codex/skills/<skill>/` in the project (nested folders too), then the same under `~/`, then the skills of installed plugins (`~/.cursor/plugins/`) and of each `--plugin-dir` folder (measured). |
+| 4. Up from this skill | Nearest ancestor folder holding `<any folder>/skills/<skill>/SKILL.md` (a checkout of a multi-plugin repository). |
 
 Read a skill's `SKILL.md` with the file tool and follow it.
 
@@ -23,5 +27,3 @@ In `cursor-agent`, `Task` and `TodoWrite` are dynamic tools of the `cursor` name
 | A separate checkout for a skill's sub-agent | Create a worktree with git, name it in the prompt, and remove it after the push check. |
 | Ask the user | `AskQuestion` with a `title` and `questions`, each an `id`, a `prompt` and `options` (`id`, `label`), and `allow_multiple` when several fit (measured in `cursor-agent`). Through T3 it has none (measured): ask in the reply and end the turn. |
 | Open a todo list | `TodoWrite` with `todos` (each `id`, `content`, `status`: `pending`, `in_progress`, `completed` or `cancelled`) and `merge` (measured in `cursor-agent`); without it, keep the list in the reply. |
-| Schedule or loop | Skip with the line. |
-| Watch a pull request | Skip with the line. |

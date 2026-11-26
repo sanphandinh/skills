@@ -13,5 +13,6 @@ Plan exactly one ticket so that whoever builds it never has to invent a design d
    - **Questions**: every product question the ticket leaves open (what users see or get, scope, wording, which behaviour wins), each with options and your recommendation. A part that depends on an open question says `open until question <n> is answered`, never a default to build with.
    - **Split**: when the ticket changes more than one user-facing flow or more than one seam's ownership, so one review round cannot hold it, propose smaller tickets in build order, each with its own acceptance criteria, as a question. Otherwise `none`.
 3. Keep it reviewable in one sitting: decisions and lists, not prose.
+4. Check `git status`: still clean.
 
 **Reply:** the plan. When a work order asks for a result object, give the `plan` object of smode's `RESULTS.md`.
