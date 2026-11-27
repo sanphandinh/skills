@@ -58,7 +58,7 @@ When a worker reports, drop it from `tasks`, `res release <n> slot --count 1`, a
 
 ### Plan
 
-A `plan` worker (**Starting a worker**). On `done`, post the result's `plan` on the ticket as a comment headed `## Factory plan`, with the result's `door` and `files_to_change`. A plan whose result's `questions` is not empty goes on **hold** with them, before any code. The **Ticket chain** (step 11) then takes it to **Collisions**.
+A `plan` worker (**Starting a worker**). On `done`, post the result's `plan` on the ticket as a comment headed `## Factory plan`, with the result's `door` and `files_to_change`. A plan whose result's `questions` is not empty goes on **hold** with them, before any code, unless a red trunk is their only cause (**Worker questions**). The **Ticket chain** (step 11) then takes it to **Collisions**.
 
 ### Collisions
 
@@ -204,7 +204,7 @@ The **To answer** line:
 
 **Unhold**: the dispatcher wakes you with "the hold was released" when a person handed the ticket back. When the pull request carries `ready-for-human`, remove it first (Land's policy gate adds it again when a person must still merge). Read the comments people wrote since the brief, clear the flag, and continue the step that held, with the answer in the next work order.
 
-**Worker questions**: a worker on a provider that cannot ask (`providers.md`) reports `failed` with its question in `questions` instead; treat that result as a question, not a failure. Answer from the ticket, the spec, the plan, the ADRs, the glossary and earlier answers when they settle it. A product question they do not settle goes to a person: reply to the worker that it should stop and report `failed` with the question in its result, then hold with the question. A person's answer never keeps a worker waiting.
+**Worker questions**: a worker on a provider that cannot ask (`providers.md`) reports `failed` with its question in `questions` instead; treat that result as a question, not a failure. A question or failure whose only cause is a red trunk (`Trunk checks` red on trunk's head, and this ticket is not the fix for it), such as a criterion that cannot pass until trunk is green, is no question for a person: release everything, `res ticket set <n> --json '{"state":"waiting","waitingOn":["trunk"],"landing":false}'`, record, and end the turn; when the dispatcher wakes you because trunk is no longer red, start the same step again. Answer the rest from the ticket, the spec, the plan, the ADRs, the glossary and earlier answers when they settle it. A product question they do not settle goes to a person: reply to the worker that it should stop and report `failed` with the question in its result, then hold with the question. A person's answer never keeps a worker waiting.
 
 **Blocked workers**: read the worker's last output. Waiting on a permission or a question in its own terminal: send it the answer or "continue". Ended without reporting: send it "Report through the manager now: succeeded with your result if the step is done, failed with the reason if not." Still blocked on a turn at least `Wake timeout` later: stop it and start one fresh worker for the same step; blocked again: hold.
 
