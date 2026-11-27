@@ -23,7 +23,13 @@ You are the coordinator of one ticket, from its claim to its Close, in the ticke
 
 ## Ticket chain
 
-Read the ticket's state from the tracker and the git host every turn, then take the first row that matches:
+Read the ticket's state from the tracker and the git host every turn, then take the first row that matches.
+
+**Red trunk first.** When the row is **Check**, **Rework** or **Land**, look at it before you take it (it reads only the host, never the record):
+- **Still red.** `Trunk checks` are red on trunk's head, this ticket is not the fix for it, and what stops the ticket has a red trunk as its only cause: the head's `factory/verify` is `pending` with `waits on red trunk`, or every failed required check fails only because of that red trunk. Start nothing: with a worker of yours live, wait for its report; with none, apply the red-trunk rule (**Worker questions**).
+- **Green again.** Trunk is no longer red, the head's `factory/verify` is `pending` with `waits on red trunk` or a required check failed only because of the earlier red trunk, and the branch lacks trunk (`git merge-base --is-ancestor origin/<trunk> HEAD` fails): first update the branch as Land's `update` step does (`git merge-tree`, the clean or the conflict order, `Conflict rounds`), with a worker started through **Starting a worker** and holding no `merge`; on its `done`, go on with the chain.
+
+The rows:
 
 | What the record, the tracker and the pull request show | Next step |
 |---|---|
@@ -69,7 +75,7 @@ A `build` worker (**Starting a worker**). On `done`, confirm the branch is on th
 
 ### Check
 
-**Still red?** Before starting a verifier: when the head's `factory/verify` is `pending` with the description `waits on red trunk`, `Trunk checks` is still red on trunk's head, and this ticket is not the fix for it, start no verifier. With a worker of yours live, wait for its report; with none, apply the red-trunk rule (**Worker questions**).
+Before starting a verifier, look at **Red trunk first** (**Ticket chain**).
 
 For the pull request's head, a `verify` and a `review` worker together (**Starting a worker**, with `res acquire <n> slot --count <2, or 1 when Max workers is 1>` and the reset gate once for the pair): start both, or one after the other with one slot. On each `done`, act only if the result's `head_sha` is still the head: post the result's `evidence` or `findings` as a pull request comment headed `## Factory verify` or `## Factory review`, then set the verdict status on that commit, linking the comment:
 
@@ -92,7 +98,7 @@ The record's `landing` names the Land step under way: `false` before Land, then 
 
 First the gates, in this order, when Land starts and again in step `acquire`. Every way out of a gate releases what you hold first, and sets `landing` false.
 
-1. **Required checks** on the head (**Merge guard**, line 2): pending, set `running` with a due and end the turn (watch-pr wakes you, and Land starts again); a failure is **Rework**; unknown is **Unknown CI**: **hold** with its brief (DISPATCHER.md, **Stop the line**, says what it names).
+1. **Required checks** on the head (**Merge guard**, line 2): pending, set `running` with a due and end the turn (watch-pr wakes you, and Land starts again); a failure is **Rework**, unless a red trunk is its only cause (**Red trunk first**); unknown is **Unknown CI**: **hold** with its brief (DISPATCHER.md, **Stop the line**, says what it names).
 2. **Policy.** `Auto-merge: off`; a one-way door or a blast radius `merge-policy.md` does not allow, that no person approved (approved: go on and merge); a protected path; a fix for a red trunk. **Hold** at once: no update, no waiting on trunk. A protected path or a trunk fix also gets `ready-for-human` on the pull request: a person merges it.
 3. **Red trunk** (`Trunk checks` red on trunk's head, and this is not the fix for it): `res ticket set <n> --json '{"state":"waiting","waitingOn":["trunk"],"landing":false}'` and end the turn. No merge of trunk into the branch, no rework, no hold; the dispatcher wakes you when trunk is no longer red.
 
@@ -205,7 +211,7 @@ The **To answer** line:
 
 **Unhold**: the dispatcher wakes you with "the hold was released" when a person handed the ticket back. When the pull request carries `ready-for-human`, remove it first (Land's policy gate adds it again when a person must still merge). Read the comments people wrote since the brief, clear the flag, and continue the step that held, with the answer in the next work order.
 
-**Worker questions**: a worker on a provider that cannot ask (`providers.md`) reports `failed` with its question in `questions` instead; treat that result as a question, not a failure. A question or failure whose only cause is a red trunk (`Trunk checks` red on trunk's head, and this ticket is not the fix for it), such as a criterion that cannot pass until trunk is green, is no question for a person. While another worker of yours is live, release only what this worker held (as when a worker reports, **Starting a worker**) and wait for that worker's report. Once none is live: release everything, `res ticket set <n> --json '{"state":"waiting","waitingOn":["trunk"],"landing":false}'`, record, and end the turn. When the dispatcher wakes you because trunk is no longer red, go on with the **Ticket chain**; when a pull request exists and its branch lacks trunk (`git merge-base --is-ancestor origin/<trunk> HEAD` fails), first update the branch as Land's `update` step does (`git merge-tree`, the clean or the conflict order, `Conflict rounds`), with a worker started through **Starting a worker** and holding no `merge`, so the step runs on the fixed trunk. This **red-trunk rule** comes before **Quota** and **Failed workers** for a `failed` report, and before Rework (`FAIL`) or the second verify and hold (`UNVERIFIED`) for a verify result whose only cause is a red trunk (**Check** sets `factory/verify` to `pending`). Answer the rest from the ticket, the spec, the plan, the ADRs, the glossary and earlier answers when they settle it. A product question they do not settle goes to a person: reply to the worker that it should stop and report `failed` with the question in its result, then hold with the question. A person's answer never keeps a worker waiting.
+**Worker questions**: a worker on a provider that cannot ask (`providers.md`) reports `failed` with its question in `questions` instead; treat that result as a question, not a failure. A question or failure whose only cause is a red trunk (`Trunk checks` red on trunk's head, and this ticket is not the fix for it), such as a criterion that cannot pass until trunk is green, is no question for a person. While another worker of yours is live, release only what this worker held (as when a worker reports, **Starting a worker**) and wait for that worker's report. Once none is live: release everything, `res ticket set <n> --json '{"state":"waiting","waitingOn":["trunk"],"landing":false}'`, record, and end the turn. When you are woken, by the dispatcher or otherwise, go on with the **Ticket chain**: its **Red trunk first** keeps the wait while trunk is red and updates the branch from trunk once it is green. This **red-trunk rule** comes before **Quota** and **Failed workers** for a `failed` report, and before Rework (`FAIL`) or the second verify and hold (`UNVERIFIED`) for a verify result whose only cause is a red trunk (**Check** sets `factory/verify` to `pending`). Answer the rest from the ticket, the spec, the plan, the ADRs, the glossary and earlier answers when they settle it. A product question they do not settle goes to a person: reply to the worker that it should stop and report `failed` with the question in its result, then hold with the question. A person's answer never keeps a worker waiting.
 
 **Blocked workers**: read the worker's last output. Waiting on a permission or a question in its own terminal: send it the answer or "continue". Ended without reporting: send it "Report through the manager now: succeeded with your result if the step is done, failed with the reason if not." Still blocked on a turn at least `Wake timeout` later: stop it and start one fresh worker for the same step; blocked again: hold.
 
