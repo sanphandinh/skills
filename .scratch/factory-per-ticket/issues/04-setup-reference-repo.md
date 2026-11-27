@@ -18,7 +18,7 @@
   Verify: chạy lệnh
 - [ ] `docs/agents/factory.md` của repo này không còn dòng `Coordinator:`; ba `plugin.json` của `software` ở 0.13.0
   Verify: `grep -n Coordinator docs/agents/factory.md`; `grep version plugins/software/.*-plugin/plugin.json`
-- [ ] `factory setup` trên repo thử chạy smoke test mới, mọi dòng `PASS`
+- [x] `factory setup` trên repo thử chạy smoke test mới, mọi dòng `PASS`
   Verify: bằng chứng trong `research/`
 - [ ] `npm run validate` và `npm test` pass
   Verify: chạy hai lệnh
