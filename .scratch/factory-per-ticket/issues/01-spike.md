@@ -8,7 +8,7 @@
 
 **Door:** two-way
 
-- [ ] Chín thử nghiệm đều có mục riêng trong `research/spike.md` với bằng chứng (thread, thời điểm, output) và PASS/FAIL, kèm bảng tóm tắt
+- [x] Chín thử nghiệm đều có mục riêng trong `research/spike.md` với bằng chứng (thread, thời điểm, output) và PASS/FAIL, kèm bảng tóm tắt
   Verify: đọc `research/spike.md`
 - [x] `references/t3.md:55` ghi `thought_level`; dòng 63 có cả hai biến thể
   Verify: `grep -n "thought_level\|thinking_level" plugins/software/skills/factory/references/t3.md`

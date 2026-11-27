@@ -1,6 +1,6 @@
 # Spike: per-ticket coordinator on T3 Code
 
-Ticket A of the plan (section 2). Run 2026-11-27 on T3 Code server 0.1.12 (macOS arm64), sandbox repository `sanphandinh/factory-ticket-sandbox` (private, created for this run; T3 project `mcp:eeb06939-7caa-4269-942e-7a0e5a76a23b`, setup script `sleep 25 && date -u +%FT%TZ > .setup-ran`, run on worktree create). Every thread named below is in that project. Raw notes per experiment; the summary table is at the end.
+Ticket A of the plan (section 2). Run 2026-11-27 on T3 Code server 0.1.12 (macOS arm64), sandbox repository `sanphandinh/factory-ticket-sandbox` (private, created for this run; T3 project `mcp:eeb06939-7caa-4269-942e-7a0e5a76a23b`, setup script `sleep 25 && date -u +%FT%TZ > .setup-ran`, run on worktree create). Every thread named below is in that project. Raw notes per experiment, in the order they ran; the summary table is at the end.
 
 ## 1. `t3_thread_launch` with a worktree
 
@@ -68,3 +68,34 @@ The cleanup sweep runs hourly (`StorageCleanup.sweep` spans in T3's server trace
 ## Seen on the way: effort options per model
 
 `orchestrator_capabilities` (2026-11-27 05:27Z) lists the effort option by model, not by instance. On `cursor`: `grok-4.7` takes `reasoning_effort` (low…xhigh), `grok-4.6` takes `effort`, `claude-opus-5-5` takes `effort`, `gemini-4-neon` takes `reasoning_effort`, `composer-2.5` has none. On `antigravity` every Gemini model takes `thought_level`; on `claudeAgent`, `effort`; on `opencode`, `variant`. So the reference maps `effort=<level>` to the option of that model whose values are effort levels, instead of one option per instance.
+
+## 4. Cleanup after a merge, and a held thread's worktree
+
+For the experiment, the sandbox project's cleanup was set to Custom (written into `~/.t3/userdata/settings.json`, `projectSettingsOverrides["mcp:eeb06939-…"].worktreeCleanup`, backup kept in the session scratchpad): merged on, settled after 0 days, inactive off, unchanged off, keep uncommitted changes. The global rules stayed `worktreeAfterDays: 3`, `worktreeUnchanged: true`.
+
+- PR #2 squash-merged at 06:04:44Z (`gh pr merge 2 --squash --match-head-commit b7d24b3…`). Thread #2 got "#2: merged, stopped watching" at 06:06:07Z ("Pull request #2 … was merged into main by sanphandinh as 67a1ced, so T3 Code stopped watching it"), while snoozed, and stayed snoozed. T3 did not settle the thread on merge (`settled: false` at 06:23Z).
+- Sweep at 06:20:40Z (trace `StorageCleanup.sweep`). Worktrees before: #1 (no PR, untracked files, unsettled), #2 (merged PR, its thread running a turn), #3 (settled 06:09Z, no changes), #4 (no commits beyond main, unsettled, idle), the scheduler's thread's. After: **#3 removed** (settled after 0 days: the project override was live), **#4 kept** (unchanged is off for the project; under the global rule it would have gone), **#1 kept**, **#2 kept**.
+- So a held thread (unsettled, like #1 and #4) keeps its worktree under the project rules setup asks for, and the global `unchanged` and `inactive` rules are the ones that would remove it. PASS for that half.
+- The merged worktree #2 was kept. Either its running turn kept it, or a squash merge never counts as merged for T3 ("whose commits are included in the default branch": a squash commit does not contain the branch's commits). The 07:20Z sweep, with thread #2 idle, decides it; see the end-to-end notes. Until then the dispatcher's sweep is the cleanup of merged workspaces, as the plan's fallback says. The factory merges with `--squash`, so the T3 rule should not be relied on.
+
+## 8. Cleanup while Close runs
+
+Thread #2 ran a 9-minute loop from 06:14:25Z to 06:23:06Z printing `test -d <its worktree>` every 20 s: `PRESENT` on every line, across the 06:20:40Z sweep, `cwd` intact. PASS: a sweep does not pull the worktree from under a running turn of a merged ticket. Close runs from the memory folder anyway (plan 1.7).
+
+## Seen on the way: the scheduler's threads
+
+A `schedule_task` run (`bindToCurrentThread: false`, `freshSession: true`, project set) made thread `factory spike: scheduler mode` on Claude Opus 5.5 effort high (the environment's default model), `runtimeMode: "full-access"`, in a worktree of its own on a branch T3 named (`spike/t3-thread-runtime-mode`), because this environment's default for new threads is a worktree. From it, `t3_thread_launch` with `runtimeMode: "full-access"` worked. So the watcher can launch dispatchers with full access, and its prompt must use absolute paths to the main checkout.
+
+## Summary
+
+| # | Experiment | Result | What it changed |
+|---|---|---|---|
+| 1 | launch with a worktree: setup first, branch kept, existing PR branch | PASS with `async: false` on the setup script; FAIL without it | setup checks `async: false`; no per-step worktrees |
+| 2 | Antigravity worker with `isolation: "shared"` | PASS | none |
+| 3 | watch wakes on review comments, conflicts, CI | PASS for checks failed, checks passed, conflict, merge; FAIL for comments by the account T3 runs as | the dispatcher wakes coordinators on new trusted comments |
+| 4 | cleanup after merging; a held thread's worktree | held: PASS under project rules (global `unchanged`/`inactive` would remove it); merged with squash: kept (pending the idle sweep) | setup asks for project cleanup rules; dispatcher sweep stays the cleanup of merged workspaces; revive on a new worktree when one is gone |
+| 5 | revive with `existing_worktree`; read and stop the old worker | PASS through the worker's thread (`task_*` refused) | revive maps to `t3_thread_interrupt` on the child; claim check first in every turn; branch read with git |
+| 6 | scout dispatcher launches a coordinator on another model, `full-access` | PASS | the launching thread must be `full-access` |
+| 7 | send to an idle top-level thread; snoozed | PASS; a message ends the snooze | coordinators snooze again at the end of each turn |
+| 8 | cleanup during Close | PASS | none |
+| 9 | watch wakes on an issue label change | no wake, as expected | the dispatcher keeps unhold |
