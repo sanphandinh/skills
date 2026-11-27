@@ -120,6 +120,15 @@ test("fetch reads the record of --issue when --ticket is left out, and refuses a
   assert.equal(run(s, "fetch", "--issue", "12", "--pr", "x").code, 2);
 });
 
+test("fetch with a tracker key as --ticket and only --pr keeps the key", () => {
+  const s = setup(FIXTURES);
+  res.claim(res.open(s.root, { now: CLAIMED }), "checkout-02");
+  const out = run(s, "fetch", "--ticket", "checkout-02", "--pr", "40");
+  assert.equal(out.code, 0, out.err);
+  assert.equal(out.json.ticket, "checkout-02");
+  assert.deepEqual(out.json.comments.map((c) => c.id).sort(), ["inline:100", "issue:200", "review:100"]);
+});
+
 test("fetch refuses a ticket that is not claimed", () => {
   const s = setup(FIXTURES);
   const out = run(s, "fetch", "--ticket", "99", "--issue", "99");

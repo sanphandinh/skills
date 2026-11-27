@@ -45,6 +45,7 @@ export class Refused extends Error {}
 // A ticket is its number, or on a tracker without numbers a key such as `checkout-02`.
 const KEY = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 export function ticketId(n) {
+  if (typeof n === "number" && !Number.isInteger(n)) throw new Refused(`"${n}" is not a ticket number or key`);
   const text = String(n ?? "");
   if (/^[1-9]\d*$/.test(text)) return Number(text);
   if (KEY.test(text) && !/^\d+$/.test(text)) return text;
@@ -105,6 +106,15 @@ export function open(root, { now } = {}) {
 }
 
 const iso = (d) => new Date(d).toISOString();
+// A time given on the command line: refused unless it parses.
+function when(t, what) {
+  if (t === undefined || t === null || t === true || Number.isNaN(Date.parse(t))) throw new Refused(`${what} needs a time such as 2026-11-27T10:00Z, not "${t ?? ""}"`);
+  return iso(t);
+}
+function needed(v, what) {
+  if (v === undefined || v === null || v === true || String(v).trim() === "") throw new Refused(`${what} is required`);
+  return String(v);
+}
 const plus = (c, ms) => iso(c.now.getTime() + ms);
 const minute = (d) => iso(d).slice(0, 16) + "Z";
 
@@ -374,23 +384,33 @@ function grantableHeads(c, names = Object.keys(c.cfg.capacity)) {
 
 const toNotify = (c, names) => grantableHeads(c, names).filter(({ head }) => !head.notifiedAt).map(({ ticket, resource }) => ({ ticket, resource }));
 
+// Gives back a holding, or leaves the queue of a resource the ticket waits for.
 export function release(c, n, resource) {
   return withLock(c, () => {
     rank(c.cfg, resource);
     n = ticketId(n);
     const res = readResource(c, resource);
-    const before = res.holders.length;
+    const held = res.holders.length;
+    const queued = res.queue.length;
     res.holders = res.holders.filter((h) => h.ticket !== n);
-    if (res.holders.length === before) return { released: null, notify: [] };
+    res.queue = res.queue.filter((q) => q.ticket !== n);
+    if (res.holders.length === held && res.queue.length === queued) return { released: null, notify: [] };
     writeJson(resourceFile(c, resource), res);
-    return { released: resource, notify: toNotify(c, [resource]) };
+    const rec = readTicket(c, n);
+    if (rec.parkedOn.includes(resource)) {
+      const parkedOn = rec.parkedOn.filter((x) => x !== resource);
+      writeTicket(c, applyPatch(c, rec, rec.state === "parked" && parkedOn.length === 0 ? { state: "running", parkedOn } : { parkedOn }));
+    }
+    return { released: resource, left: res.queue.length !== queued, notify: toNotify(c, [resource]) };
   });
 }
 
 export function notified(c, n, resource) {
+  rank(c.cfg, resource);
+  n = ticketId(n);
   return withLock(c, () => {
     const res = readResource(c, resource);
-    const q = res.queue.find((x) => x.ticket === ticketId(n));
+    const q = res.queue[0]?.ticket === n ? res.queue[0] : null;
     if (!q) return { notified: false };
     q.notifiedAt = iso(c.now);
     writeJson(resourceFile(c, resource), res);
@@ -399,6 +419,7 @@ export function notified(c, n, resource) {
 }
 
 export function renew(c, n) {
+  n = ticketId(n);
   return withLock(c, () => {
     const out = [];
     for (const name of Object.keys(c.cfg.capacity)) {
@@ -548,6 +569,7 @@ export function lockAcquire(c, launcher, { reclaim = false } = {}) {
 }
 
 export function lockThread(c, thread) {
+  thread = needed(thread, "lock thread <session id>");
   return withLock(c, () => {
     const d = readDispatcher(c);
     if (!d.lock) throw new Refused("no dispatcher lock to name a thread in");
@@ -574,10 +596,11 @@ export function lockShow(c) {
   return { lock: d.lock, live: !!d.lock && Date.parse(d.lock.expires) > c.now.getTime() };
 }
 
-export function setDispatcherDue(c, when, reason) {
+export function setDispatcherDue(c, time, reason) {
+  const at = time === null ? null : when(time, "dispatcher-due set");
   return withLock(c, () => {
     const d = readDispatcher(c);
-    d.due = when ? { at: iso(when), reason: reason ?? "" } : null;
+    d.due = at ? { at, reason: reason ?? "" } : null;
     writeJson(dispatcherFile(c), d);
     return { due: d.due };
   });
@@ -602,6 +625,8 @@ function writeQuota(c, lines) {
 }
 
 export function quotaBlock(c, candidate, { until, ticket, step, words }) {
+  candidate = needed(candidate, "quota block <candidate>");
+  until = when(until, "quota block --until");
   return withLock(c, () => {
     // Minutes, the way every <time> in the memory folder is written.
     const line = `${candidate} | blocked until ${minute(until)} | since ${minute(c.now)} | ${ticket} ${step} | ${String(words ?? "").replace(/\s+/g, " ").trim()}`;

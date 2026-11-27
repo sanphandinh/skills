@@ -109,7 +109,7 @@ export function fetchComments({ root, repo, ticket, issue, pr, now }) {
     }
   }
   comments.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
-  return { ticket: Number(ticket), since: rec.claimedAt, comments, skipped };
+  return { ticket: rec.ticket, since: rec.claimedAt, comments, skipped };
 }
 
 const number = (v, flag) => {

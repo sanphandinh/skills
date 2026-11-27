@@ -225,6 +225,42 @@ test("acquire refuses a bigger count than held, a count that is not a whole numb
   assert.throws(() => r.acquire(ctx(root), 3, "merge"), /waits in the queue of slot/);
 });
 
+test("release also takes a parked ticket out of its queue, so the one behind it moves up and is named", () => {
+  const root = project({ maxWorkers: 1 });
+  for (const n of [1, 2, 3]) r.claim(ctx(root), n);
+  r.acquire(ctx(root), 1, "slot");
+  r.acquire(ctx(root), 2, "slot"); // head of the queue, parked
+  r.acquire(ctx(root), 3, "slot");
+  const left = r.release(ctx(root, 1), 2, "slot"); // ticket 2 goes on hold instead
+  assert.equal(left.left, true);
+  assert.deepEqual(left.notify, []); // nothing free yet
+  assert.deepEqual(r.getTicket(ctx(root, 1), 2).parkedOn, []);
+  assert.equal(r.getTicket(ctx(root, 1), 2).state, "running");
+  assert.doesNotThrow(() => r.acquire(ctx(root, 1), 2, "merge"));
+  assert.deepEqual(r.release(ctx(root, 2), 1, "slot").notify, [{ ticket: 3, resource: "slot" }]);
+});
+
+test("commands refuse missing or bad arguments instead of doing nothing", async () => {
+  const root = project();
+  r.claim(ctx(root), 1);
+  assert.throws(() => r.notified(ctx(root), 1, "bogus"), /unknown resource/);
+  assert.throws(() => r.notified(ctx(root), "#1", "slot"), /not a ticket/);
+  assert.throws(() => r.renew(ctx(root), "#1"), /not a ticket/);
+  assert.throws(() => r.lockThread(ctx(root), undefined), /required/);
+  assert.throws(() => r.setDispatcherDue(ctx(root), undefined, "x"), /needs a time/);
+  assert.throws(() => r.quotaBlock(ctx(root), undefined, { until: at(5) }), /required/);
+  assert.throws(() => r.quotaBlock(ctx(root), "openai/gpt-5.5", { until: "soon" }), /needs a time/);
+  assert.throws(() => r.claim(ctx(root), NaN), /not a ticket/);
+  assert.equal((await cli(root, ["dispatcher-due", "set"])).code, 2);
+  // Only the head of a queue is marked notified.
+  const q = project({ maxWorkers: 1 });
+  for (const n of [1, 2, 3]) r.claim(ctx(q), n);
+  r.acquire(ctx(q), 1, "slot");
+  r.acquire(ctx(q), 2, "slot");
+  r.acquire(ctx(q), 3, "slot");
+  assert.equal(r.notified(ctx(q), 3, "slot").notified, false);
+});
+
 test("ticket ids: numbers and tracker keys are taken, anything else is refused", async () => {
   const root = project();
   assert.equal(r.claim(ctx(root), "checkout-02").claimed, true);
