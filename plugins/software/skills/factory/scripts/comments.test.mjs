@@ -109,6 +109,17 @@ test("fetch without a pull request reads only the ticket", () => {
   assert.deepEqual(out.json.comments.map((c) => c.id), ["issue:100"]);
 });
 
+test("fetch reads the record of --issue when --ticket is left out, and refuses an option without its value", () => {
+  const s = setup(FIXTURES);
+  const out = run(s, "fetch", "--issue", "12", "--pr", "40");
+  assert.equal(out.code, 0, out.err);
+  assert.equal(out.json.comments.length, 4);
+  const bad = run(s, "fetch", "--issue", "--pr", "40");
+  assert.equal(bad.code, 2);
+  assert.match(bad.err, /--issue needs a value/);
+  assert.equal(run(s, "fetch", "--issue", "12", "--pr", "x").code, 2);
+});
+
 test("fetch refuses a ticket that is not claimed", () => {
   const s = setup(FIXTURES);
   const out = run(s, "fetch", "--ticket", "99", "--issue", "99");

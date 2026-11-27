@@ -6,7 +6,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import * as r from "./resources.mjs";
-import { readMemory } from "./roles.mjs";
+import { readMemory, renderShow } from "./roles.mjs";
 
 const SCRIPT = path.join(path.dirname(fileURLToPath(import.meta.url)), "resources.mjs");
 const T0 = "2026-11-27T10:00:00.000Z";
@@ -185,9 +185,91 @@ test("reclaim releases every resource of the ticket, drops its queue places and 
     { ticket: 2, resource: "slot" },
     { ticket: 3, resource: "port" },
   ]);
-  // A parked ticket that is reclaimed leaves its queue.
+  // A parked ticket that is reclaimed leaves its queue, so the one behind it is next.
+  r.claim(ctx(root), 4);
+  r.acquire(ctx(root, 1), 4, "slot");
   r.reclaim(ctx(root, 2), 2);
-  assert.equal(r.acquire(ctx(root, 2), 3, "slot").granted, true);
+  assert.equal(r.acquire(ctx(root, 2), 4, "slot").granted, true);
+});
+
+test("release names only the heads of the resource it released, and only those nobody told yet", () => {
+  const root = project({ maxWorkers: 1 });
+  for (const n of [1, 2, 3]) r.claim(ctx(root), n);
+  r.acquire(ctx(root), 1, "slot");
+  r.acquire(ctx(root), 1, "merge");
+  r.release(ctx(root), 1, "merge");
+  r.acquire(ctx(root), 2, "merge");
+  r.acquire(ctx(root), 3, "slot");
+  r.release(ctx(root), 2, "merge"); // merge is free; nobody queues for it
+  // Ticket 4 queues on merge behind nobody; make it a head that was already told.
+  r.claim(ctx(root), 4);
+  r.acquire(ctx(root), 1, "merge");
+  r.acquire(ctx(root), 4, "merge");
+  r.release(ctx(root, 1), 1, "merge");
+  r.notified(ctx(root, 1), 4, "merge");
+  const out = r.release(ctx(root, 2), 1, "slot");
+  assert.deepEqual(out.notify, [{ ticket: 3, resource: "slot" }]);
+  assert.deepEqual(r.release(ctx(root, 2), 1, "slot"), { released: null, notify: [] });
+});
+
+test("acquire refuses a bigger count than held, a count that is not a whole number, and a second queue", () => {
+  const root = project({ maxWorkers: 2 });
+  for (const n of [1, 2, 3]) r.claim(ctx(root), n);
+  r.acquire(ctx(root), 1, "slot");
+  assert.equal(r.acquire(ctx(root), 1, "slot").already, true);
+  assert.throws(() => r.acquire(ctx(root), 1, "slot", 2), /release it first/);
+  assert.throws(() => r.acquire(ctx(root), 2, "slot", Number("abc")), /at most/);
+  assert.throws(() => r.acquire(ctx(root), 2, "slot", 1.5), /at most/);
+  r.acquire(ctx(root), 2, "slot");
+  r.acquire(ctx(root), 3, "slot"); // parked on slot
+  assert.throws(() => r.acquire(ctx(root), 3, "merge"), /waits in the queue of slot/);
+});
+
+test("ticket ids: numbers and tracker keys are taken, anything else is refused", async () => {
+  const root = project();
+  assert.equal(r.claim(ctx(root), "checkout-02").claimed, true);
+  assert.equal(r.claim(ctx(root), "7").record.ticket, 7);
+  assert.throws(() => r.claim(ctx(root), "#12"), /not a ticket/);
+  assert.throws(() => r.claim(ctx(root), undefined), /not a ticket/);
+  assert.deepEqual(r.tickets(ctx(root)).tickets.map((t) => t.ticket), [7, "checkout-02"]);
+  const bad = await cli(root, ["claim", "--thread", "--now"]);
+  assert.equal(bad.code, 2);
+});
+
+test("wake refuses an unclaimed ticket, and leaves a parked head alone while it cannot take what is free", () => {
+  const root = project({ maxWorkers: 2 });
+  assert.throws(() => r.wake(ctx(root), 9), /not claimed/);
+  for (const n of [1, 2]) r.claim(ctx(root), n);
+  r.acquire(ctx(root), 1, "slot");
+  r.acquire(ctx(root), 2, "slot", 2);
+  assert.equal(r.wake(ctx(root, 1), 2).action, "still-parked");
+  assert.ok(r.due(ctx(root, 1)).due.every((d) => d.source !== "queue"));
+  r.release(ctx(root, 2), 1, "slot");
+  assert.equal(r.wake(ctx(root, 2), 2).action, "notified");
+});
+
+test("a ticket with an open pull request still blocks through its plan's files that the pull request does not touch yet", () => {
+  const root = project();
+  for (const n of [1, 2]) r.claim(ctx(root), n);
+  r.setTicket(ctx(root), 1, { pr: 10 });
+  const open = [{ number: 10, files: ["src/a.js"] }];
+  assert.equal(r.checkPlan(ctx(root), 1, { files: ["src/a.js", "src/b.js"], openPrs: open }).cleared, true);
+  const second = r.checkPlan(ctx(root), 2, { files: ["src/b.js"], openPrs: open });
+  assert.equal(second.cleared, false);
+  assert.deepEqual(second.waitingOn, ["ticket:1"]);
+  const third = r.checkPlan(ctx(root), 2, { files: ["src/a.js", "src/b.js"], openPrs: open });
+  assert.deepEqual(third.waitingOn, ["pr:10"]);
+});
+
+test("a stale lock is broken once when many processes find it at the same time", async () => {
+  const root = project();
+  const memory = r.open(root).memory;
+  fs.mkdirSync(path.join(memory, "state.lock"), { recursive: true });
+  fs.writeFileSync(path.join(memory, "state.lock", "owner.json"), JSON.stringify({ pid: 999999, token: "dead", at: T0 }));
+  const runs = await Promise.all(Array.from({ length: 8 }, () => cli(root, ["claim", "21"])));
+  assert.deepEqual(runs.map((x) => x.code), Array(8).fill(0));
+  assert.equal(runs.filter((x) => x.json.claimed).length, 1);
+  assert.equal(fs.existsSync(path.join(memory, "state.lock")), false);
 });
 
 // ---------- quota ----------
@@ -201,9 +283,13 @@ test("quota: blocks written by parallel processes all land, in the format roles.
   assert.deepEqual(runs.map((x) => x.code), [0, 0, 0, 0]);
   const memory = r.open(root).memory;
   const { blocks } = readMemory(memory);
-  for (const [i, id] of ids.entries()) assert.equal(blocks.get(id), at(30 + i));
+  const min = (t) => t.slice(0, 16) + "Z";
+  for (const [i, id] of ids.entries()) assert.equal(blocks.get(id), min(at(30 + i)));
   const line = fs.readFileSync(path.join(memory, "quota.md"), "utf8").split("\n").find((l) => l.startsWith("openai/gpt-5.5"));
-  assert.equal(line, `openai/gpt-5.5 | blocked until ${at(32)} | since ${at(0)} | 7 build | weekly usage`);
+  assert.equal(line, `openai/gpt-5.5 | blocked until ${min(at(32))} | since ${min(at(0))} | 7 build | weekly usage`);
+  assert.doesNotMatch(fs.readFileSync(path.join(memory, "quota.md"), "utf8"), /\n\n/);
+  fs.writeFileSync(path.join(root, "docs", "agents", "roles.md"), "# Roles\n\nworker: openai/gpt-5.5 effort=high\n");
+  assert.match(renderShow(root, { now: new Date(at(1)) }), new RegExp(`blocked until ${min(at(32))}`));
   assert.deepEqual(r.due(ctx(root, 31)).due.filter((d) => d.source === "quota").map((d) => d.candidate).sort(), [ids[1], ids[0]].sort());
   r.quotaPrune(ctx(root, 32));
   assert.deepEqual([...readMemory(memory).blocks.keys()], [ids[3]]);
@@ -288,20 +374,21 @@ test("wake: held and emptied waiting tickets run with a due; a parked queue head
 
 test("status: going from paused to running makes stopped tickets due now and clears queue notices; quota-dated dues stay", () => {
   const root = project({ maxWorkers: 1 });
-  for (const n of [1, 2, 3, 4]) r.claim(ctx(root), n);
+  for (const n of [1, 2, 3, 4, 5]) r.claim(ctx(root), n);
   r.setStatus(ctx(root), "paused");
   assert.equal(r.getStatus(ctx(root)).status, "paused");
   r.setTicket(ctx(root), 1, { state: "running", due: null }); // stopped while paused
   r.setTicket(ctx(root), 2, { state: "running", due: at(120) }); // waits for a quota block
   r.setTicket(ctx(root), 3, { state: "running", due: null, tasks: [{ taskId: "t", childThreadId: "c", step: "build" }] });
   r.acquire(ctx(root), 4, "slot");
-  r.acquire(ctx(root), 3, "slot");
+  r.acquire(ctx(root), 5, "slot");
   r.release(ctx(root), 4, "slot");
-  r.notified(ctx(root), 3, "slot");
+  r.notified(ctx(root), 5, "slot");
   r.setStatus(ctx(root, 10), "running");
   assert.equal(r.getTicket(ctx(root, 10), 1).due, at(10));
   assert.equal(r.getTicket(ctx(root, 10), 2).due, at(120));
-  assert.equal(r.getTicket(ctx(root, 10), 3).due, null);
+  assert.equal(r.getTicket(ctx(root, 10), 3).state, "running");
+  assert.equal(r.getTicket(ctx(root, 10), 3).due, null); // a live worker will wake it
   assert.equal(r.due(ctx(root, 10)).due.filter((d) => d.source === "queue").length, 1);
 });
 

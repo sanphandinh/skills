@@ -42,6 +42,15 @@ const LOCK_STALE_MS = 30_000;
 
 export class Refused extends Error {}
 
+// A ticket is its number, or on a tracker without numbers a key such as `checkout-02`.
+const KEY = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+export function ticketId(n) {
+  const text = String(n ?? "");
+  if (/^[1-9]\d*$/.test(text)) return Number(text);
+  if (KEY.test(text) && !/^\d+$/.test(text)) return text;
+  throw new Refused(`"${text}" is not a ticket number or key (letters, digits, ".", "_", "-")`);
+}
+
 // ---------- settings ----------
 
 const expandHome = (p) => p.replace(/^~(?=$|\/)/, os.homedir());
@@ -97,6 +106,7 @@ export function open(root, { now } = {}) {
 
 const iso = (d) => new Date(d).toISOString();
 const plus = (c, ms) => iso(c.now.getTime() + ms);
+const minute = (d) => iso(d).slice(0, 16) + "Z";
 
 // ---------- files and the lock ----------
 
@@ -128,36 +138,68 @@ function alive(pid) {
   }
 }
 
+// The lock is a directory; its owner.json names the process and a token. Only
+// the token's owner removes it. A stale lock (its process is gone, or it is older
+// than LOCK_STALE_MS) is broken under a second, short lock, after looking again,
+// so two processes never both break it and both enter.
+function lockOwner(dir) {
+  const owner = readJson(path.join(dir, "owner.json"), null);
+  let age = null;
+  try {
+    age = Date.now() - fs.statSync(dir).mtimeMs;
+  } catch {
+    return { gone: true };
+  }
+  return { owner, age };
+}
+
+const isStale = ({ owner, age }) => (owner && !alive(owner.pid)) || age > LOCK_STALE_MS || (!owner && age > 2000);
+
+function breakStale(dir, seen) {
+  const guard = `${dir}.break`;
+  try {
+    fs.mkdirSync(guard);
+  } catch (e) {
+    if (e.code !== "EEXIST") throw e;
+    const g = lockOwner(guard);
+    if (!g.gone && g.age > 5000) fs.rmSync(guard, { recursive: true, force: true });
+    return;
+  }
+  try {
+    const now = lockOwner(dir);
+    if (!now.gone && isStale(now) && now.owner?.token === seen.owner?.token) fs.rmSync(dir, { recursive: true, force: true });
+  } finally {
+    fs.rmSync(guard, { recursive: true, force: true });
+  }
+}
+
 function withLock(c, fn) {
   fs.mkdirSync(c.memory, { recursive: true });
   const dir = p(c, "state.lock");
+  const token = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const deadline = Date.now() + 20_000;
   for (;;) {
     try {
       fs.mkdirSync(dir);
-      fs.writeFileSync(path.join(dir, "owner.json"), JSON.stringify({ pid: process.pid, at: iso(Date.now()) }));
+      fs.writeFileSync(path.join(dir, "owner.json"), JSON.stringify({ pid: process.pid, token, at: iso(Date.now()) }));
       break;
     } catch (e) {
+      if (e.code === "ENOENT") continue; // broken while we wrote the owner: try again
       if (e.code !== "EEXIST") throw e;
-      const owner = readJson(path.join(dir, "owner.json"), null);
-      let age = 0;
-      try {
-        age = Date.now() - fs.statSync(dir).mtimeMs;
-      } catch {
+      const seen = lockOwner(dir);
+      if (seen.gone) continue;
+      if (isStale(seen)) {
+        breakStale(dir, seen);
         continue;
       }
-      if ((owner && !alive(owner.pid)) || age > LOCK_STALE_MS || (!owner && age > 2000)) {
-        fs.rmSync(dir, { recursive: true, force: true });
-        continue;
-      }
-      if (Date.now() > deadline) throw new Error(`state lock ${dir} still held by pid ${owner?.pid}`);
+      if (Date.now() > deadline) throw new Error(`state lock ${dir} still held by pid ${seen.owner?.pid}`);
       sleep(10 + Math.floor(Math.random() * 20));
     }
   }
   try {
     return fn();
   } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
+    if (readJson(path.join(dir, "owner.json"), null)?.token === token) fs.rmSync(dir, { recursive: true, force: true });
   }
 }
 
@@ -195,9 +237,9 @@ function allTickets(c) {
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
-    .filter((f) => /^\d+\.json$/.test(f))
-    .map((f) => readTicket(c, Number(f.slice(0, -5))))
-    .sort((a, b) => a.ticket - b.ticket);
+    .filter((f) => f.endsWith(".json") && KEY.test(f.slice(0, -5)))
+    .map((f) => readTicket(c, ticketId(f.slice(0, -5))))
+    .sort((a, b) => String(a.ticket).localeCompare(String(b.ticket), "en", { numeric: true }));
 }
 
 // A state change moves the due: running waits at most Wake timeout; a ticket that
@@ -218,12 +260,12 @@ function applyPatch(c, rec, patch) {
 }
 
 export function getTicket(c, n) {
-  return readTicket(c, Number(n));
+  return readTicket(c, ticketId(n));
 }
 
 export function setTicket(c, n, patch) {
   return withLock(c, () => {
-    const rec = applyPatch(c, readTicket(c, Number(n)), patch);
+    const rec = applyPatch(c, readTicket(c, ticketId(n)), patch);
     writeTicket(c, rec);
     return rec;
   });
@@ -231,9 +273,9 @@ export function setTicket(c, n, patch) {
 
 export function claim(c, n, { thread = null } = {}) {
   return withLock(c, () => {
-    const rec = readTicket(c, Number(n));
+    const rec = readTicket(c, ticketId(n));
     if (rec.claimed) return { claimed: false, record: rec };
-    const fresh = applyPatch(c, { ...blankTicket(Number(n)), acked: [] }, { state: "running" });
+    const fresh = applyPatch(c, { ...blankTicket(ticketId(n)), acked: [] }, { state: "running" });
     Object.assign(fresh, { claimed: true, claimedAt: iso(c.now), thread });
     writeTicket(c, fresh);
     return { claimed: true, record: fresh };
@@ -242,8 +284,8 @@ export function claim(c, n, { thread = null } = {}) {
 
 export function unclaim(c, n, { state } = {}) {
   return withLock(c, () => {
-    const notify = reclaimLocked(c, Number(n));
-    let rec = readTicket(c, Number(n));
+    const notify = reclaimLocked(c, ticketId(n));
+    let rec = readTicket(c, ticketId(n));
     rec = applyPatch(c, rec, state ? { state } : {});
     Object.assign(rec, { claimed: false, planCleared: false, due: null, tasks: [], parkedOn: [], waitingOn: [] });
     writeTicket(c, rec);
@@ -259,7 +301,7 @@ export function tickets(c) {
 
 export function ack(c, n, ids) {
   return withLock(c, () => {
-    const rec = readTicket(c, Number(n));
+    const rec = readTicket(c, ticketId(n));
     for (const id of ids) if (!rec.acked.includes(id)) rec.acked.push(id);
     writeTicket(c, rec);
     return rec;
@@ -276,19 +318,25 @@ const free = (c, name, res) => c.cfg.capacity[name] - used(res);
 export function holdings(c, n) {
   return Object.keys(c.cfg.capacity).flatMap((name) =>
     readResource(c, name)
-      .holders.filter((h) => h.ticket === Number(n))
+      .holders.filter((h) => h.ticket === ticketId(n))
       .map((h) => ({ resource: name, ...h })),
   );
 }
 
 export function acquire(c, n, resource, count = 1) {
-  n = Number(n);
+  n = ticketId(n);
   count = Number(count);
   return withLock(c, () => {
     const r = rank(c.cfg, resource);
-    if (count < 1 || count > c.cfg.capacity[resource]) throw new Refused(`${resource} has ${c.cfg.capacity[resource]} at most; asked for ${count}`);
+    if (!Number.isInteger(count) || count < 1 || count > c.cfg.capacity[resource]) {
+      throw new Refused(`${resource} has ${c.cfg.capacity[resource]} at most; asked for ${count}`);
+    }
     const held = holdings(c, n);
-    if (held.some((h) => h.resource === resource)) return { granted: true, already: true, resource };
+    const mine = held.find((h) => h.resource === resource);
+    if (mine && mine.count >= count) return { granted: true, already: true, resource, count: mine.count };
+    if (mine) throw new Refused(`ticket ${n} holds ${mine.count} ${resource} and asks for ${count}: release it first`);
+    const queuedElsewhere = Object.keys(c.cfg.capacity).filter((name) => name !== resource && readResource(c, name).queue.some((q) => q.ticket === n));
+    if (queuedElsewhere.length) throw new Refused(`ticket ${n} waits in the queue of ${queuedElsewhere.join(", ")}: take that first`);
     const higher = held.filter((h) => rank(c.cfg, h.resource) > r);
     if (higher.length) throw new Refused(`order: ticket ${n} holds ${higher.map((h) => h.resource).join(", ")}, so it cannot ask for ${resource} now; the order is ${Object.keys(c.cfg.capacity).join(" → ")}`);
     const res = readResource(c, resource);
@@ -312,10 +360,11 @@ export function acquire(c, n, resource, count = 1) {
   });
 }
 
-// The heads that can take what is free now and have not been told yet.
-function grantableHeads(c) {
+// The heads that can take what is free now: of every resource for `due`, or of the
+// resources a release changed, and then only those nobody told yet.
+function grantableHeads(c, names = Object.keys(c.cfg.capacity)) {
   const out = [];
-  for (const name of Object.keys(c.cfg.capacity)) {
+  for (const name of names) {
     const res = readResource(c, name);
     const head = res.queue[0];
     if (head && free(c, name, res) >= head.count) out.push({ ticket: head.ticket, resource: name, head });
@@ -323,25 +372,25 @@ function grantableHeads(c) {
   return out;
 }
 
-function releaseLocked(c, n, resource) {
-  const res = readResource(c, resource);
-  const before = res.holders.length;
-  res.holders = res.holders.filter((h) => h.ticket !== n);
-  if (res.holders.length !== before) writeJson(resourceFile(c, resource), res);
-}
+const toNotify = (c, names) => grantableHeads(c, names).filter(({ head }) => !head.notifiedAt).map(({ ticket, resource }) => ({ ticket, resource }));
 
 export function release(c, n, resource) {
   return withLock(c, () => {
     rank(c.cfg, resource);
-    releaseLocked(c, Number(n), resource);
-    return { released: resource, notify: grantableHeads(c).map(({ ticket, resource }) => ({ ticket, resource })) };
+    n = ticketId(n);
+    const res = readResource(c, resource);
+    const before = res.holders.length;
+    res.holders = res.holders.filter((h) => h.ticket !== n);
+    if (res.holders.length === before) return { released: null, notify: [] };
+    writeJson(resourceFile(c, resource), res);
+    return { released: resource, notify: toNotify(c, [resource]) };
   });
 }
 
 export function notified(c, n, resource) {
   return withLock(c, () => {
     const res = readResource(c, resource);
-    const q = res.queue.find((x) => x.ticket === Number(n));
+    const q = res.queue.find((x) => x.ticket === ticketId(n));
     if (!q) return { notified: false };
     q.notifiedAt = iso(c.now);
     writeJson(resourceFile(c, resource), res);
@@ -355,7 +404,7 @@ export function renew(c, n) {
     for (const name of Object.keys(c.cfg.capacity)) {
       const res = readResource(c, name);
       let changed = false;
-      for (const h of res.holders.filter((h) => h.ticket === Number(n))) {
+      for (const h of res.holders.filter((h) => h.ticket === ticketId(n))) {
         h.expires = plus(c, c.cfg.wakeTimeoutMs);
         changed = true;
         out.push(name);
@@ -367,27 +416,31 @@ export function renew(c, n) {
 }
 
 function reclaimLocked(c, n) {
+  const changed = [];
   for (const name of Object.keys(c.cfg.capacity)) {
     const res = readResource(c, name);
     const h = res.holders.length;
     const q = res.queue.length;
     res.holders = res.holders.filter((x) => x.ticket !== n);
     res.queue = res.queue.filter((x) => x.ticket !== n);
-    if (res.holders.length !== h || res.queue.length !== q) writeJson(resourceFile(c, name), res);
+    if (res.holders.length !== h || res.queue.length !== q) {
+      writeJson(resourceFile(c, name), res);
+      changed.push(name);
+    }
   }
   const rec = readTicket(c, n);
   if (fs.existsSync(ticketFile(c, n))) writeTicket(c, { ...rec, tasks: [], parkedOn: [] });
-  return grantableHeads(c).map(({ ticket, resource }) => ({ ticket, resource }));
+  return toNotify(c, changed);
 }
 
 export function reclaim(c, n) {
-  return withLock(c, () => ({ reclaimed: Number(n), notify: reclaimLocked(c, Number(n)) }));
+  return withLock(c, () => ({ reclaimed: ticketId(n), notify: reclaimLocked(c, ticketId(n)) }));
 }
 
 // ---------- collisions ----------
 
 export function checkPlan(c, n, { files, openPrs = [] }) {
-  n = Number(n);
+  n = ticketId(n);
   return withLock(c, () => {
     const rec = readTicket(c, n);
     const mine = new Set(files);
@@ -398,7 +451,7 @@ export function checkPlan(c, n, { files, openPrs = [] }) {
     }
     for (const t of allTickets(c)) {
       if (t.ticket === n || !t.claimed || !t.planCleared) continue;
-      if (t.pr !== null && openPrs.some((pr) => Number(pr.number) === Number(t.pr))) continue; // counted as its pull request
+      if (t.pr !== null && waitingOn.includes(`pr:${t.pr}`)) continue; // already blocks through its pull request
       if (t.files_to_change.some((f) => mine.has(f))) waitingOn.push(`ticket:${t.ticket}`);
     }
     const cleared = waitingOn.length === 0;
@@ -412,24 +465,25 @@ export function checkPlan(c, n, { files, openPrs = [] }) {
 
 export function unwait(c, n, items) {
   return withLock(c, () => {
-    const rec = readTicket(c, Number(n));
+    const rec = readTicket(c, ticketId(n));
     rec.waitingOn = rec.waitingOn.filter((x) => !items.includes(x));
     writeTicket(c, rec);
-    return { ticket: Number(n), waitingOn: rec.waitingOn };
+    return { ticket: ticketId(n), waitingOn: rec.waitingOn };
   });
 }
 
 // ---------- wakes ----------
 
 export function wake(c, n) {
-  n = Number(n);
+  n = ticketId(n);
   return withLock(c, () => {
     const rec = readTicket(c, n);
+    if (!rec.claimed) throw new Refused(`ticket ${n} is not claimed`);
     if (rec.state === "parked") {
       let any = false;
       for (const name of rec.parkedOn) {
         const res = readResource(c, name);
-        if (res.queue[0]?.ticket === n) {
+        if (res.queue[0]?.ticket === n && free(c, name, res) >= res.queue[0].count) {
           res.queue[0].notifiedAt = iso(c.now);
           writeJson(resourceFile(c, name), res);
           any = true;
@@ -532,24 +586,29 @@ export function setDispatcherDue(c, when, reason) {
 // ---------- quota ----------
 
 const quotaFile = (c) => p(c, "quota.md");
-const quotaLines = (c) => (fs.existsSync(quotaFile(c)) ? fs.readFileSync(quotaFile(c), "utf8").split("\n") : []);
+function quotaLines(c) {
+  if (!fs.existsSync(quotaFile(c))) return [];
+  const text = fs.readFileSync(quotaFile(c), "utf8").replace(/\r?\n$/, "");
+  return text ? text.split(/\r?\n/) : [];
+}
 const lineId = (line) => line.split("|")[0].trim();
 const lineUntil = (line) => line.match(/blocked until\s+(\S+)/)?.[1] ?? null;
 
 function writeQuota(c, lines) {
   fs.mkdirSync(c.memory, { recursive: true });
   const tmp = `${quotaFile(c)}.${process.pid}.tmp`;
-  fs.writeFileSync(tmp, lines.filter((l, i, a) => l !== "" || i < a.length - 1).join("\n").replace(/\n*$/, "\n"));
+  fs.writeFileSync(tmp, lines.length ? lines.join("\n") + "\n" : "");
   fs.renameSync(tmp, quotaFile(c));
 }
 
 export function quotaBlock(c, candidate, { until, ticket, step, words }) {
   return withLock(c, () => {
-    const line = `${candidate} | blocked until ${iso(until)} | since ${iso(c.now)} | ${ticket} ${step} | ${String(words ?? "").replace(/\s+/g, " ").trim()}`;
+    // Minutes, the way every <time> in the memory folder is written.
+    const line = `${candidate} | blocked until ${minute(until)} | since ${minute(c.now)} | ${ticket} ${step} | ${String(words ?? "").replace(/\s+/g, " ").trim()}`;
     const lines = quotaLines(c).filter((l) => !(lineUntil(l) && lineId(l) === candidate));
     lines.push(line);
     writeQuota(c, lines);
-    return { blocked: candidate, until: iso(until) };
+    return { blocked: candidate, until: minute(until) };
   });
 }
 
@@ -614,17 +673,24 @@ export function lessonsDone(c, files) {
 
 // ---------- CLI ----------
 
-function parseArgs(argv) {
+// Every option takes a value, except the flags named here.
+export function parseArgs(argv, flags = ["check", "reclaim"]) {
   const pos = [];
   const opts = {};
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a.startsWith("--")) {
-      const key = a.slice(2);
-      const next = argv[i + 1];
-      if (next === undefined || next.startsWith("--")) opts[key] = true;
-      else opts[key] = argv[++i];
-    } else pos.push(a);
+    if (!a.startsWith("--")) {
+      pos.push(a);
+      continue;
+    }
+    const key = a.slice(2);
+    if (flags.includes(key)) {
+      opts[key] = true;
+      continue;
+    }
+    const next = argv[i + 1];
+    if (next === undefined || next.startsWith("--")) throw new Refused(`--${key} needs a value`);
+    opts[key] = argv[++i];
   }
   return { pos, opts };
 }
@@ -646,7 +712,7 @@ export function run(argv) {
       if (a === "set") return setTicket(c, b, JSON.parse(opts.json ?? "{}"));
       break;
     case "acquire":
-      return acquire(c, a, b, opts.count ?? 1);
+      return acquire(c, a, b, opts.count === undefined ? 1 : Number(opts.count));
     case "release":
       return release(c, a, b);
     case "notified":
@@ -670,7 +736,7 @@ export function run(argv) {
     case "lock":
       if (a === "acquire") return lockAcquire(c, opts.launcher ?? "unknown", { reclaim: !!opts.reclaim });
       if (a === "thread") return lockThread(c, b);
-      if (a === "release") return lockRelease(c, { thread: typeof opts.thread === "string" ? opts.thread : undefined });
+      if (a === "release") return lockRelease(c, { thread: opts.thread });
       if (a === "show") return lockShow(c);
       break;
     case "dispatcher-due":
