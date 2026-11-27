@@ -58,3 +58,55 @@ Ticket [#17](https://github.com/sanphandinh/factory-ticket-sandbox/issues/17).
 - 10:50Z: #20's [PR #21](https://github.com/sanphandinh/factory-ticket-sandbox/pull/21) passed verify and review, then stopped at the red-trunk policy gate and waited for a person. **PASS: a trunk-fix pull request gets through on a red trunk, to a person.**
 - 11:03:58Z: the owner merged PR #21 (`9cb5ab5`), and trunk `test` turned green.
 - 11:05Z: the owner handed #18 and #19 back (`ready-for-agent`, comment "trunk is green again").
+- 11:10Z: [dispatcher](https://github.com/sanphandinh/factory-ticket-sandbox) woke #18 and #19 ("hold released; new comments"). **PASS: unhold wakes the right coordinators.** #19 then waited on `ticket:18` (both edit README); #18 merged as [PR #22](https://github.com/sanphandinh/factory-ticket-sandbox/pull/22) at 11:31Z and #19 went on. **PASS: collision wait.**
+
+## Red trunk while a ticket builds (2026-11-27 11:35Z–11:53Z)
+
+- 11:35Z: owner broke trunk again (`9abfc5e`). #19's collision cleared and its branch reset to the red trunk; build `e3fe1f5`, [PR #23](https://github.com/sanphandinh/factory-ticket-sandbox/pull/23). 11:40Z dispatcher saw trunk red and reran the failed run.
+- 11:42Z: verify FAIL only because `npm test` fails on trunk's own test. **FAIL:** the coordinator set `factory/verify` failure and started Rework 1. It had read COORDINATOR.md before `ae6ec45` landed (11:37Z) and a coordinator rereads the skill only on its first turn. Owner told it to reread. Lesson: a skill change reaches a running coordinator only when it rereads.
+- 11:43Z: after rereading, the rework build failed only on the red trunk. The coordinator set `factory/verify` `pending` "waits on red trunk", released `slot`, `state: waiting`, `waitingOn: ["trunk"]`. **PASS: red-trunk rule, no hold, no further rework.** (One rework round was already spent under the old rule.)
+- 11:44Z: owner reverted the break (`da8ccea`); trunk `test` green. 11:45Z dispatcher: "woke #19 (trunk is no longer red)". **PASS: a ticket waiting on trunk is woken when trunk is no longer red.**
+- 11:45Z: #19 saw its branch lacked trunk, `git merge-tree` clean, ran `build: update from trunk` → `4071866`; verify PASS, review pass, squash merge at 11:53Z. **PASS: update from trunk before checking again.**
+
+## Every worker candidate out of quota (2026-11-27 11:52Z–)
+
+- 11:52Z: owner blocked `cursor/composer-2.5` and `anthropic/claude-sonnet-5-5 effort=low` (the whole `worker` route) until 12:10Z in `quota.md`.
+- 11:59Z: #24's plan done; build has no candidate. The coordinator released `slot`, started no worker, `state: running`, `due: 12:10:00Z`, `holdings: []`. **PASS: every candidate out of quota at a step: resources released, due at the earliest unblock.**
+
+## Stop, then run (2026-11-27 12:01Z–)
+
+- 12:01Z: `factory stop`: watcher schedule deleted, `status set paused`. #24 is mid-ticket (plan posted, build not started, due 12:10Z).
+- 12:12Z: `factory run`: `status set running`, watcher schedule recreated. Nothing ran while stopped, though #24's due (12:10Z) had passed. 12:18Z the first dispatcher woke #24 ("due passed"); it built at 12:19Z, verified, reviewed and merged [PR #25](https://github.com/sanphandinh/factory-ticket-sandbox/pull/25) through Land's fast path. **PASS: stop then run; a ticket stopped mid-way is woken.** Operator slip: the new watcher thread ran on the environment default (`claude-opus-5-5`) for six runs because `references/t3.md` **Before the first wake** step 3 (move it to the `scout` candidate) was skipped; moved to `cursor/grok-4.7` at 12:45Z.
+- 12:37Z and 12:42Z: with the board still, the watcher replied `quiet` and launched no dispatcher. **PASS: no empty wake.**
+
+## Section 4 of the plan: status (2026-11-27 12:45Z)
+
+| Item | Status | Evidence |
+|---|---|---|
+| one worktree per ticket | PASS | 06:57Z #4, #5 |
+| no empty wake on a still board | PASS | 12:37Z, 12:42Z `quiet` |
+| red trunk after a merge is detected | PASS | 10:17Z, 11:40Z |
+| unhold wakes the right coordinator | PASS | 09:02Z #9; 11:10Z #18, #19 |
+| Land fast path / check again when trunk moved | PASS | #5, #24 / #4, #9 |
+| PR closed without merge → claim released; handed back → new coordinator | PASS | #9, PR #11 → PR #13 |
+| hold puts nothing on the PR; merges after unhold | PASS | #9 |
+| dispatcher failure retried; quota death → next `scout` candidate | PASS | 06:56Z; 09:39Z |
+| PR CI `PENDING` waits, no rework; red trunk → no trunk merge into the branch | PARTIAL | red trunk part PASS (#19, gate 3 not merging trunk); `PENDING` never seen (CI faster than workers); unit-level only |
+| stuck worker → due wakes the coordinator | PASS | #15 09:41Z, #19 10:26Z |
+| coordinator died holding `merge`: released on revive, PR watched again | PASS | #4 08:09Z |
+| parked holder dies: overdue holding wakes the dispatcher, resources reclaimed | UNVERIFIED | not staged; `resources.test.mjs` "renew extends every holding…", "reclaim releases every resource…" |
+| `pause` claims nothing; `resume` wakes a ticket stopped mid-way | PASS | #15; `d8c96f1` test |
+| retry after closed PR does not touch the old worktree or branch | PASS | #9 new branch run, PR #13 |
+| trunk-fix PR gets through on a red trunk; ticket waiting on trunk woken when green | PASS | PR #21 (person merged), #19 11:45Z |
+| protected path with CI `PENDING`: wait for CI, then hold | UNVERIFIED | protected-path hold PASS (#12), `PENDING` never seen |
+| `stop` then `run`: a ticket stopped mid-way is woken | PASS | #24 12:18Z |
+| every candidate out of quota at a step: resources released | PASS | #24 11:59Z |
+| red trunk with `Max tickets` full: trunk-fix ticket still claimed | PASS | #20 10:26Z |
+| person adds `ready-for-human` to a running PR: hold, no wake every 15 minutes | PASS | #9 08:58Z–09:02Z |
+| `wontfix` while held: coordinator cleans up and settles | PASS | #17 |
+| person merges a protected-path PR: Close runs once | PASS | #12, PR #14 |
+| hold → `ready-for-human`; handed back → that coordinator woken | PASS | #18, #19 |
+| worktree swept after merge | PASS | every merged ticket |
+| `tickets/<n>.md` tells the whole story | PASS | memory `tickets/*.md` |
+
+Found and fixed during this pass: a question caused only by a red trunk held the ticket (`ac192de`); review rounds 1–6 of the e2e fixes (`9cf6e07`, `ae6ec45`, `f2e5e72`, `c854be0`, `caf6f61`, `06fed2f`, `ef17e57`), round 6 approved.
