@@ -11,7 +11,7 @@ You are the coordinator of one ticket, from its claim to its Close, in the ticke
 3. **Reload.** Read `docs/agents/factory.md`, `docs/agents/merge-policy.md`, `docs/agents/response-language.md` when it exists (without it, reply language is `match-user` with no live user message: the language of the ticket or spec when it has prose, else the latest human comment on it, else English, and the story notes the gap), the routes in `docs/agents/roles.md`, `providers.md` and `quota.md`, and `res status`. On your first turn, and whenever you can no longer quote these steps, read this file and [WORK-ORDERS.md](WORK-ORDERS.md) again.
 4. **First turn with a pull request.** When the ticket already has a pull request (a claimed open one, a revive, a conversion), write its number into the record (`res ticket set <n> --json '{"pr":<number>}'`), then link-pr and watch-pr it, before anything else.
 5. **Renew.** `res renew <n>`: your holdings stay yours while you live.
-6. **Handle what started the turn**, every item (**Events**). A message that a resource is free means: ask for it again (**Resources**). A message that a hold was released is **Unhold** (**Humans**). While `res status` is `paused`, steps 6 and 7 only record what finished, stop blocked workers and release what finished workers held: they ask for no resource, tell no queue head, and start no worker.
+6. **Handle what started the turn**, every item (**Events**). A message that a resource is free means: ask for it again, as **Resources** says. A message that a hold was released is **Unhold** (**Humans**). While `res status` is `paused`, steps 6 and 7 only record what finished, stop blocked workers and drop them from `tasks`, and release what finished or stopped workers held: they ask for no resource, tell no queue head, and start no worker.
 7. **Look at your workers.** Inspect every live worker in the record's `tasks`; handle each `blocked` one (**Humans**).
 8. **Paused?** When `res status` is `paused`, start nothing: no worker, no merge, no comment handled. `res ticket set <n> --json '{"due":null}'` when no worker of yours is live, record, and end the turn.
 9. **A person's hold.** When the ticket or its pull request carries `ready-for-human` and this turn did not just unhold it, **hold**: add the role to the ticket too when only the pull request has it, and post no second brief when one is there. End the turn.
@@ -27,11 +27,11 @@ Read the ticket's state from the tracker and the git host every turn, then take 
 
 | What the record, the tracker and the pull request show | Next step |
 |---|---|
-| the record's `landing` is true | **Land**, from where it stands |
+| the record's `landing` names a step | **Land**, at that step |
 | no comment headed `## Factory plan` | **Plan** |
+| a `## Factory rework <k>` comment newer than the head commit (a rework under way) | the rework's next step: **Plan** (the revision) when the round has a finding of kind `design` and no `## Factory plan` is newer than the rework comment; **Collisions** when `planCleared` is false; else **Build** with the round's findings |
 | a plan, `planCleared` false | **Collisions** |
 | a plan, cleared, no pull request | **Build** |
-| a `## Factory rework <k>` comment newer than the head commit (a rework under way) | the rework's next step: **Plan** (the revision) when the round has a finding of kind `design` and no `## Factory plan` is newer than the rework comment; **Collisions** when `planCleared` is false; else **Build** with the round's findings |
 | a pull request whose head lacks a `success` or `failure` status for `factory/verify` or for `factory/review` (none yet, or `pending`) | **Check**, for the checkers still missing |
 | a `failure` verdict status on the head, or a failed required check | **Rework** |
 | both verdict statuses `success` on the head | **Land** |
@@ -42,7 +42,7 @@ The ticket's **pull request** is the open one that closes it, whoever opened it 
 
 ### Before every step
 
-1. **A candidate.** Pick the step's candidate (**Routing**). With every candidate of its route filtered out by quota, release what the step would have used (everything, when no other worker of yours is live), `res ticket set <n> --json '{"state":"running","due":"<the earliest blocked-until of that route>","landing":false}'`, record, and end the turn.
+1. **A candidate.** Pick the step's candidate (**Routing**). With every candidate of its route filtered out by quota: while another worker of yours is live, release only what this step would have used and wait for that worker's report; once none is live, release everything (`merge` included) and `res ticket set <n> --json '{"state":"running","due":"<the earliest blocked-until of that route>","landing":false}'`. Record, and end the turn.
 2. **Resources.** `res acquire <n> slot` (with `--count` for a pair), then each scarce resource the step's role holds (`Scarce resources` names the roles), in the order **Resources** gives. Not granted: you are parked; end the turn, and the releaser or the dispatcher wakes you.
 3. **The reset gate**, once before each step, and once before a verify ‖ review pair:
    1. `git fetch origin`.
@@ -55,11 +55,11 @@ When a worker reports, drop it from `tasks`, `res release <n> slot --count 1`, a
 
 ### Plan
 
-A `plan` worker. On `done`, post the result's `plan` on the ticket as a comment headed `## Factory plan`, with the result's `door` and `files_to_change`. A plan whose result's `questions` is not empty goes on **hold** with them, before any code. Then **Collisions**.
+A `plan` worker. On `done`, post the result's `plan` on the ticket as a comment headed `## Factory plan`, with the result's `door` and `files_to_change`. A plan whose result's `questions` is not empty goes on **hold** with them, before any code. The **Ticket chain** (step 11) then takes it to **Collisions**.
 
 ### Collisions
 
-`res check-plan <n> --files "<the plan's files_to_change, comma-separated>" --open-prs "$(gh pr list --state open --json number,files --jq '[.[] | {number, files: [.files[].path]}]')"`. Cleared: go on. Not cleared: the ticket is now `waiting` on what `waitingOn` names; record and end the turn. The dispatcher wakes you when they are gone; then run `check-plan` again first. When it clears and nothing of yours is pushed yet, `git fetch origin && git reset --hard origin/<trunk>`, then **Build**.
+`res check-plan <n> --files "<the plan's files_to_change, comma-separated>" --open-prs "$(gh pr list --state open --json number,files --jq '[.[] | {number, files: [.files[].path]}]')"`. Cleared: go on. Not cleared: the ticket is now `waiting` on what `waitingOn` names; record and end the turn. The dispatcher wakes you when they are gone; then run `check-plan` again first. When it clears and nothing of yours is pushed yet, `git fetch origin && git reset --hard origin/<trunk>`; the **Ticket chain** goes on with **Build**.
 
 ### Build
 
@@ -84,29 +84,24 @@ Below `Fix rounds` rework rounds (`reworkRounds` in the record): post `## Factor
 
 ### Land
 
-Set `res ticket set <n> --json '{"landing":true}'` when Land starts, and `{"landing":false}` on every way out. Coming back to Land (a wake, a worker's report, a resource granted), go by what you hold (`res ticket get <n>` and its holdings):
+The record's `landing` names the Land step under way: `false` before Land, then `fast`, `acquire`, `update`, `check` or `checks`. Write it as each step starts (`res ticket set <n> --json '{"landing":"<step>"}'`), and `false` on every way out. Coming back to Land (a wake, a worker's report, a resource granted), continue the step `landing` names; `res ticket get <n>` also lists what you hold.
 
-- **nothing**: both verdicts `success` on the head, start at the gates; otherwise `landing` false and back to the **Ticket chain**;
-- **`slot`s, without `merge`**: step 2, from the first resource not yet held;
-- **`slot`s and `merge`**: `git fetch origin` and the gates again, then: the branch lacks trunk, step 3; a verdict missing or `pending` on the head, step 4 for the missing checkers; both `success`, the end of step 4;
-- **only `merge`**: `git fetch origin`; the branch lacks trunk, release `merge` and take step 2; otherwise the end of step 4, then step 5.
+First the gates, in this order, when Land starts and again in step `acquire`. Every way out of a gate releases what you hold first, and sets `landing` false.
 
-First the gates, in this order. Every way out of a gate releases what you hold first.
-
-1. **Required checks** on the head (**Merge guard**, line 2): pending, set `running` with a due and end the turn (watch-pr wakes you); a failure is **Rework**; unknown is **Unknown CI**: **hold** with its brief (DISPATCHER.md, **Stop the line**, says what it names).
+1. **Required checks** on the head (**Merge guard**, line 2): pending, set `running` with a due and end the turn (watch-pr wakes you, and Land starts again); a failure is **Rework**; unknown is **Unknown CI**: **hold** with its brief (DISPATCHER.md, **Stop the line**, says what it names).
 2. **Policy.** `Auto-merge: off`; a one-way door or a blast radius `merge-policy.md` does not allow, that no person approved (approved: go on and merge); a protected path; a fix for a red trunk. **Hold** at once: no update, no waiting on trunk. A protected path or a trunk fix also gets `ready-for-human` on the pull request: a person merges it.
 3. **Red trunk** (`Trunk checks` red on trunk's head, and this is not the fix for it): `res ticket set <n> --json '{"state":"waiting","waitingOn":["trunk"],"landing":false}'` and end the turn. No merge of trunk into the branch, no rework, no hold; the dispatcher wakes you when trunk is no longer red.
 
 (A `ready-for-human` on the ticket or the pull request was already caught by **Each turn**, step 9.)
 
-Then **Land**:
+Then the steps:
 
-1. **Fast path.** `git fetch origin`. When the branch contains trunk (`git merge-base --is-ancestor origin/<trunk> HEAD`): `res acquire <n> merge`, `git fetch origin` again, and while it still contains trunk, check the **Merge guard**, merge, release `merge`, done. When trunk moved on in between, release `merge` and take step 2.
-2. **Update path.** Acquire, in order, the slots for a verify ‖ review (as in **Check**), the scarce resources verify holds, then `merge`; each may park you. Holding them all, `git fetch origin` and run the gates again.
-3. `git merge-tree --write-tree HEAD origin/<trunk>` tells, without reading the diff, whether trunk merges cleanly. Clean: a `build` worker merges trunk into the branch (WORK-ORDERS.md, **build: update from trunk**), costing no round. Conflicts: at `Conflict rounds` (`conflictRounds` in the record), **hold**; below it, add one to `conflictRounds` and give the conflict work order. Keep the slots while it runs.
-4. The reset gate, then verify ‖ review on the new head (one after the other with one slot), posted and set as in **Check**. Both pass: release the `slot`s and scarce resources, keep `merge`, and wait for `Required checks` on the new head: pending is not a failure (set `running` with a due and end the turn); unknown: **hold** with the Unknown CI brief.
-5. Check the **Merge guard**, merge, release everything.
-6. Any other way out releases everything at once, then **Rework** or **hold**: a build that failed, asked, or hit a limit; verify `FAIL` or still `UNVERIFIED`; review `fail`; a required check that failed; a merge guard line that failed. A red trunk at the merge guard, in step 1 or step 5, releases everything and waits on trunk as gate 3 does.
+1. **`fast`.** `git fetch origin`. When the branch lacks trunk (`git merge-base --is-ancestor origin/<trunk> HEAD` fails), go to `acquire`. Otherwise `res acquire <n> merge` (it may park you; coming back, ask again). Holding `merge`: `git fetch origin` again; still containing trunk, check the **Merge guard**, merge, release `merge`, done; trunk moved on in between, release `merge` and go to `acquire`.
+2. **`acquire`.** Acquire, in order, the slots for a verify ‖ review (as in **Check**), the scarce resources verify holds, then `merge`, each one you do not hold yet; each may park you. Holding them all: `git fetch origin`, run the gates again, then `update` when the branch lacks trunk, else `check`.
+3. **`update`.** `git merge-tree --write-tree HEAD origin/<trunk>` tells, without reading the diff, whether trunk merges cleanly. Clean: a `build` worker merges trunk into the branch (WORK-ORDERS.md, **build: update from trunk**), costing no round. Conflicts: at `Conflict rounds` (`conflictRounds` in the record), **hold**; below it, add one to `conflictRounds` and give the conflict work order. Keep every resource while it runs. On its `done`, go to `check`.
+4. **`check`.** The reset gate, then a verifier and a reviewer for the head, for the ones whose verdict is still missing or `pending` (one after the other with one slot), posted and set as in **Check**. Both `success`: release the `slot`s and scarce resources, keep `merge`, and go to `checks`. A `failure` from either: when the other still runs, wait for its report; then step 6.
+5. **`checks`.** `Required checks` on the head: pending is not a failure (set `running` with a due and end the turn); success, check the **Merge guard**, merge, release everything; a failure, step 6; unknown, **hold** with the Unknown CI brief.
+6. Any other way out releases everything at once, sets `landing` false, then **Rework** or **hold**: a build that failed, asked, or hit a limit; verify `FAIL` or still `UNVERIFIED`; review `fail`; a required check that failed; a merge guard line that failed. A red trunk at the merge guard, in `fast` or `checks`, releases everything and waits on trunk as gate 3 does.
 
 Merge with `gh pr merge <number> --squash --match-head-commit <head_sha>`, then go on with **Close, merged** in the same turn.
 
@@ -133,7 +128,7 @@ The workspace stays for the dispatcher's sweep. When a person hands the ticket b
 
 ## Resources
 
-What you ask for, in this order: `slot` (one per live worker), the scarce resources by name, then `merge`. `res acquire <n> <resource>` either grants it or parks you in its queue; when parked, record and end the turn. Holding a resource, you renew it every turn.
+What you ask for, in this order: `slot` (one per live worker), the scarce resources by name, then `merge`. `res acquire <n> <resource>` either grants it or parks you in its queue; when parked, record and end the turn. Asked again without `--count`, it takes the count you queued with. Holding a resource, you renew it every turn.
 
 **Release everything** means: `res release <n> <resource>` for each resource you hold or wait in the queue of (its output says `left` when you left a queue).
 
@@ -145,7 +140,7 @@ Hold releases everything; it keeps only the workspace and the claim.
 
 `comments fetch` returns only comments from people with write access, since the claim, not yet handled; everything else stays out of your context. For each one:
 
-- **Asks for a change to the code**: a `build` worker with the comment as a finding of kind `code`, costing no rework round. While a worker of yours is live, wait for its report first. In **Land**, release everything and set `landing` false first. When the `slot` parks you, leave the comment unacknowledged: the next turn reads it again.
+- **Asks for a change to the code**: a `build` worker with the comment as a finding of kind `code`, costing no rework round. While a worker of yours is live, wait for its report first. Release everything you hold or wait for, and set `landing` false, first. When the `slot` parks you, leave the comment unacknowledged: the next turn reads it again.
 - **Asks a question, or changes what the ticket should do**: **hold** with a brief; do not guess.
 - **Answers a brief of yours**: the answer goes into the next work order.
 - **Anything else**: note it in the story.
@@ -184,7 +179,7 @@ Every line holds, on the pull request's current head commit:
 
 ## Humans
 
-**Hold**: stop your live workers. On a tracker with labels, remove `ready-for-agent` from the ticket when it is there and add `ready-for-human` (the labels `triage-labels.md` maps those roles to); on Jira or local, move the ticket to `ready-for-human` the way the tracker doc says. Post a brief on the ticket, release everything, set `landing` false, flag-human, and `res ticket set <n> --json '{"state":"held"}'`. The brief:
+**Hold**: stop your live workers. On a tracker with labels, remove `ready-for-agent` from the ticket when it is there and add `ready-for-human` (the labels `triage-labels.md` maps those roles to); on Jira or local, move the ticket to `ready-for-human` the way the tracker doc says. Post a brief on the ticket, release everything, flag-human, and `res ticket set <n> --json '{"state":"held","landing":false,"tasks":[]}'`. The brief:
 
 ```markdown
 ## Factory brief
@@ -213,6 +208,7 @@ The **To answer** line:
 
 ## Events
 
+- A report from a worker that is not in the record's `tasks` (one you stopped) needs nothing.
 - `done`: read the result at the path the work order names; check its `step` and `ticket` match the worker's name; take the step's outcome above; when it has `lessons`, they reach the wiki through the dispatcher (MEMORY.md, **Lessons**); release the worker's resources (**Before every step**).
 - `failed`: **Quota** first, then **Failed workers**; release the worker's resources.
 - `question`: as **Worker questions** says.

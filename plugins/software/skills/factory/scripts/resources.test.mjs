@@ -255,6 +255,17 @@ test("release --count gives back part of a slot holding, as each of two workers 
   assert.throws(() => r.release(ctx(root), 1, "slot", 0), /whole number/);
 });
 
+test("acquire without a count takes the count the ticket queued with; ticket get shows holdings", async () => {
+  const root = project({ maxWorkers: 2 });
+  for (const n of [1, 2]) r.claim(ctx(root), n);
+  r.acquire(ctx(root), 1, "slot");
+  r.acquire(ctx(root), 2, "slot", 2); // parked, wants 2
+  r.release(ctx(root, 1), 1, "slot");
+  assert.equal(r.acquire(ctx(root, 1), 2, "slot").count, 2);
+  const got = await cli(root, ["ticket", "get", "2"], 1);
+  assert.deepEqual(got.json.holdings.map((h) => [h.resource, h.count]), [["slot", 2]]);
+});
+
 test("unclaim and reclaim clear landing", () => {
   const root = project();
   r.claim(ctx(root), 1);

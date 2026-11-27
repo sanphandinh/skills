@@ -8,9 +8,9 @@
 //
 //   claim <n> [--thread <id>]              claim ticket n (refused when already claimed)
 //   unclaim <n> [--state <state>]          release the claim and every resource of n
-//   ticket get <n> | ticket list           read records; `list` counts tickets toward Max tickets
+//   ticket get <n> | ticket list           read records (`get` adds the ticket's holdings); `list` counts toward Max tickets
 //   ticket set <n> --json '<patch>'        merge fields into n's record (`state` moves `due`)
-//   acquire <n> <resource> [--count k]     take a resource or join its queue (FIFO, head first)
+//   acquire <n> <resource> [--count k]     take a resource or join its queue (FIFO, head first); no --count: the count it queued with, else 1
 //   release <n> <resource> [--count k]     give it back (k of a slot holding), or leave its queue; prints who to notify
 //   notified <n> <resource>                record that n, at the head of the queue, was told
 //   renew <n>                              extend every holding of n by Wake timeout
@@ -334,11 +334,12 @@ export function holdings(c, n) {
   );
 }
 
-export function acquire(c, n, resource, count = 1) {
+export function acquire(c, n, resource, count = null) {
   n = ticketId(n);
-  count = Number(count);
   return withLock(c, () => {
     const r = rank(c.cfg, resource);
+    if (count === null) count = readResource(c, resource).queue.find((q) => q.ticket === n)?.count ?? 1;
+    count = Number(count);
     if (!Number.isInteger(count) || count < 1 || count > c.cfg.capacity[resource]) {
       throw new Refused(`${resource} has ${c.cfg.capacity[resource]} at most; asked for ${count}`);
     }
@@ -745,12 +746,12 @@ export function run(argv) {
     case "unclaim":
       return unclaim(c, a, { state: opts.state });
     case "ticket":
-      if (a === "get") return getTicket(c, b);
+      if (a === "get") return { ...getTicket(c, b), holdings: holdings(c, ticketId(b)) };
       if (a === "list") return tickets(c);
       if (a === "set") return setTicket(c, b, JSON.parse(opts.json ?? "{}"));
       break;
     case "acquire":
-      return acquire(c, a, b, opts.count === undefined ? 1 : Number(opts.count));
+      return acquire(c, a, b, opts.count === undefined ? null : Number(opts.count));
     case "release":
       return release(c, a, b, opts.count === undefined ? null : Number(opts.count));
     case "notified":
