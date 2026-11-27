@@ -110,10 +110,10 @@ Merge with `gh pr merge <number> --squash --match-head-commit <head_sha>`, then 
 
 ### Close, merged
 
-Run every command after the merge from the memory folder, with `gh -R <owner>/<repo>`: the manager may remove the workspace once the pull request merged.
+Run every command after the merge from the memory folder: the manager may remove the workspace once the pull request merged. `gh` commands name the repository with `-R <owner>/<repo>`, except `gh api`, which takes no `-R` (its path names the repository). Check each command's exit code; a failed step is not done.
 
-1. Stop your live workers. Post the build result's `handoff` on the ticket as a comment starting `## Handoff`, unless one is there; close the ticket unless the merge did.
-2. Delete the remote branch when it is still there (`gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/<branch>`), and `<memory>/evidence/<n>/`.
+1. Stop your live workers. Post the build result's `handoff` on the ticket as a comment starting `## Handoff` (add the heading only when the handoff does not start with it), unless one is there; close the ticket unless the merge did.
+2. Delete the remote branch when it is still there (`gh api -X DELETE repos/<owner>/<repo>/git/refs/heads/<branch>`, then `git ls-remote origin <branch>` prints nothing), and `<memory>/evidence/<n>/`.
 3. `res unclaim <n>`: it releases every resource and the claim; the dispatcher wakes whoever waited on this ticket.
 4. Clear flag-human, unwatch-pr, record, settle.
 
