@@ -25,9 +25,9 @@ You are the coordinator of one ticket, from its claim to its Close, in the ticke
 
 Read the ticket's state from the tracker and the git host every turn, then take the first row that matches.
 
-**Red trunk first.** When the row is **Check**, **Rework** or **Land**, look at it before you take it (it reads only the host, never the record):
+**Red trunk first.** When the row is **Check**, **Rework** or **Land** (not a Land already under way: its gates and step 6 handle a red trunk), look at it before you take it (it reads only the host, never the record):
 - **Still red.** `Trunk checks` are red on trunk's head, this ticket is not the fix for it, and what stops the ticket has a red trunk as its only cause: the head's `factory/verify` is `pending` with `waits on red trunk`, or every failed required check fails only because of that red trunk. Start nothing: with a worker of yours live, wait for its report; with none, apply the red-trunk rule (**Worker questions**).
-- **Green again.** Trunk is no longer red, the head's `factory/verify` is `pending` with `waits on red trunk` or a required check failed only because of the earlier red trunk, and the branch lacks trunk (`git merge-base --is-ancestor origin/<trunk> HEAD` fails): first update the branch as Land's `update` step does (`git merge-tree`, the clean or the conflict order, `Conflict rounds`), with a worker started through **Starting a worker** and holding no `merge`; on its `done`, go on with the chain.
+- **Green again.** Trunk is no longer red, the head's `factory/verify` is `pending` with `waits on red trunk` or a required check failed only because of the earlier red trunk, and the branch lacks trunk (`git merge-base --is-ancestor origin/<trunk> HEAD` fails): first update the branch as Land's `update` step does (`git merge-tree`, the clean or the conflict order, `Conflict rounds`), with a worker started through **Starting a worker** and holding no `merge`; on its `done`, go on with the chain. When the branch already contains trunk and a required check failed only because of the earlier red trunk, rerun the failed run (`gh run rerun <run id> --failed`) and set `running` with a due instead of **Rework**.
 
 The rows:
 
