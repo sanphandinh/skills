@@ -176,7 +176,7 @@ Every line holds, on the pull request's current head commit:
 1. The verdict statuses `factory/verify` and `factory/review` are `success`.
 2. Every check named in `Required checks` reported success (`gh pr checks <number> --json name,state`: `SUCCESS`). Pending (`QUEUED`, `IN_PROGRESS`, `PENDING`) is not a failure: wait for it. A failure (`FAILURE`, `TIMED_OUT`, `ERROR`) is a finding for **Rework**. Any other state, or no report for two wake timeouts, is **Unknown CI**.
 3. Every mandatory gate and rule in `merge-policy.md` holds, including the door and blast radius in the pull request's Merge Danger section and the protected paths (`gh pr diff <number> --name-only`), and the plan's door is `two-way`.
-4. Neither the ticket nor the pull request carries `ready-for-human`.
+4. Neither the ticket nor the pull request carries `ready-for-human`: check live right before merging (`gh pr view <number> --json state,labels`, and the ticket's current labels or status from the tracker; on a GitHub tracker, `gh issue view <n> --json state,labels`).
 5. Trunk is not red (DISPATCHER.md, **Stop the line**), unless this pull request is the fix for it. A trunk check that is still running, or whose result is unknown, does not block.
 6. After a fresh `git fetch origin`, the branch contains trunk (`git merge-base --is-ancestor origin/<trunk> HEAD`). When it does not (someone merged in between), Land goes back to step 2.
 
