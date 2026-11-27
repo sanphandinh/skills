@@ -450,10 +450,12 @@ test("status: going from paused to running makes stopped tickets due now and cle
   assert.equal(r.due(ctx(root, 10)).due.filter((d) => d.source === "queue").length, 1);
 });
 
-test("dispatcher lock: held by the launcher, refused while live, taken over when expired or on reclaim", () => {
+test("dispatcher lock: held by the launcher, refused while held (live or expired), taken over only on reclaim", () => {
   const root = project();
   const a = r.lockAcquire(ctx(root), "watcher");
   assert.equal(a.acquired, true);
+  assert.match(a.lock.token, /^lock-/);
+  assert.equal(r.lockShow(ctx(root)).lock.token, a.lock.token);
   r.lockThread(ctx(root), "thread-1");
   const b = r.lockAcquire(ctx(root, 5), "once");
   assert.equal(b.acquired, false);
@@ -461,7 +463,10 @@ test("dispatcher lock: held by the launcher, refused while live, taken over when
   const c = r.lockAcquire(ctx(root, 6), "watcher", { reclaim: true });
   assert.equal(c.acquired, true);
   assert.equal(c.previous.thread, "thread-1");
-  const d = r.lockAcquire(ctx(root, 30), "watcher");
+  const expired = r.lockAcquire(ctx(root, 30), "watcher");
+  assert.equal(expired.acquired, false);
+  assert.equal(expired.expired, true);
+  const d = r.lockAcquire(ctx(root, 30), "watcher", { reclaim: true });
   assert.equal(d.acquired, true);
   assert.equal(d.previous.launcher, "watcher");
   r.lockRelease(ctx(root, 31), { thread: "someone-else" });

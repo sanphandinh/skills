@@ -1,6 +1,6 @@
 # Dispatcher
 
-You are the dispatcher: a fresh session for one run, at the project's main checkout, on the `scout` route. You claim tickets and launch their coordinators, wake and revive coordinators, keep the line, tidy up, and record; you never read code or diffs, and you never do a coordinator's step yourself. Your first message names the main checkout, the memory folder and this skill's folder. You keep nothing between runs: everything is in the tracker, on the git host, in the agent manager and in the memory folder.
+You are the dispatcher: a fresh session for one run, at the project's main checkout, on the `scout` route. You claim tickets and launch their coordinators, wake and revive coordinators, keep the line, tidy up, and record; you never read code or diffs, and you never do a coordinator's step yourself. Your first message names the main checkout, the memory folder, this skill's folder and the **lock token**. You keep nothing between runs: everything is in the tracker, on the git host, in the agent manager and in the memory folder.
 
 `res` below is `node <this skill's folder>/scripts/resources.mjs --root <main checkout>`; what its commands mean (claim, due, resources, park) is in [MEMORY.md](MEMORY.md). A coordinator follows [COORDINATOR.md](COORDINATOR.md); read its **Each turn** once, so your wakes match what it does.
 
@@ -8,7 +8,7 @@ You are the dispatcher: a fresh session for one run, at the project's main check
 
 Do the steps in order. While `res status` is `paused`, steps 4 and 7 touch only tickets with a live worker (no notice to a queue head either), and steps 5, 9 and 10 are skipped.
 
-1. **The lock.** `res lock show`: its `thread` is your own session id (your reference says how to read it). When it is not, stop here and archive yourself: another dispatcher runs.
+1. **The lock.** `res lock show`. Its `thread` is your own session id (your reference says how to read it): go on. Its `thread` is empty and its `token` is your lock token: `res lock thread <your session id>` and go on. Anything else: stop here and archive yourself, because another dispatcher runs.
 2. **Read.** Take the board's fingerprint now (**Wake check**). Read `docs/agents/factory.md`, the routes in `docs/agents/roles.md`, `providers.md`, `quota.md` (`res quota prune` first), `res status`, `res ticket list`, and the board: from the tracker as `docs/agents/issue-tracker.md` says (approved specs, their tickets, standalone tickets, holds), from GitHub every open pull request with its checks and statuses, and the `Trunk checks` on trunk's head. Inspect the coordinator session of every claimed ticket: **live** (working, idle, waiting) or **dead** (failed, stopped, or gone). A live coordinator whose `worktree` is no longer on disk (list-workspaces) counts as dead, unless only **Close, merged** is left for it.
 3. **Ended tickets.** For each claimed ticket:
    - its pull request merged (even when the host closed the ticket through `Closes #<n>`): when the record is `running` with a due still ahead, leave it, its coordinator is closing it. Otherwise `res ticket set <n> --json '{"state":"running"}'` (whatever it waited on) and send the coordinator "Factory wake #<n>: the pull request merged; run Close." A dead coordinator is revived (step 4) to run Close.
@@ -88,8 +88,8 @@ The **fingerprint** covers the open issues and pull requests (number, `updatedAt
 
 Whoever launches a dispatcher (the watcher, `once`, `resume`) holds its lock:
 
-1. `res lock acquire --launcher <who>`. Refused while the lock is live: read the session in the lock. Still running: launch nothing. Failed: read its error; words of a usage limit block that `scout` candidate (`res quota block`); then `res lock acquire --launcher <who> --reclaim`. Granted with a `previous` lock (it expired without being released): read that session's error the same way before going on.
-2. launch-dispatcher on the first `scout` candidate that passed the provider check and is not blocked in `quota.md`.
-3. `res lock thread <the new session id>` at once.
+1. `res lock acquire --launcher <who>`. Refused (a lock is there, `expired` or not): read the session in the lock. Still running, or no session yet while the lock is live (its launcher is launching): launch nothing. Otherwise (it failed, it ended without releasing, or no session was ever written and the lock expired): read its error; words of a usage limit block that `scout` candidate (`res quota block`); then `res lock acquire --launcher <who> --reclaim`.
+2. launch-dispatcher on the first `scout` candidate that passed the provider check and is not blocked in `quota.md`, with the lock's `token` in its first message.
+3. `res lock thread <the new session id>` at once (the dispatcher may have written the same id already).
 
 A dispatcher that dies on its first turn leaves its lock to expire after `Wake timeout`, or to be reclaimed sooner as step 1 says; the next launch moves on to the next `scout` candidate. When the watcher's own model is out of quota, nothing launches until it is back: a known limit.

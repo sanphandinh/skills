@@ -20,7 +20,7 @@
 //   wake <n>                               mark n running with a due, or notified when parked
 //   ack <n> <id>...                        record comment ids as handled
 //   status [get] | status set running|paused
-//   lock acquire --launcher <who> [--reclaim] | lock thread <id> | lock release [--thread <id>] | lock show
+//   lock acquire --launcher <who> [--reclaim] (prints a token) | lock thread <id> | lock release [--thread <id>] | lock show
 //   dispatcher-due set <ISO> --reason <text> | dispatcher-due clear
 //   quota block <candidate> --until <ISO> --ticket <n> --step <step> --words <text>
 //   quota prune
@@ -567,10 +567,15 @@ const readDispatcher = (c) => ({ lock: null, due: null, ...readJson(dispatcherFi
 export function lockAcquire(c, launcher, { reclaim = false } = {}) {
   return withLock(c, () => {
     const d = readDispatcher(c);
+    // A lock that expired is not taken either: its dispatcher may still run. The
+    // launcher reads the session in it and takes it over with --reclaim.
     const live = d.lock && Date.parse(d.lock.expires) > c.now.getTime();
-    if (live && !reclaim) return { acquired: false, lock: d.lock };
+    if (d.lock && !reclaim) return { acquired: false, lock: d.lock, expired: !live };
     const previous = d.lock;
-    d.lock = { launcher, thread: null, acquiredAt: iso(c.now), expires: plus(c, c.cfg.wakeTimeoutMs) };
+    // The token goes into the dispatcher's first message: it may read the lock
+    // before its launcher wrote the thread id, and the token tells it the lock is its.
+    const token = `lock-${c.now.getTime().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    d.lock = { launcher, token, thread: null, acquiredAt: iso(c.now), expires: plus(c, c.cfg.wakeTimeoutMs) };
     writeJson(dispatcherFile(c), d);
     return { acquired: true, lock: d.lock, previous };
   });
