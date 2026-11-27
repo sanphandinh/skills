@@ -118,3 +118,5 @@ Found and fixed during this pass: a question caused only by a red trunk held the
 - 14:06Z: #27 review pass; Land gate 1 saw `test` `IN_PROGRESS`, set `running` with a due, released `slot`. No hold yet. 14:11Z: `test` success; the policy gate held it for a person (`ready-for-human` on the ticket and [PR #28](https://github.com/sanphandinh/factory-ticket-sandbox/pull/28), brief posted). **PASS: a protected-path PR with CI pending waits for CI, then holds.**
 - 14:10Z: #26 review pass; `test` `IN_PROGRESS`, Land waited, no rework. 14:13Z squash-merged [PR #29](https://github.com/sanphandinh/factory-ticket-sandbox/pull/29). **PASS: pending CI waits, no rework.**
 - 14:14Z: slow test removed from sandbox `main`; watcher deleted; `status paused`. #27 stays held with PR #28 open for a person.
+
+Review of the settled-coordinator fix (`14e0cbf`, `1a97169`, `a40f37b`, `3fb8ee5`, `608984a`): four rounds on Claude Opus 5.5; round 4 approved, its lows fixed in `608984a`.
