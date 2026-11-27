@@ -101,9 +101,10 @@ Each machine needs T3 Code with the providers the routes name, and `gh` signed
 in. Then, in a T3 thread on the project root, in full-access mode:
 
 ```text
-factory setup   write docs/agents/factory.md and docs/agents/roles.md, check each provider, smoke-test T3
-factory once    one wake
-factory run     start the watcher and keep building
+factory setup    write docs/agents/factory.md and docs/agents/roles.md, check each provider, smoke-test T3
+factory run      schedule the watcher and keep building
+factory once     one dispatcher run now
+factory pause    start nothing new; resume and stop work the same way
 ```
 
 `docs/agents/roles.md` maps the five roles (`scout`, `worker`, `thinker`,
@@ -111,20 +112,29 @@ factory run     start the watcher and keep building
 changes chosen roles, and `node <factory>/scripts/roles.mjs show --channels
 anthropic,cursor,antigravity` shows where each role runs now. `setup` also
 converts older settings: a `docs/agents/factory-v2.md` is renamed and keeps its
-memory, version 1 settings (Orca) get a proposed new file, and old roles in
-`~/.claude/rules/smode-roles.md` become the project's `roles.md`.
+memory, version 1 settings (Orca) get a proposed new file, a factory with one
+coordinator for life is converted (its `factory:hold` labels become
+`ready-for-human`), and old roles in `~/.claude/rules/smode-roles.md` become
+the project's `roles.md`.
 
-The coordinator is that thread for life. A watcher thread on T3's scheduler, on
-the `scout` route, runs `wake-check.sh` every `Wake timeout` and wakes the
-coordinator only when the tracker, the pull requests or the results changed, or
-after an hour; finished workers, worker questions and watched pull requests wake
-it directly. Talk to the coordinator in its thread ("pause", "resume", "stop",
-or an answer); it asks you through `factory:hold` briefs on the ticket.
+A watcher on T3's scheduler, on the `scout` route, looks at the board every
+`Wake timeout` and starts a dispatcher only when the issues, the pull requests
+or trunk's checks changed, or when something in the memory folder is due. The
+dispatcher, a fresh thread each run, claims ready tickets and launches one
+coordinator per ticket, on the `coordinator` route, in that ticket's own
+worktree; its workers share it. Finished workers, worker questions and watched
+pull requests wake the coordinator directly; the dispatcher wakes it when a
+hold is released, a due passed, or someone with write access commented. The
+factory asks you through a `## Factory brief` on the ticket and the
+`ready-for-human` role; answer there and hand the ticket back. Set the T3
+project's worktree cleanup as the reference asks, so a held ticket keeps its
+worktree.
 
 State lives in three places: the tracker and the git host (tickets, plans,
 briefs, pull requests and the verdict statuses `factory/verify` and
-`factory/review`), T3 (workers in flight), and the memory folder outside the
-repository (default `~/.local/share/factory/<repo>`: journal, wiki, worker
-results, `providers.md`, `quota.md`). A worker that stops on a usage limit
+`factory/review`), T3 (sessions in flight), and the memory folder outside the
+repository (default `~/.local/share/factory/<repo>`: claims, resources and dues
+written through `scripts/resources.mjs`, each ticket's story, the journal, the
+wiki, worker results, `providers.md`, `quota.md`). A worker that stops on a usage limit
 blocks that candidate in `quota.md`, and the step restarts on the next
 candidate of its route.

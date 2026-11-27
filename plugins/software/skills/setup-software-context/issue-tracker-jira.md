@@ -20,7 +20,7 @@ Edit the right-hand names to match this project's workflow. The factory moves ti
 
 ## Factory
 
-Read by the `factory` skill. Open issues with no parent that are not epics are standalone tickets, built without a spec; the factory files a fix ticket for a red trunk as a task in the project. The factory posts its plan, its questions and its briefs as comments, holds a ticket for a person by moving it to the `ready-for-human` status with a brief, and after a merge comments the ticket's `## Handoff` and moves it to `closed`. A person releases a hold by moving the ticket back to `ready-for-agent`. Pull requests mention `Jira: <KEY>`. The factory's merge steps are verified on GitHub only.
+Read by the `factory` skill. Open issues with no parent that are not epics are standalone tickets, built without a spec; the factory files a fix ticket for a red trunk as a task in the project. The factory posts a `## Factory claim` comment when it starts a ticket, posts its plan, its questions and its briefs as comments, holds a ticket for a person by moving it to the `ready-for-human` status with a brief, and after a merge comments the ticket's `## Handoff` and moves it to `closed`. A person releases a hold by moving the ticket back to `ready-for-agent`. Pull requests mention `Jira: <KEY>`. The factory's merge steps are verified on GitHub only.
 
 ## When a skill says "publish to the issue tracker"
 

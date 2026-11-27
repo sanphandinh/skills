@@ -22,7 +22,7 @@ Code for a ticket still goes through a pull request on this repository, even tho
 ## Claiming and closing tickets
 
 - **Claim**: add `Claimed-by: <who>` near the top, commit only that change, and push it to trunk before any other work. A rejected push means someone claimed first: pull and pick another ticket. The factory works only tickets nobody claimed.
-- **Factory comments**: the factory appends its plan, its questions and its briefs under the ticket's `## Comments` heading, and holds a ticket for a person by setting `Status: ready-for-human` with a brief; a person releases it by setting `Status: ready-for-agent` again. The factory commits these changes to trunk on their own, never inside a pull request.
+- **Factory comments**: the factory appends a `## Factory claim` when it starts a ticket, and its plan, its questions and its briefs, under the ticket's `## Comments` heading, and holds a ticket for a person by setting `Status: ready-for-human` with a brief; a person releases it by setting `Status: ready-for-agent` again. The factory commits these changes to trunk on their own, never inside a pull request.
 - **Close**: set `Status: closed` and tick the acceptance criteria. By hand, close on the ticket's own branch so the close lands in the same merge as the code; the factory closes the ticket on trunk right after its pull request merges.
 - **Acceptance criteria**: every criterion is a checkbox with a `Verify:` line under it naming the command or action that checks it.
 - **Specs and standalone tickets**: a folder with a `spec.md` is a spec; a folder with only `issues/` holds standalone tickets that build without a spec. The factory files fix tickets for a red trunk in `.scratch/factory-fixes/issues/`.

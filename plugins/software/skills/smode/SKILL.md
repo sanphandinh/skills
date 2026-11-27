@@ -79,7 +79,7 @@ Route by the signal in the request, not by how big it sounds. Signals match by m
 | Signal in the request | Playbook |
 |---|---|
 | `setup` or `setup override` of smode | Setup (`playbooks/setup.md`): prepare this project's agent docs for smode |
-| The factory: `factory` with a mode (`setup`, `run`, `once`), or "stop", "pause", "resume" to it | Factory (`playbooks/factory.md`): run the agent-driven factory |
+| The factory: `factory` with a mode (`setup`, `run`, `once`, `pause`, `resume`, `stop`), or "stop", "pause", "resume" said of it | Factory (`playbooks/factory.md`): run the agent-driven factory |
 | A diff, pull request, or branch change to review | Review (`playbooks/review.md`): an independent review of a change, at one commit |
 | A change to prove on the real product, at a commit | Verify (`playbooks/verify.md`): prove a change works the way a user would see it |
 | A handoff, "pick up", "continue", or a branch with work in flight | Pickup (`playbooks/pickup.md`): take over work in flight |

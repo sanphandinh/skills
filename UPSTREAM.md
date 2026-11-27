@@ -3,6 +3,9 @@ repo: https://github.com/mattpocock/skills
 remote: upstream
 branch: main
 rewrites:
+  # Upstream's example ADR number; this repository has its own ADR-0007, which the validator keeps out of skills.
+  - from: ADR-0007
+    to: ADR-0042
   - from: setup-matt-pocock-skills
     to: setup-software-context
   - from: Setup Matt Pocock's Skills

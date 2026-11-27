@@ -15,7 +15,7 @@ Every software request starts in `smode` on its own: ask for what you want ("fix
 
 A human takes part at three points. First, the problem goes through `grill-with-docs` and `to-spec` until the spec, with its test seams, is approved, and `to-tickets` splits it into tickets whose acceptance criteria each carry a `Verify:` line. Second, the human answers the factory's briefs: a product question a plan raised, a one-way door, a protected path, anything stuck. Third, the human reviews only the pull requests the merge policy holds.
 
-In between, the `factory` skill runs a coordinator agent inside an agent manager (T3 Code). It takes each ticket through plan (a `plan` worker settles the design before any code), build (a fresh `build` worker, test-first), check (an independent `verify` worker that drives the real product per `docs/agents/verify.md`, and a `review` worker on the Spec and Standards axes, each verdict a commit status on the exact head commit), rework, and an automatic merge when every gate in `docs/agents/merge-policy.md` holds. Every worker runs a `smode` playbook on the model its role routes to, skipping providers that are out of quota. Each merged ticket leaves a handoff for the tickets it unblocks, and the coordinator keeps a journal and a wiki of lessons outside the repository. See [PLATFORMS.md](PLATFORMS.md#running-the-factory).
+In between, the `factory` skill runs inside an agent manager (T3 Code): a watcher starts a dispatcher when the board changes, the dispatcher claims each ready ticket and gives it its own coordinator in its own workspace, and that coordinator takes the ticket through plan (a `plan` worker settles the design before any code), build (a fresh `build` worker, test-first), check (an independent `verify` worker that drives the real product per `docs/agents/verify.md`, and a `review` worker on the Spec and Standards axes, each verdict a commit status on the exact head commit), rework, and an automatic merge when every gate in `docs/agents/merge-policy.md` holds. Every worker runs a `smode` playbook on the model its role routes to, skipping providers that are out of quota. Each merged ticket leaves a handoff for the tickets it unblocks, and the memory folder outside the repository keeps each ticket's story, a journal and a wiki of lessons. See [PLATFORMS.md](PLATFORMS.md#running-the-factory).
 
 ## Work on this repo
 
@@ -31,6 +31,14 @@ npm run upstream -- status
 Run `npm run index` after adding, removing or renaming a skill, when `npm run validate` reports "skills index is stale; run `npm run index`": it regenerates the `skills-index.md` of every mode skill.
 
 ## Release notes
+
+### software 0.13.0 (ADR-0007)
+
+- **A coordinator per ticket.** The factory no longer runs one coordinator for life. A watcher starts a fresh dispatcher only when the board changed or something is due; the dispatcher claims tickets and launches one coordinator per ticket, in that ticket's own workspace, which its workers share. `run` only schedules the watcher; `once`, `pause`, `resume` and `stop` are modes. See `COORDINATOR.md`, `DISPATCHER.md` and `MEMORY.md` of the `factory` skill.
+- **Shared state in the memory folder**, written through the new `scripts/resources.mjs` (claims, resources `slot`/scarce/`merge` with queues, dues, the dispatcher lock, the run status, quota) and read with `scripts/comments.mjs` (trusted comments since the claim).
+- **Land updates from trunk** and checks again while holding `merge`, unless the branch already contains trunk.
+- **No `factory:hold`.** A hold is the triage role `ready-for-human` with a `## Factory brief`, on every tracker; a pull request carries `ready-for-human` only when a person must merge it. A claim is a `## Factory claim` comment.
+- **Settings:** `docs/agents/factory.md` drops `Coordinator:` and gains `Max tickets`, `Conflict rounds` and `Reset keeps`. In each project that runs the factory, stop it, update the plugin, and run `factory setup`: it converts the settings, the memory folder and the `factory:hold` labels. On T3, set the project's worktree cleanup as the reference asks (merged on; inactive, settled and unchanged off) and every setup script to wait for setup (`async: false`).
 
 ### software 0.12.0, core 0.6.0 (ADR-0006)
 
