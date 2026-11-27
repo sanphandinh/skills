@@ -63,7 +63,7 @@ The settings the plan assumed ("Cleanup: after the thread settles, after merging
 - **Delete unchanged worktrees** (`worktreeUnchanged`): "worktrees with no commits beyond the default branch".
 - **Keep worktrees with local changes** (`worktreeKeepWhen`): `uncommitted-changes` (default; "keeps edits and untracked files, deletes ignored files"), `any-local-files`, or `tracked-changes`.
 
-The cleanup sweep runs hourly (`StorageCleanup.sweep` spans in T3's server trace at 04:20:40Z and 05:20:40Z). This machine's global settings are `worktreeAfterDays: 3` and `worktreeUnchanged: true`; with them, a coordinator's worktree before its first commit (plan, hold on a plan question) is "unchanged", and a ticket held more than 3 days is "inactive": both rules can remove a live coordinator's worktree. Consequences for the design: setup asks the person to set the project's worktree cleanup to custom with inactive, unchanged and settled off, and merged on (settled stays off: a superseded coordinator settles on its next turn while the revived one still works in the same worktree; review of ticket 01, finding 2); a revive or a wake whose worktree is gone launches the coordinator on a new worktree from the ticket's branch (experiment 1 showed that works); the dispatcher's sweep stays the last net.
+The cleanup sweep runs hourly (`StorageCleanup.sweep` spans in T3's server trace at 04:20:40Z and 05:20:40Z). This machine's global settings are `worktreeAfterDays: 3` and `worktreeUnchanged: true`; with them, a coordinator's worktree before its first commit (plan, hold on a plan question) is "unchanged", and a ticket held more than 3 days is "inactive": both rules can remove a live coordinator's worktree. Consequences for the design: setup asks the person to set the project's worktree cleanup to custom with inactive, unchanged and settled off, and merged on, though with squash merges the dispatcher's sweep is what removes merged workspaces (experiment 4) (settled stays off: a superseded coordinator settles on its next turn while the revived one still works in the same worktree; review of ticket 01, finding 2); a revive or a wake whose worktree is gone launches the coordinator on a new worktree from the ticket's branch (experiment 1 showed that works); the dispatcher's sweep stays the last net.
 
 ## Seen on the way: effort options per model
 
@@ -80,7 +80,7 @@ For the experiment, the sandbox project's cleanup was set to Custom (written int
 
 ## 8. Cleanup while Close runs
 
-Thread #2 ran a 9-minute loop from 06:14:25Z to 06:23:06Z printing `test -d <its worktree>` every 20 s: `PRESENT` on every line, across the 06:20:40Z sweep, `cwd` intact. PASS: a sweep does not pull the worktree from under a running turn of a merged ticket. Close runs from the memory folder anyway (plan 1.7).
+Thread #2 ran a 9-minute loop from 06:14:25Z to 06:23:06Z printing `test -d <its worktree>` every 20 s: `PRESENT` on every line, across the 06:20:40Z sweep, `cwd` intact. PASS for a squash-merged pull request, which may not count as merged for T3 at all (experiment 4); Close runs outside the worktree regardless. Close runs from the memory folder anyway (plan 1.7).
 
 ## Seen on the way: the scheduler's threads
 
@@ -97,5 +97,5 @@ A `schedule_task` run (`bindToCurrentThread: false`, `freshSession: true`, proje
 | 5 | revive with `existing_worktree`; read and stop the old worker | PASS through the worker's thread (`task_*` refused) | revive maps to `t3_thread_interrupt` on the child; claim check first in every turn; branch read with git |
 | 6 | scout dispatcher launches a coordinator on another model, `full-access` | PASS | the launching thread must be `full-access` |
 | 7 | send to an idle top-level thread; snoozed | PASS; a message ends the snooze | coordinators snooze again at the end of each turn |
-| 8 | cleanup during Close | PASS | none |
+| 8 | cleanup during Close | PASS (squash-merged; Close runs outside the worktree regardless) | none |
 | 9 | watch wakes on an issue label change | no wake, as expected | the dispatcher keeps unhold |
