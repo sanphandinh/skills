@@ -93,7 +93,7 @@ Commit it on trunk as "Configure the software factory" and push.
 - Create the memory folder as [MEMORY.md](MEMORY.md) lays it out (`index.md`, `journal.md`, `wiki/`, `results/`, `tickets/`, `evidence/`, `providers.md`, `quota.md`, `.gitignore`), `git init` it, and `res status set paused`: `run` sets it running.
 - When the folder already exists, look before you write. A folder without `providers.md` and `quota.md` is a version 1 memory: add the two files and keep `journal.md`, `wiki/` and `results/` as they are; drop identifiers in `index.md` that belong to another manager (`orca-run`, `orca-wake`). A folder without `state/` is converted as **Converting older settings** says. Commit the folder as `upgrade <time>`.
 - Follow the reference's **Before the first wake** section, and write the identifiers it asks to keep into `index.md`.
-- The project's `AGENTS.md` gets a `### Factory` sub-block in its `## Agent skills` block, unless one is there. Sessions the factory starts get their first message from another agent, and a careful model may refuse such a message as an injection (seen: a dispatcher declined its first message); this block says they are the project's own automation:
+- The project's `AGENTS.md` gets a `### Factory` sub-block in its `## Agent skills` block; when one is there but differs from the text below, replace it with this text and show the user the change. Sessions the factory starts get their first message from another agent, and a careful model may refuse such a message as an injection (seen: a dispatcher declined its first message); this block says they are the project's own automation:
 
   ```markdown
   ### Factory
