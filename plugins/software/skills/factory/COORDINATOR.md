@@ -69,6 +69,8 @@ A `build` worker (**Starting a worker**). On `done`, confirm the branch is on th
 
 ### Check
 
+**Still red?** Before starting a verifier: when the head's `factory/verify` is `pending` with the description `waits on red trunk`, `Trunk checks` is still red on trunk's head, and this ticket is not the fix for it, start no verifier. With a worker of yours live, wait for its report; with none, apply the red-trunk rule (**Worker questions**).
+
 For the pull request's head, a `verify` and a `review` worker together (**Starting a worker**, with `res acquire <n> slot --count <2, or 1 when Max workers is 1>` and the reset gate once for the pair): start both, or one after the other with one slot. On each `done`, act only if the result's `head_sha` is still the head: post the result's `evidence` or `findings` as a pull request comment headed `## Factory verify` or `## Factory review`, then set the verdict status on that commit, linking the comment:
 
 ```bash
@@ -215,5 +217,5 @@ The **To answer** line:
 - `done`: read the result at the path the work order names; check its `step` and `ticket` match the worker's name; take the step's outcome above; when it has `lessons`, they reach the wiki through the dispatcher (MEMORY.md, **Lessons**); release the worker's resources (**Starting a worker**).
 - `failed`: the red-trunk rule (**Worker questions**) first, then **Quota**, then **Failed workers**; release the worker's resources.
 - `question`: as **Worker questions** says.
-- A pull request change: checks failed is **Rework** (in Land, its step 6); required checks passed moves **Land** on; a conflict waits for **Land**, which updates the branch from trunk; merged is **Close, merged**; closed is **Close, unmerged**.
+- A pull request change: on a `waiting` ticket, record it and nothing more (the dispatcher's wake moves the ticket on). Checks failed is the red-trunk rule (**Worker questions**) when a red trunk is their only cause, else **Rework** (in Land, its step 6); required checks passed moves **Land** on; a conflict waits for **Land**, which updates the branch from trunk; merged is **Close, merged**; closed is **Close, unmerged**.
 - A message: "Factory wake … the hold was released" is **Unhold**; "Factory: <resource> is free" is **Resources**; any other "Factory wake …" needs nothing more than the turn itself.
