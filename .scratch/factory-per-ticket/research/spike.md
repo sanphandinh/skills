@@ -23,6 +23,7 @@ Thread #1 started `1 spike-sleeper` (antigravity, `sleep 900`) and ended its tur
 - `task_status` on the old thread's task: refused, `task_not_found` ("No delegated task with id … exists on thread <new thread>"). `task_cancel`: refused the same way.
 - `t3_thread_read` on the old worker's `childThreadId`: works (status `running`, `parentThreadId` = thread #1, last item `$ sleep 900`).
 - `t3_thread_interrupt` with `stop: true` on the old worker's `childThreadId`: `interrupt_requested`, then the child read `status: interrupted`, "Stopped by an agent". So a revived coordinator can see an old worker and stop it, through the child's thread, not through its task. PASS with that mapping.
+- Stopping the old worker woke the **old** coordinator: thread #1 got run 5 at 05:29:50Z, started by the notification "Delegated task "1 spike-sleeper" stopped", and answered in that turn. A dead coordinator whose provider is back can therefore act again after a revive, so every coordinator turn first checks that the record's `thread` is its own session (plan 1.6, start of each turn).
 
 ## 6. A cheap dispatcher launches a coordinator on another model with `full-access`
 
@@ -31,6 +32,8 @@ Thread `factory dispatcher spike6` (`mcp:launch:4e70dd6a…a8ea8`), Claude Haiku
 ## 7. `t3_thread_send` to an idle top-level thread
 
 Sent to idle thread #2 (`mode: auto`): `delivery: "started"`, a new run (ordinal 2) answered `2026-11-27T05:29:18Z WOKE`. Same on thread #1 (run 4). PASS.
+
+Snoozed: thread #1 snoozed (`t3_thread_organize snooze`, until 2026-12-31) at ~05:58, then sent a message: `delivery: "started"`, run 6 answered `2026-11-27T05:58:55Z SNOOZED-WOKE`. PASS, but afterwards the thread read `snoozed: false`: a message ends the snooze. A coordinator snoozes itself again at the end of each turn (unless it is flagged for a person), or its turns notify the phone.
 
 ## 3. What `watch_pull_request` wakes on
 
@@ -42,8 +45,9 @@ Thread #2 linked and watched PR #2 (`until: "merged"`; the watch answered `check
 | CI failed on `d16ca25` (pushed 05:38:15) | 05:39:52 "#2: checks failed", body "Checks failed on d16ca25: test <job url>" | ~1.5 min after the failure |
 | Trunk commit conflicting with the branch, 05:43:40 | 05:45:55 "#2: merge conflict", body "The branch now conflicts with main." | ~2 min |
 | PR conversation comment by `sanphandinh`, 05:43:58 | none | — |
+| Branch fixed (failing test dropped, trunk merged) 05:48:32, CI green | 05:49:59 "#2: checks passed", body "All 1 check passed on b7d24b3." | ~1.5 min |
 
-Result: PASS for CI and conflicts; **FAIL for comments written by the account T3 runs as**, which is the project owner in this setup (the same holds on `gia-pha-studio`). A comment from another account was not tested (no second account). Fallback taken: the board fingerprint already covers each PR's `updatedAt`, so a new comment starts a dispatcher run; the dispatcher wakes the ticket's coordinator when `comments.mjs fetch` shows a trusted comment not yet acknowledged. The coordinator's own watch still wakes it on checks, conflicts and the merge.
+Result: PASS for checks failed, checks passed and conflicts (merge: see experiment 4); **FAIL for comments written by the account T3 runs as**, which is the project owner in this setup (the same holds on `gia-pha-studio`). A comment from another account was not tested (no second account). Fallback taken: the board fingerprint already covers each PR's `updatedAt`, so a new comment starts a dispatcher run; the dispatcher wakes the ticket's coordinator when `comments.mjs fetch` shows a trusted comment not yet acknowledged. The coordinator's own watch still wakes it on checks, conflicts and the merge.
 
 ## 9. Does the watch wake on a label change on the issue?
 
@@ -59,4 +63,8 @@ The settings the plan assumed ("Cleanup: after the thread settles, after merging
 - **Delete unchanged worktrees** (`worktreeUnchanged`): "worktrees with no commits beyond the default branch".
 - **Keep worktrees with local changes** (`worktreeKeepWhen`): `uncommitted-changes` (default; "keeps edits and untracked files, deletes ignored files"), `any-local-files`, or `tracked-changes`.
 
-The cleanup sweep runs hourly (`StorageCleanup.sweep` spans in T3's server trace at 04:20:40Z and 05:20:40Z). This machine's global settings are `worktreeAfterDays: 3` and `worktreeUnchanged: true`; with them, a coordinator's worktree before its first commit (plan, hold on a plan question) is "unchanged", and a ticket held more than 3 days is "inactive": both rules can remove a live coordinator's worktree. Consequences for the design: setup asks the person to set the project's worktree cleanup to custom with inactive and unchanged off, settled after 0 days on (a coordinator settles only at Close), and merged on; a revive or a wake whose worktree is gone launches the coordinator on a new worktree from the ticket's branch (experiment 1 showed that works); the dispatcher's sweep stays the last net.
+The cleanup sweep runs hourly (`StorageCleanup.sweep` spans in T3's server trace at 04:20:40Z and 05:20:40Z). This machine's global settings are `worktreeAfterDays: 3` and `worktreeUnchanged: true`; with them, a coordinator's worktree before its first commit (plan, hold on a plan question) is "unchanged", and a ticket held more than 3 days is "inactive": both rules can remove a live coordinator's worktree. Consequences for the design: setup asks the person to set the project's worktree cleanup to custom with inactive, unchanged and settled off, and merged on (settled stays off: a superseded coordinator settles on its next turn while the revived one still works in the same worktree; review of ticket 01, finding 2); a revive or a wake whose worktree is gone launches the coordinator on a new worktree from the ticket's branch (experiment 1 showed that works); the dispatcher's sweep stays the last net.
+
+## Seen on the way: effort options per model
+
+`orchestrator_capabilities` (2026-11-27 05:27Z) lists the effort option by model, not by instance. On `cursor`: `grok-4.7` takes `reasoning_effort` (low…xhigh), `grok-4.6` takes `effort`, `claude-opus-5-5` takes `effort`, `gemini-4-neon` takes `reasoning_effort`, `composer-2.5` has none. On `antigravity` every Gemini model takes `thought_level`; on `claudeAgent`, `effort`; on `opencode`, `variant`. So the reference maps `effort=<level>` to the option of that model whose values are effort levels, instead of one option per instance.
