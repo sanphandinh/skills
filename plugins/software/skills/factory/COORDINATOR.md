@@ -40,7 +40,10 @@ A step whose worker is still live is waiting, not due: never start a second work
 
 The ticket's **pull request** is the open one that closes it, whoever opened it (`gh pr list --state open --search "<number> in:body" --json number,headRefName,body`, then keep the one whose body says `Closes #<number>`, `Fixes` or `Resolves`). Its branch is the ticket's branch, and the factory carries it on from where it is. A pull request merged or closed is an event (**Events**), not a row.
 
-### Before every step
+### Starting a worker
+
+Every worker you start, of every step, goes through these four steps in this order; start-worker is never called any other way. Without a granted `slot`, no worker starts.
+
 
 1. **A candidate.** Pick the step's candidate (**Routing**). With every candidate of its route filtered out by quota: while another worker of yours is live, release only what this step would have used and wait for that worker's report; once none is live, release everything (`merge` included) and `res ticket set <n> --json '{"state":"running","due":"<the earliest blocked-until of that route>","landing":false}'`. Record, and end the turn.
 2. **Resources.** `res acquire <n> slot` (with `--count` for a pair), then each scarce resource the step's role holds (`Scarce resources` names the roles), in the order **Resources** gives. Not granted: you are parked; end the turn, and the releaser or the dispatcher wakes you.
@@ -55,7 +58,7 @@ When a worker reports, drop it from `tasks`, `res release <n> slot --count 1`, a
 
 ### Plan
 
-A `plan` worker. On `done`, post the result's `plan` on the ticket as a comment headed `## Factory plan`, with the result's `door` and `files_to_change`. A plan whose result's `questions` is not empty goes on **hold** with them, before any code. The **Ticket chain** (step 11) then takes it to **Collisions**.
+A `plan` worker (**Starting a worker**). On `done`, post the result's `plan` on the ticket as a comment headed `## Factory plan`, with the result's `door` and `files_to_change`. A plan whose result's `questions` is not empty goes on **hold** with them, before any code. The **Ticket chain** (step 11) then takes it to **Collisions**.
 
 ### Collisions
 
@@ -63,11 +66,11 @@ A `plan` worker. On `done`, post the result's `plan` on the ticket as a comment 
 
 ### Build
 
-A `build` worker. On `done`, confirm the branch is on the remote at the result's `head_sha` (`git ls-remote origin <branch>`). Without a pull request, open it from the result's `pr_title` and `pr_body` (`gh pr create --head <branch> --base <trunk> --title "<pr_title>" --body "<pr_body>"`), write its number into the record (`pr`), link-pr, watch-pr. With one, replace its title and body: `gh pr edit <number> --title "<pr_title>" --body "<pr_body>"`. For a build a comment asked for, reply to that comment with the commit.
+A `build` worker (**Starting a worker**). On `done`, confirm the branch is on the remote at the result's `head_sha` (`git ls-remote origin <branch>`). Without a pull request, open it from the result's `pr_title` and `pr_body` (`gh pr create --head <branch> --base <trunk> --title "<pr_title>" --body "<pr_body>"`), write its number into the record (`pr`), link-pr, watch-pr. With one, replace its title and body: `gh pr edit <number> --title "<pr_title>" --body "<pr_body>"`. For a build a comment asked for, reply to that comment with the commit.
 
 ### Check
 
-For the pull request's head, a `verify` and a `review` worker together: `res acquire <n> slot --count <2, or 1 when Max workers is 1>`, run the reset gate once, start both (one after the other with one slot). On each `done`, act only if the result's `head_sha` is still the head: post the result's `evidence` or `findings` as a pull request comment headed `## Factory verify` or `## Factory review`, then set the verdict status on that commit, linking the comment:
+For the pull request's head, a `verify` and a `review` worker together (**Starting a worker**, with `res acquire <n> slot --count <2, or 1 when Max workers is 1>` and the reset gate once for the pair): start both, or one after the other with one slot. On each `done`, act only if the result's `head_sha` is still the head: post the result's `evidence` or `findings` as a pull request comment headed `## Factory verify` or `## Factory review`, then set the verdict status on that commit, linking the comment:
 
 ```bash
 gh api repos/<owner>/<repo>/statuses/<head_sha> -f state=<success|failure|pending> -f context=factory/verify -f description="<one line>" -f target_url=<comment url>
@@ -156,7 +159,7 @@ Every worker runs on one model, picked when it starts. Each step takes a role: `
 3. is not blocked in `quota.md`, or its block has expired;
 4. for the `reviewer` role, is of another model family than the model that built the head it checks (the build result's `route`).
 
-Pass it to start-worker, fill it into the work order as `<route>` so the result carries it (WORK-ORDERS.md), and record it in the story. With every candidate filtered out, start nothing for that step (**Before every step**, 1). Never run a step on a model outside its route.
+Pass it to start-worker, fill it into the work order as `<route>` so the result carries it (WORK-ORDERS.md), and record it in the story. With every candidate filtered out, start nothing for that step (**Starting a worker**, 1). Never run a step on a model outside its route.
 
 ## Quota
 
@@ -164,7 +167,7 @@ A worker that failed is checked for a usage limit before **Failed workers** appl
 
 - `res quota block "<candidate>" --until <time> --ticket <n> --step <step> --words "<the error's words>"`, until the reset the text gives; with no time given, 24 hours when the text names a weekly or monthly allowance or a plan without the model, else one hour;
 - start one fresh worker for the same step on the next candidate of the route, with the same work order. This restart is not a failure and costs no rework round;
-- a second usage-limit failure on the same step moves on the same way; with no candidate left, the step waits as **Before every step**, 1, says.
+- a second usage-limit failure on the same step moves on the same way; with no candidate left, the step waits as **Starting a worker**, 1, says.
 
 ## Merge guard
 
@@ -209,7 +212,7 @@ The **To answer** line:
 ## Events
 
 - A report from a worker that is not in the record's `tasks` (one you stopped) needs nothing.
-- `done`: read the result at the path the work order names; check its `step` and `ticket` match the worker's name; take the step's outcome above; when it has `lessons`, they reach the wiki through the dispatcher (MEMORY.md, **Lessons**); release the worker's resources (**Before every step**).
+- `done`: read the result at the path the work order names; check its `step` and `ticket` match the worker's name; take the step's outcome above; when it has `lessons`, they reach the wiki through the dispatcher (MEMORY.md, **Lessons**); release the worker's resources (**Starting a worker**).
 - `failed`: **Quota** first, then **Failed workers**; release the worker's resources.
 - `question`: as **Worker questions** says.
 - A pull request change: checks failed is **Rework** (in Land, its step 6); required checks passed moves **Land** on; a conflict waits for **Land**, which updates the branch from trunk; merged is **Close, merged**; closed is **Close, unmerged**.
