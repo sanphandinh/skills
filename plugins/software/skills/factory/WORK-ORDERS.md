@@ -36,7 +36,7 @@ Playbook: `ticket`. Role: `worker`. Skills to resolve: `tdd`, `pr`.
 
 ### build: update from trunk
 
-Given in **Land** (COORDINATOR.md) when `git merge-tree` found that trunk merges cleanly, and as the conflict order when it found conflicts.
+Given in **Land** (COORDINATOR.md), and on the wake after a red trunk (**Worker questions**), when `git merge-tree` found that trunk merges cleanly, and as the conflict order when it found conflicts.
 
 > Step: bring trunk into the branch. Run `git fetch origin`, then `git merge origin/<trunk>`. <Only for conflicts: resolve the conflicts in these files: <files from `git merge-tree`>, keeping both sides' intent. When a conflict touches a protected path of `docs/agents/merge-policy.md`, or resolving it would change what another ticket built (its handoff says what it meant), stop: abort the merge, change nothing, and report failed with the conflict in `questions`.> Run the whole test suite, commit the merge, and push with `git push origin HEAD:<branch>`. Change nothing beyond the merge and what the tests need. Write the result with the `build` keys: `head_sha`, and `pr_title`, `pr_body` and `handoff` copied unchanged from the latest build result (`<path of that result>`).
 
