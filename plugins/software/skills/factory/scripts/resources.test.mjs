@@ -76,6 +76,13 @@ test("claim: a second claim of the same ticket is refused, and overlapping claim
   assert.equal(rec.due, at(15));
 });
 
+test("claim: refused while paused, so a dispatcher that already read running still cannot claim", () => {
+  const root = project();
+  r.setStatus(ctx(root), "paused");
+  assert.throws(() => r.claim(ctx(root), 9), /paused/);
+  assert.equal(r.getTicket(ctx(root), 9).claimed, false);
+});
+
 test("unclaim releases resources, clears planCleared, and a later claim starts again", () => {
   const root = project();
   r.claim(ctx(root), 4);

@@ -284,6 +284,8 @@ export function setTicket(c, n, patch) {
 
 export function claim(c, n, { thread = null } = {}) {
   return withLock(c, () => {
+    // Recheck under the lock: a dispatcher may have read `running` before `pause`.
+    if (getStatus(c).status === "paused") throw new Refused("factory is paused: claim no ticket");
     const rec = readTicket(c, ticketId(n));
     if (rec.claimed) return { claimed: false, record: rec };
     const fresh = applyPatch(c, { ...blankTicket(ticketId(n)), acked: [] }, { state: "running" });
