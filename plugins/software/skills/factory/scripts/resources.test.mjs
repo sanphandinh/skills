@@ -477,6 +477,22 @@ test("status: going from paused to running makes stopped tickets due now and cle
   assert.equal(r.due(ctx(root, 10)).due.filter((d) => d.source === "queue").length, 1);
 });
 
+test("paused: a refused acquire leaves holders and queue as they were; ticket get shows factoryStatus", async () => {
+  const root = project({ maxWorkers: 1 });
+  for (const n of [1, 2]) r.claim(ctx(root), n);
+  r.acquire(ctx(root), 1, "slot");
+  r.acquire(ctx(root), 2, "slot"); // queued behind 1
+  const before = JSON.stringify(r.holdings(ctx(root), 1)) + JSON.stringify(r.holdings(ctx(root), 2)) + JSON.stringify(r.due(ctx(root)).due);
+  r.setStatus(ctx(root), "paused");
+  assert.throws(() => r.acquire(ctx(root), 2, "slot"), /paused/);
+  assert.throws(() => r.acquire(ctx(root), 1, "merge"), /paused/);
+  const after = JSON.stringify(r.holdings(ctx(root), 1)) + JSON.stringify(r.holdings(ctx(root), 2)) + JSON.stringify(r.due(ctx(root)).due);
+  assert.equal(after, before);
+  const got = await cli(root, ["ticket", "get", "2"]);
+  assert.equal(got.code, 0);
+  assert.equal(got.json.factoryStatus, "paused");
+});
+
 test("dispatcher lock: held by the launcher, refused while held (live or expired), taken over only on reclaim", () => {
   const root = project();
   const a = r.lockAcquire(ctx(root), "watcher");
