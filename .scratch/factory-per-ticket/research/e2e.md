@@ -91,14 +91,14 @@ Ticket [#17](https://github.com/sanphandinh/factory-ticket-sandbox/issues/17).
 | PR closed without merge → claim released; handed back → new coordinator | PASS | #9, PR #11 → PR #13 |
 | hold puts nothing on the PR; merges after unhold | PASS | #9 |
 | dispatcher failure retried; quota death → next `scout` candidate | PASS | 06:56Z; 09:39Z |
-| PR CI `PENDING` waits, no rework; red trunk → no trunk merge into the branch | PARTIAL | red trunk part PASS (#19, gate 3 not merging trunk); `PENDING` never seen (CI faster than workers); unit-level only |
+| PR CI `PENDING` waits, no rework; red trunk → no trunk merge into the branch | PASS | #26 14:10Z waited on `IN_PROGRESS`, merged PR #29 at 14:13Z, `reworkRounds` 0; red trunk part: #19 |
 | stuck worker → due wakes the coordinator | PASS | #15 09:41Z, #19 10:26Z |
 | coordinator died holding `merge`: released on revive, PR watched again | PASS | #4 08:09Z |
 | parked holder dies: overdue holding wakes the dispatcher, resources reclaimed | UNVERIFIED | not staged; `resources.test.mjs` "renew extends every holding…", "reclaim releases every resource…" |
 | `pause` claims nothing; `resume` wakes a ticket stopped mid-way | PASS | #15; `d8c96f1` test |
 | retry after closed PR does not touch the old worktree or branch | PASS | #9 new branch run, PR #13 |
 | trunk-fix PR gets through on a red trunk; ticket waiting on trunk woken when green | PASS | PR #21 (person merged), #19 11:45Z |
-| protected path with CI `PENDING`: wait for CI, then hold | UNVERIFIED | protected-path hold PASS (#12), `PENDING` never seen |
+| protected path with CI `PENDING`: wait for CI, then hold | PASS | #27 14:06Z waited on `IN_PROGRESS`; 14:11Z held at the policy gate after CI passed (PR #28) |
 | `stop` then `run`: a ticket stopped mid-way is woken | PASS | #24 12:18Z |
 | every candidate out of quota at a step: resources released | PASS | #24 11:59Z |
 | red trunk with `Max tickets` full: trunk-fix ticket still claimed | PASS | #20 10:26Z |
@@ -110,3 +110,11 @@ Ticket [#17](https://github.com/sanphandinh/factory-ticket-sandbox/issues/17).
 | `tickets/<n>.md` tells the whole story | PASS | memory `tickets/*.md` |
 
 Found and fixed during this pass: a question caused only by a red trunk held the ticket (`ac192de`); review rounds 1–6 of the e2e fixes (`9cf6e07`, `ae6ec45`, `f2e5e72`, `c854be0`, `caf6f61`, `06fed2f`, `ef17e57`), round 6 approved.
+
+## CI PENDING (2026-11-27 13:32Z–14:13Z)
+
+- 13:32Z: owner pushed `test/slow-ci.test.js` to sandbox `main` (`1539956`): it sleeps 8 minutes only when `CI` is set, so the PR `test` check stays `IN_PROGRESS` while local workers run fast. Created [#26](https://github.com/sanphandinh/factory-ticket-sandbox/issues/26) (`docs/NOTES.md`) and [#27](https://github.com/sanphandinh/factory-ticket-sandbox/issues/27) (`.github/workflows/ci.yml`, a protected path). The owner reran each PR's CI right after its first run ended, so the check was still pending at Land.
+- 13:41Z: **FAIL → fixed** (`14e0cbf`): the dispatcher revived #26's coordinator because its thread was settled after parking; a settled thread whose run completed is live. Same as #18 at 10:17Z.
+- 14:06Z: #27 review pass; Land gate 1 saw `test` `IN_PROGRESS`, set `running` with a due, released `slot`. No hold yet. 14:11Z: `test` success; the policy gate held it for a person (`ready-for-human` on the ticket and [PR #28](https://github.com/sanphandinh/factory-ticket-sandbox/pull/28), brief posted). **PASS: a protected-path PR with CI pending waits for CI, then holds.**
+- 14:10Z: #26 review pass; `test` `IN_PROGRESS`, Land waited, no rework. 14:13Z squash-merged [PR #29](https://github.com/sanphandinh/factory-ticket-sandbox/pull/29). **PASS: pending CI waits, no rework.**
+- 14:14Z: slow test removed from sandbox `main`; watcher deleted; `status paused`. #27 stays held with PR #28 open for a person.
