@@ -11,7 +11,7 @@
 //   ticket get <n> | ticket list           read records; `list` counts tickets toward Max tickets
 //   ticket set <n> --json '<patch>'        merge fields into n's record (`state` moves `due`)
 //   acquire <n> <resource> [--count k]     take a resource or join its queue (FIFO, head first)
-//   release <n> <resource>                 give it back; prints who to notify
+//   release <n> <resource> [--count k]     give it back (k of a slot holding), or leave its queue; prints who to notify
 //   notified <n> <resource>                record that n, at the head of the queue, was told
 //   renew <n>                              extend every holding of n by Wake timeout
 //   reclaim <n>                            release everything n holds or queues for, drop its tasks
@@ -231,6 +231,7 @@ function blankTicket(n) {
     conflictRounds: 0,
     files_to_change: [],
     planCleared: false,
+    landing: false,
     state: null,
     parkedOn: [],
     waitingOn: [],
@@ -297,7 +298,7 @@ export function unclaim(c, n, { state } = {}) {
     const notify = reclaimLocked(c, ticketId(n));
     let rec = readTicket(c, ticketId(n));
     rec = applyPatch(c, rec, state ? { state } : {});
-    Object.assign(rec, { claimed: false, planCleared: false, due: null, tasks: [], parkedOn: [], waitingOn: [] });
+    Object.assign(rec, { claimed: false, planCleared: false, landing: false, due: null, tasks: [], parkedOn: [], waitingOn: [] });
     writeTicket(c, rec);
     return { record: rec, notify };
   });
@@ -385,13 +386,20 @@ function grantableHeads(c, names = Object.keys(c.cfg.capacity)) {
 const toNotify = (c, names) => grantableHeads(c, names).filter(({ head }) => !head.notifiedAt).map(({ ticket, resource }) => ({ ticket, resource }));
 
 // Gives back a holding, or leaves the queue of a resource the ticket waits for.
-export function release(c, n, resource) {
+export function release(c, n, resource, count = null) {
+  if (count !== null && (!Number.isInteger(count) || count < 1)) throw new Refused(`release --count takes a whole number, not ${count}`);
   return withLock(c, () => {
     rank(c.cfg, resource);
     n = ticketId(n);
     const res = readResource(c, resource);
     const held = res.holders.length;
     const queued = res.queue.length;
+    const mine = res.holders.find((h) => h.ticket === n);
+    if (mine && count !== null && count < mine.count) {
+      mine.count -= count;
+      writeJson(resourceFile(c, resource), res);
+      return { released: resource, count, left: false, notify: toNotify(c, [resource]) };
+    }
     res.holders = res.holders.filter((h) => h.ticket !== n);
     res.queue = res.queue.filter((q) => q.ticket !== n);
     if (res.holders.length === held && res.queue.length === queued) return { released: null, notify: [] };
@@ -739,7 +747,7 @@ export function run(argv) {
     case "acquire":
       return acquire(c, a, b, opts.count === undefined ? 1 : Number(opts.count));
     case "release":
-      return release(c, a, b);
+      return release(c, a, b, opts.count === undefined ? null : Number(opts.count));
     case "notified":
       return notified(c, a, b);
     case "renew":

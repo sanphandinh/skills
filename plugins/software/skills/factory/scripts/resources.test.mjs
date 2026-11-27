@@ -240,6 +240,28 @@ test("release also takes a parked ticket out of its queue, so the one behind it 
   assert.deepEqual(r.release(ctx(root, 2), 1, "slot").notify, [{ ticket: 3, resource: "slot" }]);
 });
 
+test("release --count gives back part of a slot holding, as each of two workers reports", () => {
+  const root = project({ maxWorkers: 2 });
+  for (const n of [1, 2]) r.claim(ctx(root), n);
+  r.acquire(ctx(root), 1, "slot", 2);
+  r.acquire(ctx(root), 2, "slot");
+  const first = r.release(ctx(root, 1), 1, "slot", 1);
+  assert.deepEqual(first.notify, [{ ticket: 2, resource: "slot" }]);
+  assert.equal(r.holdings(ctx(root, 1), 1)[0].count, 1);
+  r.notified(ctx(root, 1), 2, "slot");
+  assert.equal(r.acquire(ctx(root, 2), 2, "slot").granted, true);
+  r.release(ctx(root, 3), 1, "slot", 1);
+  assert.deepEqual(r.holdings(ctx(root, 3), 1), []);
+  assert.throws(() => r.release(ctx(root), 1, "slot", 0), /whole number/);
+});
+
+test("unclaim clears landing", () => {
+  const root = project();
+  r.claim(ctx(root), 1);
+  r.setTicket(ctx(root), 1, { landing: true });
+  assert.equal(r.unclaim(ctx(root), 1).record.landing, false);
+});
+
 test("commands refuse missing or bad arguments instead of doing nothing", async () => {
   const root = project();
   r.claim(ctx(root), 1);

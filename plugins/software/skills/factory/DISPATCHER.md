@@ -6,36 +6,39 @@ You are the dispatcher: a fresh session for one run, at the project's main check
 
 ## Each run
 
-Do the steps in order. While `res status` is `paused`, skip steps 5, 7 (except tickets with a live worker), 9 and 10.
+Do the steps in order. While `res status` is `paused`, steps 4 and 7 touch only tickets with a live worker (no notice to a queue head either), and steps 5, 9 and 10 are skipped.
 
 1. **The lock.** `res lock show`: its `thread` is your own session id (your reference says how to read it). When it is not, stop here and archive yourself: another dispatcher runs.
-2. **Read.** Take the board's fingerprint now (**Wake check**). Read `docs/agents/factory.md`, the routes in `docs/agents/roles.md`, `providers.md`, `quota.md` (`res quota prune` first), `res status`, `res ticket list`, and the board: from the tracker as `docs/agents/issue-tracker.md` says (approved specs, their tickets, standalone tickets, holds), from GitHub every open pull request with its checks and statuses, and the `Trunk checks` on trunk's head. Inspect the coordinator session of every claimed ticket: **live** (working, idle, waiting) or **dead** (failed, stopped, or gone).
+2. **Read.** Take the board's fingerprint now (**Wake check**). Read `docs/agents/factory.md`, the routes in `docs/agents/roles.md`, `providers.md`, `quota.md` (`res quota prune` first), `res status`, `res ticket list`, and the board: from the tracker as `docs/agents/issue-tracker.md` says (approved specs, their tickets, standalone tickets, holds), from GitHub every open pull request with its checks and statuses, and the `Trunk checks` on trunk's head. Inspect the coordinator session of every claimed ticket: **live** (working, idle, waiting) or **dead** (failed, stopped, or gone). A live coordinator whose `worktree` is no longer on disk (list-workspaces) counts as dead, unless only **Close, merged** is left for it.
 3. **Ended tickets.** For each claimed ticket:
-   - its pull request merged (even when the host closed the ticket through `Closes #<n>`): when the record is `running` with a due still ahead, leave it, its coordinator is closing it. Otherwise `res wake <n>` and send the coordinator "Factory wake #<n>: the pull request merged; run Close." A dead coordinator is revived (step 4) to run Close.
+   - its pull request merged (even when the host closed the ticket through `Closes #<n>`): when the record is `running` with a due still ahead, leave it, its coordinator is closing it. Otherwise `res ticket set <n> --json '{"state":"running"}'` (whatever it waited on) and send the coordinator "Factory wake #<n>: the pull request merged; run Close." A dead coordinator is revived (step 4) to run Close.
    - the ticket closed without a merge, or `wontfix`, in any state: `res unclaim <n>`. A live coordinator gets "Factory wake #<n>: the ticket ended; clean up and settle." For a dead one, stop its live workers; the sweep handles the workspace.
 4. **Revive** every claimed ticket whose coordinator is dead, in this order:
    1. Read the dead session's error. Words of a usage limit (COORDINATOR.md, **Quota**) block that candidate: `res quota block`.
-   2. A worker of the old session still running: wait for it to end, or stop it (revive's guarantee).
-   3. `res reclaim <n>`: everything it held is released, its tasks dropped. Tell whoever the output names (**Wakes**).
-   4. revive on the record's workspace, with the next `coordinator` candidate (**Launching a coordinator**). When the workspace is gone, revive on the ticket's branch in a new workspace, or at the main checkout when only **Close, merged** is left (it needs no workspace). Write the new session into the record (`res ticket set <n> --json '{"thread":"<id>","worktree":"<path>"}'`) and `res wake <n>`.
+   2. Write a new claim token into the record (`res ticket set <n> --json '{"thread":"pending:<n>-<time>"}'`): from now on the old session, should it get a turn, finds the claim is not its own and settles.
+   3. A worker of the old session still running (the record's `tasks`): wait for it to end, or stop it (inspect and stop-worker by its session).
+   4. `res reclaim <n>`: everything it held is released, its tasks dropped. Tell whoever the output names (**Wakes**).
+   5. revive on the record's workspace, with the next `coordinator` candidate and the token in its first message (**Launching a coordinator**). When the workspace is gone, revive on the ticket's branch in a new workspace, or at the main checkout when only **Close, merged** is left (it needs no workspace). Then `res ticket set <n> --json '{"thread":"<id>","worktree":"<path>","state":"running"}'` (a coordinator that already wrote its own id leaves the same id).
 5. **Unhold.** For each `held` ticket a person handed back (**Holds**): `res wake <n>`, then send "Factory wake #<n>: the hold was released." A ticket that is now `wontfix` or closed went through step 3.
 6. **Renew.** `res renew <n>` for every ticket whose coordinator is live, parked ones included. A holder whose coordinator is dead was reclaimed in step 4.
 7. **Wake** what is due or free:
    - `waiting` tickets: `res unwait <n> <item>…` for each item that is gone: a pull request no longer open, a ticket no longer claimed (`claimed: false`), `trunk` when trunk is no longer red (green, running or unknown). When `waitingOn` is empty, `res wake <n>` and send "Factory wake #<n>: what you waited on is gone; run check-plan again" (or "trunk is no longer red" for trunk).
    - `res due`: each `ticket` item: `res wake <n>` and send "Factory wake #<n>: your due passed." Each `queue` item: send its ticket's coordinator "Factory: <resource> is free for #<n>", then `res notified <n> <resource>`. Each `holding` item whose coordinator is live: renew it (step 6 missed it); a dead one goes to step 4. `quota` and `dispatcher` items need nothing beyond this run.
-   - comments: for each claimed ticket whose pull request or issue changed since the last fingerprint and whose coordinator is not running a turn, `node <this skill's folder>/scripts/comments.mjs fetch …` (the coordinator's own command); when it returns any comment, `res wake <n>` and send "Factory wake #<n>: new comments from people." The pull request watch does not report comments by the account the factory runs as.
+   - comments: for each claimed ticket that is not `held` and whose coordinator is not in a turn, `node <this skill's folder>/scripts/comments.mjs fetch …` (the coordinator's own command, COORDINATOR.md **Each turn**, step 10); when it returns any comment, `res ticket set <n> --json '{"state":"running"}'` when the ticket is `waiting` or `running`, `res wake <n>` when it is `parked`, and send "Factory wake #<n>: new comments from people." The pull request watch does not report comments by the account the factory runs as; a `held` ticket reads its answer when it is handed back.
 8. **Sweep workspaces.** list-workspaces. A workspace is removed only when all hold: its path is the `worktree` of a record (never pick one by commit or by name); that record is not claimed (`claimed: false`: closed, `wontfix`, `closed_unmerged`, merged); its session is settled or dead; and the push check passes (INTERFACE.md). Run close-workspace from the main checkout. Delete `<memory>/evidence/<n>/` of each ticket you swept.
 9. **Stop the line** (below).
 10. **Claim** (below) while the limits allow.
 11. **Close specs.** When every ticket of an approved spec is closed, close the spec with a short summary.
-12. **Record.** Ingest lessons (`res lessons pending`, MEMORY.md **Lessons**, then `res lessons done`); append one journal line; write the fingerprint you took in step 2 to `<memory>/wake-fingerprint`; commit the memory folder (`dispatch <time>`); `res dispatcher-due set <time> --reason "trunk CI running"` when a trunk check is still running or has not reported, else `res dispatcher-due clear`.
+12. **Record.** Ingest lessons (`res lessons pending`, MEMORY.md **Lessons**, then `res lessons done`); append one journal line; write the fingerprint you took in step 2 to `<memory>/wake-fingerprint`; commit the memory folder (`dispatch <time>`); `res dispatcher-due set <now plus Wake timeout> --reason "trunk CI running"` when a trunk check is still running or has not reported, else `res dispatcher-due clear`.
 13. **Release.** `res lock release --thread <your session id>`, then archive yourself.
 
 **Done when** every claimed ticket has a live coordinator or was revived, every wake you wrote through `res` was also sent, the journal line names what you claimed, woke, revived and merged and what waits on people, and the lock is released.
 
 ## Wakes
 
-A wake is two acts, always in this order: first write it through `res` (`res wake <n>` makes the ticket `running` with a due, or marks a parked queue head notified), then send the coordinator its message. Written first, the ticket counts toward `Max tickets` at once, and the next run does not wake it twice.
+A wake of a ticket is two acts, in this order: first write it through `res` (`res wake <n>` makes a held or emptied waiting ticket `running` with a due, or marks a parked queue head notified; `res ticket set <n> --json '{"state":"running"}'` does it whatever the ticket waited on), then send the coordinator its message. Written first, the ticket counts toward `Max tickets` at once, and the next run does not wake it twice.
+
+A notice to a queue head is the other way round: send "Factory: <resource> is free for #<n>" first, then `res notified <n> <resource>`, so a notice lost in between stays due.
 
 ## Holds
 
@@ -62,11 +65,11 @@ The **frontier** of an approved spec (one carrying the agent-ready label from `t
 - **Order.** Fix tickets first, then specs by priority (`priority:p1`, then `p2`, then `p3`; no label is `p2`; older first on a tie), then standalone tickets.
 - **A claim**, for one ticket:
   1. The `coordinator` route has a candidate that can run (COORDINATOR.md, **Routing**, lines 1–3). None: claim nothing this run, and say so in the journal.
-  2. `res claim <n>`. Refused: someone else has it; take the next ticket.
-  3. Launch its coordinator (below).
-  4. `res ticket set <n> --json '{"thread":"<id>","worktree":"<path>","branch":"<branch>"}'`.
+  2. `res claim <n> --thread pending:<n>-<time>` (the claim token). Refused: someone else has it; take the next ticket.
+  3. Launch its coordinator (below), with the token in its first message.
+  4. `res ticket set <n> --json '{"thread":"<id>","worktree":"<path>","branch":"<branch>","pr":<its open pull request, or null>}'`.
   5. Post a comment on the ticket headed `## Factory claim`, linking the coordinator's session. It is history: nothing removes it.
-- **A claim left half done** (the record is claimed but has no `thread`): look for a session titled `factory #<n>`, not settled, not archived, created at or after `claimedAt`. Found: take it as the coordinator and do steps 4 and 5. Not found: launch as in step 3.
+- **A claim left half done** (the record is claimed and its `thread` is still a claim token): look for a session titled `factory #<n>`, not settled, not archived, created at or after `claimedAt`. Found: take it as the coordinator and do steps 4 and 5. Not found: launch as in step 3, with the same token.
 
 ## Launching a coordinator
 
@@ -75,7 +78,7 @@ launch-coordinator with title `factory #<number> <slug>` and the first `coordina
 - the ticket already has an open pull request (COORDINATOR.md, **Ticket chain**): base `origin/<its branch>`, branch `<its branch>`. A pull request from a fork cannot take the factory's pushes: claim nothing, post a brief on the ticket saying so (COORDINATOR.md, **Humans**, its form and its **To answer** line), and set the ticket to `ready-for-human`;
 - otherwise base `origin/<trunk>`, branch `factory/<number>-<slug>`; when `git ls-remote origin` shows that name, the first unused of `-2`, `-3`, ….
 
-The first message: "Read `<this skill's folder>/SKILL.md`, then follow `<this skill's folder>/COORDINATOR.md` as the coordinator of ticket #<number> (<url>). Main checkout: `<path>`. Memory: `<path>`."
+The first message: "Read `<this skill's folder>/SKILL.md`, then follow `<this skill's folder>/COORDINATOR.md` as the coordinator of ticket #<number> (<url>). Main checkout: `<path>`. Memory: `<path>`. Claim token: `<token>`."
 
 ## Wake check
 
@@ -85,7 +88,7 @@ The **fingerprint** covers the open issues and pull requests (number, `updatedAt
 
 Whoever launches a dispatcher (the watcher, `once`, `resume`) holds its lock:
 
-1. `res lock acquire --launcher <who>`. Refused while the lock is live: read the session in the lock. Still running: launch nothing. Failed: read its error; words of a usage limit block that `scout` candidate (`res quota block`); then `res lock acquire --launcher <who> --reclaim`.
+1. `res lock acquire --launcher <who>`. Refused while the lock is live: read the session in the lock. Still running: launch nothing. Failed: read its error; words of a usage limit block that `scout` candidate (`res quota block`); then `res lock acquire --launcher <who> --reclaim`. Granted with a `previous` lock (it expired without being released): read that session's error the same way before going on.
 2. launch-dispatcher on the first `scout` candidate that passed the provider check and is not blocked in `quota.md`.
 3. `res lock thread <the new session id>` at once.
 
