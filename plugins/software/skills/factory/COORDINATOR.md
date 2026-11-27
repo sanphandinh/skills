@@ -6,7 +6,7 @@ You are the coordinator of one ticket, from its claim to its Close, in the ticke
 
 ## Each turn
 
-1. **Check the claim.** `res ticket get <n>`. Its `thread` is your session id: go on. It is your claim token: write your id (`res ticket set <n> --json '{"thread":"<your session id>"}'`) and go on. Anything else: settle now and touch nothing, because another coordinator owns the ticket.
+1. **Check the claim.** `res ticket get <n>` (also shows `factoryStatus`). Its `thread` is your session id: go on. It is your claim token: write your id (`res ticket set <n> --json '{"thread":"<your session id>"}'`) and go on. Anything else: settle now and touch nothing, because another coordinator owns the ticket.
 2. **Ended tickets.** Read the ticket's current state and labels from the tracker and, when the record has a `pr`, the pull request's current state and labels from the host (never rely on an earlier turn). When the ticket's pull request is merged, run **Close, merged**, even when the host closed the ticket on its own. When the record's `pr` was closed without a merge and the ticket is still open, run **Close, unmerged**. When the ticket was closed without a merge, or carries `wontfix`: stop your live workers, `res unclaim <n>`, clear flag-human, unwatch-pr, settle. When the record is not claimed for any other reason, settle.
 3. **Reload.** Read `docs/agents/factory.md`, `docs/agents/merge-policy.md`, `docs/agents/response-language.md` when it exists (without it, reply language is `match-user` with no live user message: the language of the ticket or spec when it has prose, else the latest human comment on it, else English, and the story notes the gap), the routes in `docs/agents/roles.md`, `providers.md` and `quota.md`, and `res status`. On your first turn, and whenever you can no longer quote these steps, read this file and [WORK-ORDERS.md](WORK-ORDERS.md) again.
 4. **First turn with a pull request.** When the ticket already has a pull request (a claimed open one, a revive, a conversion), write its number into the record (`res ticket set <n> --json '{"pr":<number>}'`), then link-pr and watch-pr it, before anything else.
@@ -42,7 +42,7 @@ The ticket's **pull request** is the open one that closes it, whoever opened it 
 
 ### Starting a worker
 
-Every worker you start, of every step, goes through these four steps in this order; start-worker is never called any other way. Without a granted `slot`, no worker starts.
+Every worker you start, of every step, goes through these four steps in this order; start-worker is never called any other way. Without a granted `slot`, or while `res status` is `paused`, no worker starts.
 
 
 1. **A candidate.** Pick the step's candidate (**Routing**). With every candidate of its route filtered out by quota: while another worker of yours is live, release only what this step would have used and wait for that worker's report; once none is live, release everything (`merge` included) and `res ticket set <n> --json '{"state":"running","due":"<the earliest blocked-until of that route>","landing":false}'`. Record, and end the turn.
@@ -179,6 +179,7 @@ Every line holds, on the pull request's current head commit:
 4. Neither the ticket nor the pull request carries `ready-for-human`: check live right before merging (`gh pr view <number> --json state,labels`, and the ticket's current labels or status from the tracker; on a GitHub tracker, `gh issue view <n> --json state,labels`).
 5. Trunk is not red (DISPATCHER.md, **Stop the line**), unless this pull request is the fix for it. A trunk check that is still running, or whose result is unknown, does not block.
 6. After a fresh `git fetch origin`, the branch contains trunk (`git merge-base --is-ancestor origin/<trunk> HEAD`). When it does not (someone merged in between), Land goes back to step 2.
+7. `res status` is `running` (never merge while `paused`).
 
 ## Humans
 

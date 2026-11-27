@@ -337,6 +337,7 @@ export function holdings(c, n) {
 export function acquire(c, n, resource, count = null) {
   n = ticketId(n);
   return withLock(c, () => {
+    if (getStatus(c).status === "paused") throw new Refused("factory is paused: start no worker and ask for no resource");
     const r = rank(c.cfg, resource);
     if (count === null) count = readResource(c, resource).queue.find((q) => q.ticket === n)?.count ?? 1;
     count = Number(count);
@@ -441,7 +442,7 @@ export function renew(c, n) {
       }
       if (changed) writeJson(resourceFile(c, name), res);
     }
-    return { renewed: out };
+    return { renewed: out, factoryStatus: getStatus(c).status };
   });
 }
 
@@ -746,7 +747,7 @@ export function run(argv) {
     case "unclaim":
       return unclaim(c, a, { state: opts.state });
     case "ticket":
-      if (a === "get") return { ...getTicket(c, b), holdings: holdings(c, ticketId(b)) };
+      if (a === "get") return { ...getTicket(c, b), holdings: holdings(c, ticketId(b)), factoryStatus: getStatus(c).status };
       if (a === "list") return tickets(c);
       if (a === "set") return setTicket(c, b, JSON.parse(opts.json ?? "{}"));
       break;

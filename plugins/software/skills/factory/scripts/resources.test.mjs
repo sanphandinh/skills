@@ -451,15 +451,17 @@ test("wake: held and emptied waiting tickets run with a due; a parked queue head
 test("status: going from paused to running makes stopped tickets due now and clears queue notices; quota-dated dues stay", () => {
   const root = project({ maxWorkers: 1 });
   for (const n of [1, 2, 3, 4, 5]) r.claim(ctx(root), n);
-  r.setStatus(ctx(root), "paused");
-  assert.equal(r.getStatus(ctx(root)).status, "paused");
-  r.setTicket(ctx(root), 1, { state: "running", due: null }); // stopped while paused
-  r.setTicket(ctx(root), 2, { state: "running", due: at(120) }); // waits for a quota block
-  r.setTicket(ctx(root), 3, { state: "running", due: null, tasks: [{ taskId: "t", childThreadId: "c", step: "build" }] });
   r.acquire(ctx(root), 4, "slot");
   r.acquire(ctx(root), 5, "slot");
   r.release(ctx(root), 4, "slot");
   r.notified(ctx(root), 5, "slot");
+  r.setStatus(ctx(root), "paused");
+  assert.equal(r.getStatus(ctx(root)).status, "paused");
+  assert.throws(() => r.acquire(ctx(root), 1, "slot"), /paused/);
+  assert.equal(r.renew(ctx(root), 1).factoryStatus, "paused");
+  r.setTicket(ctx(root), 1, { state: "running", due: null }); // stopped while paused
+  r.setTicket(ctx(root), 2, { state: "running", due: at(120) }); // waits for a quota block
+  r.setTicket(ctx(root), 3, { state: "running", due: null, tasks: [{ taskId: "t", childThreadId: "c", step: "build" }] });
   r.setStatus(ctx(root, 10), "running");
   assert.equal(r.getTicket(ctx(root, 10), 1).due, at(10));
   assert.equal(r.getTicket(ctx(root, 10), 2).due, at(120));
