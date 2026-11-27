@@ -6,7 +6,7 @@
 //
 //   node resources.mjs <command> [args] [--root <project>] [--now <ISO time>]
 //
-//   claim <n>                              claim ticket n (refused when already claimed)
+//   claim <n> [--thread <id>]              claim ticket n (refused when already claimed)
 //   unclaim <n> [--state <state>]          release the claim and every resource of n
 //   ticket get <n> | ticket list           read records; `list` counts tickets toward Max tickets
 //   ticket set <n> --json '<patch>'        merge fields into n's record (`state` moves `due`)
@@ -458,7 +458,7 @@ function reclaimLocked(c, n) {
     }
   }
   const rec = readTicket(c, n);
-  if (fs.existsSync(ticketFile(c, n))) writeTicket(c, { ...rec, tasks: [], parkedOn: [] });
+  if (fs.existsSync(ticketFile(c, n))) writeTicket(c, { ...rec, tasks: [], parkedOn: [], landing: false });
   return toNotify(c, changed);
 }
 
@@ -485,7 +485,7 @@ export function checkPlan(c, n, { files, openPrs = [] }) {
     }
     const cleared = waitingOn.length === 0;
     const next = cleared
-      ? applyPatch(c, rec, { files_to_change: files, planCleared: true })
+      ? applyPatch(c, rec, { files_to_change: files, planCleared: true, waitingOn: [], ...(rec.state === "waiting" ? { state: "running" } : {}) })
       : applyPatch(c, rec, { files_to_change: files, planCleared: false, state: "waiting", waitingOn });
     writeTicket(c, next);
     return { ticket: n, cleared, waitingOn };

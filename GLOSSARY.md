@@ -85,7 +85,7 @@ What a factory worker needs from a model (deep reasoning, cheap and fast, indepe
 _Avoid_: tier, agent type
 
 **Route**:
-The ordered list of candidates for one role, one line of `docs/agents/roles.md`; the factory's coordinator takes the first candidate the harness can run that is qualified, available and not out of quota.
+The ordered list of candidates for one role, one line of `docs/agents/roles.md`; the factory takes the first candidate the agent manager can run that is qualified, available and not out of quota.
 _Avoid_: fallback chain, model list
 
 **Candidate**:

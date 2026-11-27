@@ -255,9 +255,12 @@ test("release --count gives back part of a slot holding, as each of two workers 
   assert.throws(() => r.release(ctx(root), 1, "slot", 0), /whole number/);
 });
 
-test("unclaim clears landing", () => {
+test("unclaim and reclaim clear landing", () => {
   const root = project();
   r.claim(ctx(root), 1);
+  r.setTicket(ctx(root), 1, { landing: true });
+  r.reclaim(ctx(root), 1);
+  assert.equal(r.getTicket(ctx(root), 1).landing, false);
   r.setTicket(ctx(root), 1, { landing: true });
   assert.equal(r.unclaim(ctx(root), 1).record.landing, false);
 });
@@ -402,7 +405,11 @@ test("two tickets waiting on the same pull request: after it merges, rerunning c
     assert.deepEqual(left.waitingOn, []);
     assert.equal(r.wake(ctx(root, 5), n).action, "running");
   }
+  // A ticket that runs check-plan again while still waiting clears its wait too.
+  r.setTicket(ctx(root, 5), 1, { state: "waiting", waitingOn: ["pr:9"] });
   const first = r.checkPlan(ctx(root, 6), 1, { files: ["src/x.js"], openPrs: [] });
+  assert.equal(r.getTicket(ctx(root, 6), 1).state, "running");
+  assert.deepEqual(r.getTicket(ctx(root, 6), 1).waitingOn, []);
   const second = r.checkPlan(ctx(root, 6), 2, { files: ["src/x.js"], openPrs: [] });
   assert.equal(first.cleared, true);
   assert.equal(second.cleared, false);
