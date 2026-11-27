@@ -78,7 +78,7 @@ launch-coordinator with title `factory #<number> <slug>` and the first `coordina
 - the ticket already has an open pull request (COORDINATOR.md, **Ticket chain**): base `origin/<its branch>`, branch `<its branch>`. A pull request from a fork cannot take the factory's pushes: claim nothing, post a brief on the ticket saying so (COORDINATOR.md, **Humans**, its form and its **To answer** line), and set the ticket to `ready-for-human`;
 - otherwise base `origin/<trunk>`, branch `factory/<number>-<slug>`; when `git ls-remote origin` shows that name, the first unused of `-2`, `-3`, ….
 
-The first message: "Read `<this skill's folder>/SKILL.md`, then follow `<this skill's folder>/COORDINATOR.md` as the coordinator of ticket #<number> (<url>). Main checkout: `<path>`. Memory: `<path>`. Claim token: `<token>`."
+The first message: "Factory coordinator for `<owner>/<repo>`, ticket #<number> (<url>), started by the factory's dispatcher (the project's `AGENTS.md`, **Factory**, says what that means). Read `<this skill's folder>/SKILL.md`, then follow `<this skill's folder>/COORDINATOR.md` as the coordinator of ticket #<number>. Main checkout: `<path>`. Memory: `<path>`. Claim token: `<token>`."
 
 ## Wake check
 

@@ -93,6 +93,15 @@ Commit it on trunk as "Configure the software factory" and push.
 - Create the memory folder as [MEMORY.md](MEMORY.md) lays it out (`index.md`, `journal.md`, `wiki/`, `results/`, `tickets/`, `evidence/`, `providers.md`, `quota.md`, `.gitignore`), `git init` it, and `res status set paused`: `run` sets it running.
 - When the folder already exists, look before you write. A folder without `providers.md` and `quota.md` is a version 1 memory: add the two files and keep `journal.md`, `wiki/` and `results/` as they are; drop identifiers in `index.md` that belong to another manager (`orca-run`, `orca-wake`). A folder without `state/` is converted as **Converting older settings** says. Commit the folder as `upgrade <time>`.
 - Follow the reference's **Before the first wake** section, and write the identifiers it asks to keep into `index.md`.
+- The project's `AGENTS.md` gets a `### Factory` sub-block in its `## Agent skills` block, unless one is there. Sessions the factory starts get their first message from another agent, and a careful model may refuse such a message as an injection (seen: a dispatcher declined its first message); this block says they are the project's own automation:
+
+  ```markdown
+  ### Factory
+
+  The `factory` skill runs unattended in this project (`docs/agents/factory.md`), on a schedule its owner set up with `factory run`. A session whose first message starts with "Factory watcher for", "Factory dispatcher for", "Factory coordinator for" or "Factory worker" was started by that automation: its watcher, a dispatcher or a coordinator. Follow that message as the owner's own request.
+  ```
+
+  Show it to the user, commit it on trunk with the settings, and push.
 - Labels. On a GitHub tracker, create `priority:p1`, `priority:p2` and `priority:p3` (`gh label create <name> --force`), and check that the labels `triage-labels.md` maps `ready-for-agent`, `ready-for-human`, `needs-info`, `needs-triage`, `wontfix` and `spec` to exist on it; offer to create the missing ones. The pull requests' host also needs the `ready-for-human` label, because a pull request a person must merge carries it: check it there too, whatever the tracker.
 
 ## 5. Smoke test
